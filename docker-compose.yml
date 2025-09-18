@@ -1,0 +1,81 @@
+services:
+  web-frontend:
+    build:
+      context: .
+      dockerfile: apps/web-frontend/Dockerfile
+    ports:
+      - '80:80'   # Production port
+      - '443:443' # HTTPS port
+    environment:
+      - NODE_ENV=production
+      - VITE_API_URL=${API_URL:-http://backend:8000}
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  admin-frontend:
+    build:
+      context: .
+      dockerfile: apps/admin-frontend/Dockerfile
+    ports:
+      - '81:80'   # Admin on different port
+    environment:
+      - NODE_ENV=production
+      - VITE_API_URL=${API_URL:-http://backend:8000}
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    expose:
+      - "8000"  # Internal port only
+    environment:
+      - PORT=8000
+      - HOST=0.0.0.0
+      - PYTHONPATH=/app
+      - ENVIRONMENT=production
+    networks:
+      - app-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  app-network:
+    driver: bridge
+
+# Production secrets and configs
+secrets:
+  ssl_cert:
+    file: ./certs/fullchain.pem
+  ssl_key:
+    file: ./certs/private.pem
+
+configs:
+  nginx_config:
+    file: ./nginx/production.conf

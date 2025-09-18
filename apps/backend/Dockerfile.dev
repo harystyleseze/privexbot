@@ -1,0 +1,34 @@
+# Development Dockerfile for backend
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies for development
+RUN apt-get update && apt-get install -y \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy dependency files
+COPY apps/backend/pyproject.toml ./
+
+# Install uv package manager
+RUN pip install --no-cache-dir uv
+
+# Install project dependencies with development tools
+RUN uv pip install . --system
+
+# Install additional development dependencies
+RUN uv pip install --system \
+    watchfiles \
+    python-multipart \
+    pytest \
+    httpx
+
+# Copy source code (will be mounted as volume for live reload)
+COPY apps/backend/backend ./backend
+
+# Expose development port
+EXPOSE 8000
+
+# Default command with hot reload (can be overridden in docker-compose)
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
