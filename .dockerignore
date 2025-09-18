@@ -1,0 +1,17 @@
+node_modules/
+dist/
+coverage/
+.git/
+.env
+**/*.log
+npm-debug.log*
+
+# Keep necessary files
+!package.json
+!package-lock.json
+!nx.json
+!tsconfig.base.json
+!apps/web-frontend/**
+!libs/**
+
+

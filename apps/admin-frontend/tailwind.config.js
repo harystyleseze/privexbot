@@ -11,7 +11,11 @@ module.exports = {
     ...createGlobPatternsForDependencies(__dirname),
   ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        border: '#E5E7EB', // for example
+      },
+    },
   },
   plugins: [require('tw-animate')],
 };

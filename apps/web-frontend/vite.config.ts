@@ -1,41 +1,26 @@
 /// <reference types='vitest' />
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { nxViteTsPaths } from '@nx/vite/plugins/nx-tsconfig-paths.plugin';
+import path from 'path';
 
-export default defineConfig(() => ({
+export default defineConfig({
   root: __dirname,
   cacheDir: '../../node_modules/.vite/apps/web-frontend',
-  server: {
-    port: 3000,
-    host: 'localhost',
+
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
   },
-  preview: {
-    port: 3000,
-    host: 'localhost',
-  },
-  plugins: [react()],
-  // Uncomment this if you are using workers.
-  // worker: {
-  //  plugins: [ nxViteTsPaths() ],
-  // },
+
   build: {
-    outDir: './dist',
-    emptyOutDir: true,
+    outDir: '../../dist/apps/web-frontend',
     reportCompressedSize: true,
     commonjsOptions: {
       transformMixedEsModules: true,
     },
   },
-  test: {
-    name: '@privexbot/web-frontend',
-    watch: false,
-    globals: true,
-    environment: 'jsdom',
-    include: ['{src,tests}/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
-    reporters: ['default'],
-    coverage: {
-      reportsDirectory: './test-output/vitest/coverage',
-      provider: 'v8' as const,
-    },
-  },
-}));
+
+  plugins: [react(), nxViteTsPaths()],
+});

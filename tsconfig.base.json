@@ -7,7 +7,7 @@
     "isolatedModules": true,
     "lib": ["es2022"],
     "module": "nodenext",
-    "moduleResolution": "nodenext",
+    "moduleResolution": "bundler",
     "noEmitOnError": true,
     "noFallthroughCasesInSwitch": true,
     "noImplicitOverride": true,
@@ -16,6 +16,13 @@
     "skipLibCheck": true,
     "strict": true,
     "target": "es2022",
-    "customConditions": ["@privexbot/source"]
+    "customConditions": ["@privexbot/source"],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["apps/web-frontend/src/*"],
+      "@privexbot/shared-utils": ["libs/shared-utils/src/index.ts"]
+    },
+    "rootDir": ".",
+    "jsx": "react-jsx"
   }
 }

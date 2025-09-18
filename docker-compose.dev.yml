@@ -1,0 +1,68 @@
+services:
+  web-frontend:
+    build:
+      context: .
+      dockerfile: apps/web-frontend/Dockerfile.dev
+    ports:
+      - '3000:5173'  # Map to Vite's default port
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    volumes:
+      # Mount source code for live reload
+      - ./apps/web-frontend/src:/app/apps/web-frontend/src
+      - ./apps/web-frontend/public:/app/apps/web-frontend/public
+      - ./apps/web-frontend/index.html:/app/apps/web-frontend/index.html
+      - ./apps/web-frontend/vite.config.ts:/app/apps/web-frontend/vite.config.ts
+      - ./apps/web-frontend/tailwind.config.js:/app/apps/web-frontend/tailwind.config.js
+      - ./apps/web-frontend/postcss.config.js:/app/apps/web-frontend/postcss.config.js
+      - ./libs:/app/libs
+    depends_on:
+      - backend
+    networks:
+      - app-network
+    command: npx nx serve web-frontend --host 0.0.0.0
+
+  admin-frontend:
+    build:
+      context: .
+      dockerfile: apps/admin-frontend/Dockerfile.dev
+    ports:
+      - '3001:3001'  # Admin frontend on port 3001
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    volumes:
+      # Mount source code for live reload
+      - ./apps/admin-frontend/src:/app/apps/admin-frontend/src
+      - ./apps/admin-frontend/public:/app/apps/admin-frontend/public
+      - ./apps/admin-frontend/index.html:/app/apps/admin-frontend/index.html
+      - ./apps/admin-frontend/vite.config.ts:/app/apps/admin-frontend/vite.config.ts
+      - ./apps/admin-frontend/tailwind.config.js:/app/apps/admin-frontend/tailwind.config.js
+      - ./apps/admin-frontend/postcss.config.js:/app/apps/admin-frontend/postcss.config.js
+      - ./libs:/app/libs
+    depends_on:
+      - backend
+    networks:
+      - app-network
+    command: npx nx serve admin-frontend --host 0.0.0.0 --port 3001
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile.dev
+    ports:
+      - '8000:8000'
+    environment:
+      - PORT=8000
+      - HOST=0.0.0.0
+      - PYTHONPATH=/app
+    volumes:
+      # Mount source code for live reload
+      - ./apps/backend/backend:/app/backend
+      - ./apps/backend/pyproject.toml:/app/pyproject.toml
+    networks:
+      - app-network
+    command: uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+
+networks:
+  app-network:
+    driver: bridge
