@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compileOnSave": false,
+  "files": [],
+  "references": [
+    {
+      "path": "./apps/web-frontend-e2e"
+    },
+    {
+      "path": "./apps/web-frontend"
+    },
+    {
+      "path": "./apps/admin-frontend-e2e"
+    },
+    {
+      "path": "./apps/admin-frontend"
+    },
+    {
+      "path": "./libs/shared-utils"
+    }
+  ]
+}
