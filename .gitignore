@@ -1,0 +1,13 @@
+CLAUDE.md
+node_modules/
+dist/
+.DS_Store
+.env
+.vscode/
+.idea/
+*.log
+*.tmp
+coverage/
+*.bak
+*.swp
+*.swo

@@ -205,14 +205,14 @@ Entry point of the FastAPI application.
 
 **Responsibilities:**
 
-* Instantiate FastAPI app
-* Include API routers
-* Mount middleware, CORS, error handlers
+- Instantiate FastAPI app
+- Include API routers
+- Mount middleware, CORS, error handlers
 
 **Integration:**
 
-* Imports routes from `api/v1/routes/`
-* Uses config from `core/config.py`
+- Imports routes from `api/v1/routes/`
+- Uses config from `core/config.py`
 
 ---
 
@@ -223,14 +223,14 @@ HTTP API layer, versioned (v1, v2, ...).
 
 **Responsibilities:**
 
-* Defines route handlers (auth.py, chatbot.py, etc.)
-* Contains dependency injections (auth guards, permissions)
+- Defines route handlers (auth.py, chatbot.py, etc.)
+- Contains dependency injections (auth guards, permissions)
 
 **Integration:**
 
-* Uses Pydantic schemas for validation
-* Calls services for business logic
-* Uses auth for authentication/authorization
+- Uses Pydantic schemas for validation
+- Calls services for business logic
+- Uses auth for authentication/authorization
 
 ---
 
@@ -241,14 +241,14 @@ Authentication strategies (email, blockchain wallets, etc.)
 
 **Responsibilities:**
 
-* Email login/signup
-* Ethereum, Solana, Cosmos wallet auth
-* Nonce creation, signature verification
+- Email login/signup
+- Ethereum, Solana, Cosmos wallet auth
+- Nonce creation, signature verification
 
 **Integration:**
 
-* Called by API auth routes
-* Uses Redis (via utils/redis.py) for nonce caching
+- Called by API auth routes
+- Uses Redis (via utils/redis.py) for nonce caching
 
 ---
 
@@ -259,13 +259,13 @@ App-wide settings and security utilities.
 
 **Responsibilities:**
 
-* Config loader (`config.py`)
-* JWT, password hashing (`security.py`)
-* Constants and shared utilities
+- Config loader (`config.py`)
+- JWT, password hashing (`security.py`)
+- Constants and shared utilities
 
 **Integration:**
 
-* Used throughout app startup, services, and routes
+- Used throughout app startup, services, and routes
 
 ---
 
@@ -276,12 +276,12 @@ Database connection and session management.
 
 **Responsibilities:**
 
-* SQLAlchemy session and base models
-* Initializes ORM base classes and mixins
+- SQLAlchemy session and base models
+- Initializes ORM base classes and mixins
 
 **Integration:**
 
-* Used by models, services, and API layers
+- Used by models, services, and API layers
 
 ---
 
@@ -292,12 +292,12 @@ ORM models representing database tables.
 
 **Responsibilities:**
 
-* User, Organization, Workspace models
-* Relationships and tenancy via foreign keys
+- User, Organization, Workspace models
+- Relationships and tenancy via foreign keys
 
 **Integration:**
 
-* Used by services, Alembic for migrations
+- Used by services, Alembic for migrations
 
 ---
 
@@ -308,12 +308,12 @@ Pydantic schemas for request validation and response serialization.
 
 **Responsibilities:**
 
-* Validate API inputs
-* Control API outputs
+- Validate API inputs
+- Control API outputs
 
 **Integration:**
 
-* Used in API routes and sometimes in services
+- Used in API routes and sometimes in services
 
 ---
 
@@ -324,13 +324,13 @@ Business logic layer.
 
 **Responsibilities:**
 
-* Authentication service (login/signup/JWT)
-* Tenant resolution (org/workspace)
-* Permission mapping (roles → permissions)
+- Authentication service (login/signup/JWT)
+- Tenant resolution (org/workspace)
+- Permission mapping (roles → permissions)
 
 **Integration:**
 
-* Called by API route handlers
+- Called by API route handlers
 
 ---
 
@@ -341,12 +341,12 @@ Helper functions and utilities.
 
 **Responsibilities:**
 
-* Redis client
-* Common helpers used across modules
+- Redis client
+- Common helpers used across modules
 
 **Integration:**
 
-* Used by auth, services, tasks
+- Used by auth, services, tasks
 
 ---
 
@@ -357,11 +357,11 @@ Background task runners (e.g., Celery workers).
 
 **Responsibilities:**
 
-* Runs asynchronous jobs (e.g., email sending)
+- Runs asynchronous jobs (e.g., email sending)
 
 **Integration:**
 
-* Linked via async workflows, message brokers
+- Linked via async workflows, message brokers
 
 ---
 
@@ -372,12 +372,12 @@ Backend unit and integration tests.
 
 **Responsibilities:**
 
-* Pytest tests
-* Test fixtures and clients
+- Pytest tests
+- Test fixtures and clients
 
 **Integration:**
 
-* Tests routes, services, auth, tenancy
+- Tests routes, services, auth, tenancy
 
 ---
 
@@ -388,13 +388,13 @@ Database schema migration tool.
 
 **Responsibilities:**
 
-* Migration scripts (`versions/`)
-* Alembic environment config (`env.py`)
-* Templates for migrations
+- Migration scripts (`versions/`)
+- Alembic environment config (`env.py`)
+- Templates for migrations
 
 **Integration:**
 
-* Reflects `models/` for schema changes
+- Reflects `models/` for schema changes
 
 ---
 
@@ -405,9 +405,9 @@ Dependencies split by environment.
 
 **Files:**
 
-* `base.txt` (common)
-* `dev.txt` (development)
-* `prod.txt` (production)
+- `base.txt` (common)
+- `dev.txt` (development)
+- `prod.txt` (production)
 
 ---
 
@@ -444,7 +444,7 @@ Static assets like HTML, favicon, and manifest files.
 
 React app source code.
 
-* **App.tsx / index.tsx**:
+- **App.tsx / index.tsx**:
   Entry points setting up providers and routing.
 
 ---
@@ -453,9 +453,9 @@ React app source code.
 
 Axios clients for backend communication.
 
-* `auth.ts`: login/signup/logout requests
-* `chatbot.ts`: chatbot CRUD
-* `apiClient.ts`: base axios with JWT headers
+- `auth.ts`: login/signup/logout requests
+- `chatbot.ts`: chatbot CRUD
+- `apiClient.ts`: base axios with JWT headers
 
 ---
 
@@ -463,9 +463,9 @@ Axios clients for backend communication.
 
 Reusable UI parts.
 
-* `auth/`: login/register forms
-* `dashboard/`: org/workspace switchers
-* `common/`: buttons, modals, loaders
+- `auth/`: login/register forms
+- `dashboard/`: org/workspace switchers
+- `common/`: buttons, modals, loaders
 
 ---
 
@@ -473,8 +473,8 @@ Reusable UI parts.
 
 Global state management using React Context.
 
-* `AuthContext`: JWT, user info, permissions
-* `TenantContext`: current org/workspace
+- `AuthContext`: JWT, user info, permissions
+- `TenantContext`: current org/workspace
 
 ---
 
@@ -482,8 +482,8 @@ Global state management using React Context.
 
 Reusable React hooks.
 
-* `useAuth.ts`: auth actions
-* `useTenant.ts`: tenant context management
+- `useAuth.ts`: auth actions
+- `useTenant.ts`: tenant context management
 
 ---
 
@@ -491,9 +491,9 @@ Reusable React hooks.
 
 Route components/screens.
 
-* `LoginPage.tsx`
-* `Dashboard.tsx`
-* `OrgSwitchPage.tsx`
+- `LoginPage.tsx`
+- `Dashboard.tsx`
+- `OrgSwitchPage.tsx`
 
 ---
 
@@ -501,7 +501,7 @@ Route components/screens.
 
 Route protection and navigation.
 
-* `PrivateRoute.tsx`: protects routes requiring auth
+- `PrivateRoute.tsx`: protects routes requiring auth
 
 ---
 
@@ -525,18 +525,18 @@ Helpers like permission checks (`hasPermission()`).
 | AuthContext         | JWT tokens             | Stores user info and permissions |
 | TenantContext       | Auth/session switching | Tenant context switching         |
 | Axios client        | Middleware             | Sends JWT with each request      |
-| Permissions (utils) | permission\_service.py | Frontend permission checks       |
+| Permissions (utils) | permission_service.py  | Frontend permission checks       |
 
 ---
 
 ### Summary: Design Principles
 
-| Goal            | Implementation                        |
-| --------------- | ------------------------------------- |
-| Multi-tenancy   | Foreign keys (org\_id, workspace\_id) |
-| Flexible auth   | Pluggable auth strategies             |
-| Scoped access   | JWT + permission service              |
-| Permission UI   | AuthContext with claims               |
-| Maintainability | Modular folder separation             |
-| Scalability     | Redis, background tasks               |
-| Security        | CORS, JWT, tenancy enforcement        |
+| Goal            | Implementation                      |
+| --------------- | ----------------------------------- |
+| Multi-tenancy   | Foreign keys (org_id, workspace_id) |
+| Flexible auth   | Pluggable auth strategies           |
+| Scoped access   | JWT + permission service            |
+| Permission UI   | AuthContext with claims             |
+| Maintainability | Modular folder separation           |
+| Scalability     | Redis, background tasks             |
+| Security        | CORS, JWT, tenancy enforcement      |
