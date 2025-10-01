@@ -180,9 +180,9 @@ FORMAT: {prefix}_{env}_{random}
     random: 32 random bytes (base64 encoded)
 
 EXAMPLES:
-    sk_live_abc123def456ghi789jkl012mno345
-    pk_test_xyz789abc123def456ghi789jkl012
-    sk_live_qrs123tuv456wxy789zab012cde345
+    # sk_live_abc123def456ghi789jkl012mno345
+    # pk_test_xyz789abc123def456ghi789jkl012
+    # sk_live_qrs123tuv456wxy789zab012cde345
 
 WHY THIS FORMAT:
     - Prefix identifies key type at a glance
