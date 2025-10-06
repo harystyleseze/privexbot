@@ -7,9 +7,11 @@ All required chatbot and chatflow components have been successfully created.
 ## ✅ Chatbot Components (`/src/components/chatbot/`)
 
 ### 1. **ChatbotSettingsForm.tsx**
+
 **Purpose**: Reusable form fields for chatbot configuration
 
 **Features**:
+
 - Basic info fields (name, description, greeting)
 - AI configuration (model selection, temperature slider, max tokens)
 - Lead capture toggle
@@ -18,6 +20,7 @@ All required chatbot and chatflow components have been successfully created.
 - Responsive layout
 
 **Props**:
+
 ```typescript
 interface ChatbotSettingsFormProps {
   register: UseFormRegister<ChatbotFormData>;
@@ -28,6 +31,7 @@ interface ChatbotSettingsFormProps {
 ```
 
 **Usage**:
+
 ```tsx
 <ChatbotSettingsForm
   register={register}
@@ -40,9 +44,11 @@ interface ChatbotSettingsFormProps {
 ---
 
 ### 2. **SystemPromptEditor.tsx**
+
 **Purpose**: Rich text editor for system prompts with templates
 
 **Features**:
+
 - Monaco Editor integration for code-like editing experience
 - 5 pre-built prompt templates:
   - Customer Support
@@ -62,6 +68,7 @@ interface ChatbotSettingsFormProps {
 - Dark theme
 
 **Props**:
+
 ```typescript
 interface SystemPromptEditorProps {
   value: string;
@@ -71,6 +78,7 @@ interface SystemPromptEditorProps {
 ```
 
 **Usage**:
+
 ```tsx
 <SystemPromptEditor
   value={systemPrompt}
@@ -80,14 +88,17 @@ interface SystemPromptEditorProps {
 ```
 
 **Dependencies**:
+
 - `@monaco-editor/react`
 
 ---
 
 ### 3. **KnowledgeBaseSelector.tsx**
+
 **Purpose**: Select and manage knowledge base attachments
 
 **Features**:
+
 - Fetch and display all available KBs
 - Search/filter KBs by name or description
 - Visual selection with Switch components
@@ -99,6 +110,7 @@ interface SystemPromptEditorProps {
 - RAG explanation when KBs are selected
 
 **Props**:
+
 ```typescript
 interface KnowledgeBaseSelectorProps {
   selectedKBs: string[];
@@ -107,6 +119,7 @@ interface KnowledgeBaseSelectorProps {
 ```
 
 **Usage**:
+
 ```tsx
 <KnowledgeBaseSelector
   selectedKBs={selectedKnowledgeBases}
@@ -115,6 +128,7 @@ interface KnowledgeBaseSelectorProps {
 ```
 
 **Backend Integration**:
+
 - `GET /knowledge-bases/` - Fetch available KBs
 
 ---
@@ -122,9 +136,11 @@ interface KnowledgeBaseSelectorProps {
 ## ✅ Chatflow Components (`/src/components/chatflow/`)
 
 ### 1. **ReactFlowCanvas.tsx**
+
 **Purpose**: Main ReactFlow wrapper with custom node types
 
 **Features**:
+
 - ReactFlow integration
 - Custom node types registration
 - Background with dots pattern
@@ -134,6 +150,7 @@ interface KnowledgeBaseSelectorProps {
 - Responsive design
 
 **Props**:
+
 ```typescript
 interface ReactFlowCanvasProps {
   nodes: Node[];
@@ -148,6 +165,7 @@ interface ReactFlowCanvasProps {
 ```
 
 **Usage**:
+
 ```tsx
 <ReactFlowCanvas
   nodes={nodes}
@@ -164,9 +182,11 @@ interface ReactFlowCanvasProps {
 ---
 
 ### 2. **NodePalette.tsx**
+
 **Purpose**: Categorized palette for adding nodes
 
 **Features**:
+
 - 7 node types organized by category:
   - **AI**: LLM
   - **Data**: Knowledge Base
@@ -179,6 +199,7 @@ interface ReactFlowCanvasProps {
 - Category grouping
 
 **Props**:
+
 ```typescript
 interface NodePaletteProps {
   onAddNode: (type: string) => void;
@@ -186,6 +207,7 @@ interface NodePaletteProps {
 ```
 
 **Usage**:
+
 ```tsx
 <NodePalette onAddNode={addNode} />
 ```
@@ -193,9 +215,11 @@ interface NodePaletteProps {
 ---
 
 ### 3. **NodeConfigPanel.tsx**
+
 **Purpose**: Dynamic configuration panel for selected node
 
 **Features**:
+
 - Type-specific configuration fields
 - Real-time node updates
 - Node deletion
@@ -211,6 +235,7 @@ interface NodePaletteProps {
 - Delete node button
 
 **Props**:
+
 ```typescript
 interface NodeConfigPanelProps {
   selectedNode: Node | null;
@@ -221,6 +246,7 @@ interface NodeConfigPanelProps {
 ```
 
 **Usage**:
+
 ```tsx
 <NodeConfigPanel
   selectedNode={selectedNode}
@@ -233,9 +259,11 @@ interface NodeConfigPanelProps {
 ---
 
 ### 4. **VariableInspector.tsx**
+
 **Purpose**: Debug and inspect workflow variables
 
 **Features**:
+
 - Display all current variables
 - Type detection and color coding:
   - String: Green
@@ -252,6 +280,7 @@ interface NodeConfigPanelProps {
 - Variable count
 
 **Props**:
+
 ```typescript
 interface VariableInspectorProps {
   variables?: Record<string, any>;
@@ -261,6 +290,7 @@ interface VariableInspectorProps {
 ```
 
 **Usage**:
+
 ```tsx
 <VariableInspector
   variables={workflowVariables}
@@ -274,6 +304,7 @@ interface VariableInspectorProps {
 ## ✅ Custom Node Components (`/src/components/chatflow/nodes/`)
 
 All nodes follow a consistent pattern with:
+
 - Gradient backgrounds
 - Selection highlighting (scale + border)
 - Input/output handles
@@ -282,18 +313,21 @@ All nodes follow a consistent pattern with:
 - Memo optimization
 
 ### 1. **LLMNode.tsx**
+
 - **Color**: Purple to Pink gradient
 - **Icon**: Sparkles
 - **Handles**: Top (input), Bottom (output)
 - **Data**: Model, temperature, prompt
 
 ### 2. **KnowledgeBaseNode.tsx**
+
 - **Color**: Blue to Cyan gradient
 - **Icon**: Database
 - **Handles**: Top (input), Bottom (output)
 - **Data**: KB name, top K results
 
 ### 3. **ConditionNode.tsx**
+
 - **Color**: Yellow to Orange gradient
 - **Icon**: GitBranch
 - **Handles**: Top (input), Right x2 (true/false outputs)
@@ -301,6 +335,7 @@ All nodes follow a consistent pattern with:
 - **Special**: Dual output handles (green for true, red for false)
 
 ### 4. **HTTPRequestNode.tsx**
+
 - **Color**: Green to Emerald gradient
 - **Icon**: Globe
 - **Handles**: Top (input), Bottom (output)
@@ -308,18 +343,21 @@ All nodes follow a consistent pattern with:
 - **Special**: Color-coded method badges
 
 ### 5. **VariableNode.tsx**
+
 - **Color**: Indigo to Purple gradient
 - **Icon**: Variable
 - **Handles**: Top (input), Bottom (output)
 - **Data**: Variable name, operation
 
 ### 6. **CodeNode.tsx**
+
 - **Color**: Gray gradient
 - **Icon**: Code
 - **Handles**: Top (input), Bottom (output)
 - **Data**: Language (Python/JavaScript), code snippet
 
 ### 7. **ResponseNode.tsx**
+
 - **Color**: Rose to Red gradient
 - **Icon**: MessageSquare
 - **Handles**: Top (input) only
@@ -333,15 +371,20 @@ All nodes follow a consistent pattern with:
 ### Using Chatbot Components in a Page
 
 ```tsx
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import ChatbotSettingsForm from '@/components/chatbot/ChatbotSettingsForm';
-import SystemPromptEditor from '@/components/chatbot/SystemPromptEditor';
-import KnowledgeBaseSelector from '@/components/chatbot/KnowledgeBaseSelector';
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import ChatbotSettingsForm from "@/components/chatbot/ChatbotSettingsForm";
+import SystemPromptEditor from "@/components/chatbot/SystemPromptEditor";
+import KnowledgeBaseSelector from "@/components/chatbot/KnowledgeBaseSelector";
 
 function MyChatbotPage() {
-  const { register, watch, setValue, formState: { errors } } = useForm();
-  const [systemPrompt, setSystemPrompt] = useState('');
+  const {
+    register,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useForm();
+  const [systemPrompt, setSystemPrompt] = useState("");
   const [selectedKBs, setSelectedKBs] = useState<string[]>([]);
 
   return (
@@ -356,10 +399,7 @@ function MyChatbotPage() {
       </TabsContent>
 
       <TabsContent value="prompt">
-        <SystemPromptEditor
-          value={systemPrompt}
-          onChange={setSystemPrompt}
-        />
+        <SystemPromptEditor value={systemPrompt} onChange={setSystemPrompt} />
       </TabsContent>
 
       <TabsContent value="knowledge">
@@ -376,12 +416,12 @@ function MyChatbotPage() {
 ### Using Chatflow Components in a Page
 
 ```tsx
-import { useState } from 'react';
-import { useNodesState, useEdgesState } from 'reactflow';
-import ReactFlowCanvas from '@/components/chatflow/ReactFlowCanvas';
-import NodePalette from '@/components/chatflow/NodePalette';
-import NodeConfigPanel from '@/components/chatflow/NodeConfigPanel';
-import VariableInspector from '@/components/chatflow/VariableInspector';
+import { useState } from "react";
+import { useNodesState, useEdgesState } from "reactflow";
+import ReactFlowCanvas from "@/components/chatflow/ReactFlowCanvas";
+import NodePalette from "@/components/chatflow/NodePalette";
+import NodeConfigPanel from "@/components/chatflow/NodeConfigPanel";
+import VariableInspector from "@/components/chatflow/VariableInspector";
 
 function MyChatflowPage() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -479,24 +519,24 @@ npm install @tanstack/react-query zustand
 /frontend/src/
 ├── components/
 │   ├── chatbot/
-│   │   ├── ChatbotSettingsForm.tsx       ✅ Created
-│   │   ├── SystemPromptEditor.tsx        ✅ Created
-│   │   └── KnowledgeBaseSelector.tsx     ✅ Created
+│   │   ├── ChatbotSettingsForm.tsx       #
+│   │   ├── SystemPromptEditor.tsx        #
+│   │   └── KnowledgeBaseSelector.tsx     #
 │   │
 │   └── chatflow/
-│       ├── ReactFlowCanvas.tsx           ✅ Created
-│       ├── NodePalette.tsx               ✅ Created
-│       ├── NodeConfigPanel.tsx           ✅ Created
-│       ├── VariableInspector.tsx         ✅ Created
+│       ├── ReactFlowCanvas.tsx           #
+│       ├── NodePalette.tsx               #
+│       ├── NodeConfigPanel.tsx           #
+│       ├── VariableInspector.tsx         #
 │       │
 │       └── nodes/
-│           ├── LLMNode.tsx               ✅ Created
-│           ├── KnowledgeBaseNode.tsx     ✅ Created
-│           ├── ConditionNode.tsx         ✅ Created
-│           ├── HTTPRequestNode.tsx       ✅ Created
-│           ├── VariableNode.tsx          ✅ Created
-│           ├── CodeNode.tsx              ✅ Created
-│           └── ResponseNode.tsx          ✅ Created
+│           ├── LLMNode.tsx               #
+│           ├── KnowledgeBaseNode.tsx     #
+│           ├── ConditionNode.tsx         #
+│           ├── HTTPRequestNode.tsx       #
+│           ├── VariableNode.tsx          #
+│           ├── CodeNode.tsx              #
+│           └── ResponseNode.tsx          #
 ```
 
 ---
@@ -504,24 +544,30 @@ npm install @tanstack/react-query zustand
 ## Design Patterns
 
 ### 1. **Composition**
+
 Components are designed to be composed together:
+
 - ChatbotSettingsForm + SystemPromptEditor + KnowledgeBaseSelector = Complete chatbot builder
 - ReactFlowCanvas + NodePalette + NodeConfigPanel = Complete chatflow builder
 
 ### 2. **Prop Drilling Alternative**
+
 - Use React Hook Form's methods (register, watch, setValue) passed as props
 - Avoids deep prop drilling while maintaining type safety
 
 ### 3. **Memoization**
+
 - All node components use `memo()` for performance
 - Prevents unnecessary re-renders during dragging
 
 ### 4. **Type Safety**
+
 - Full TypeScript support
 - Interface definitions for all props
 - Type-safe data structures for nodes
 
 ### 5. **Accessibility**
+
 - Proper label associations
 - Keyboard navigation support (via shadcn/ui)
 - ARIA attributes where needed
@@ -534,10 +580,10 @@ Components are designed to be composed together:
 
 ```typescript
 // ChatbotSettingsForm.test.tsx
-import { render, screen } from '@testing-library/react';
-import ChatbotSettingsForm from './ChatbotSettingsForm';
+import { render, screen } from "@testing-library/react";
+import ChatbotSettingsForm from "./ChatbotSettingsForm";
 
-test('renders all form fields', () => {
+test("renders all form fields", () => {
   const mockRegister = jest.fn();
   render(
     <ChatbotSettingsForm
@@ -557,15 +603,15 @@ test('renders all form fields', () => {
 
 ```typescript
 // NodePalette.test.tsx
-import { render, screen, fireEvent } from '@testing-library/react';
-import NodePalette from './NodePalette';
+import { render, screen, fireEvent } from "@testing-library/react";
+import NodePalette from "./NodePalette";
 
-test('adds node when clicked', () => {
+test("adds node when clicked", () => {
   const mockAddNode = jest.fn();
   render(<NodePalette onAddNode={mockAddNode} />);
 
   fireEvent.click(screen.getByText(/LLM/i));
-  expect(mockAddNode).toHaveBeenCalledWith('llm');
+  expect(mockAddNode).toHaveBeenCalledWith("llm");
 });
 ```
 
@@ -574,6 +620,7 @@ test('adds node when clicked', () => {
 ## Status: ✅ COMPLETE
 
 All chatbot and chatflow components are production-ready with:
+
 - Full TypeScript implementation
 - Consistent design patterns
 - Proper error handling

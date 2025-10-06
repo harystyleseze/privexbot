@@ -4,12 +4,14 @@ All 12 Knowledge Base components have been successfully created with production-
 
 ---
 
-## ✅ Created Components
+## # Components
 
 ### 1. **SourceSelector.tsx** `/src/components/kb/SourceSelector.tsx`
+
 **Purpose**: Choose document source type
 
 **Features**:
+
 - 6 source types: File Upload, Text Paste, URL, Website Crawl, Notion, Google Drive
 - Categorized display (Direct, Web, Cloud)
 - Icon-based selection cards
@@ -17,20 +19,29 @@ All 12 Knowledge Base components have been successfully created with production-
 - Premium badge support
 
 **Props**:
+
 ```typescript
 interface SourceSelectorProps {
   onSelectSource: (sourceType: SourceType) => void;
 }
 
-type SourceType = 'file_upload' | 'website_crawl' | 'notion' | 'google_docs' | 'text_paste' | 'url';
+type SourceType =
+  | "file_upload"
+  | "website_crawl"
+  | "notion"
+  | "google_docs"
+  | "text_paste"
+  | "url";
 ```
 
 ---
 
 ### 2. **FileUploader.tsx** `/src/components/kb/FileUploader.tsx`
+
 **Purpose**: Drag & drop file upload with progress tracking
 
 **Features**:
+
 - react-dropzone integration
 - Multiple file upload support
 - Supported formats: PDF, DOCX, TXT, MD, CSV
@@ -41,6 +52,7 @@ type SourceType = 'file_upload' | 'website_crawl' | 'notion' | 'google_docs' | '
 - Remove uploaded files
 
 **Backend Integration**:
+
 - `POST /kb-drafts/{id}/documents/upload` - Upload file with FormData
 
 **Dependencies**: react-dropzone
@@ -48,9 +60,11 @@ type SourceType = 'file_upload' | 'website_crawl' | 'notion' | 'google_docs' | '
 ---
 
 ### 3. **WebsiteCrawler.tsx** `/src/components/kb/WebsiteCrawler.tsx`
+
 **Purpose**: Configure website scraping
 
 **Features**:
+
 - Base URL input with validation
 - Sitemap detection/manual URL
 - Max depth and max pages configuration
@@ -60,9 +74,11 @@ type SourceType = 'file_upload' | 'website_crawl' | 'notion' | 'google_docs' | '
 - Crawl status tracking
 
 **Backend Integration**:
+
 - `POST /kb-drafts/{id}/documents/crawl` - Start website crawl
 
 **Configuration**:
+
 - Max depth: 1-10 levels
 - Max pages: 1-1000 pages
 - Include/exclude patterns support
@@ -70,9 +86,11 @@ type SourceType = 'file_upload' | 'website_crawl' | 'notion' | 'google_docs' | '
 ---
 
 ### 4. **NotionIntegration.tsx** `/src/components/kb/NotionIntegration.tsx`
+
 **Purpose**: Import from Notion workspace
 
 **Features**:
+
 - OAuth connection flow
 - Page/database browser
 - Search functionality
@@ -84,6 +102,7 @@ type SourceType = 'file_upload' | 'website_crawl' | 'notion' | 'google_docs' | '
 - Connection status check
 
 **Backend Integration**:
+
 - `GET /credentials/` - Check if Notion connected
 - `GET /integrations/notion/pages` - Fetch pages
 - `POST /kb-drafts/{id}/documents/notion` - Add selected pages
@@ -92,9 +111,11 @@ type SourceType = 'file_upload' | 'website_crawl' | 'notion' | 'google_docs' | '
 ---
 
 ### 5. **GoogleDocsIntegration.tsx** `/src/components/kb/GoogleDocsIntegration.tsx`
+
 **Purpose**: Import from Google Drive
 
 **Features**:
+
 - OAuth connection flow
 - File/folder browser
 - Folder navigation with breadcrumbs
@@ -106,6 +127,7 @@ type SourceType = 'file_upload' | 'website_crawl' | 'notion' | 'google_docs' | '
 - External link to Drive
 
 **Backend Integration**:
+
 - `GET /credentials/` - Check if Google Drive connected
 - `GET /integrations/google-drive/files` - Fetch files
 - `POST /kb-drafts/{id}/documents/google-drive` - Add selected files
@@ -114,9 +136,11 @@ type SourceType = 'file_upload' | 'website_crawl' | 'notion' | 'google_docs' | '
 ---
 
 ### 6. **TextPasteInput.tsx** `/src/components/kb/TextPasteInput.tsx`
+
 **Purpose**: Direct text paste input
 
 **Features**:
+
 - Large textarea for content
 - Optional title and description
 - Word count and character count
@@ -125,9 +149,11 @@ type SourceType = 'file_upload' | 'website_crawl' | 'notion' | 'google_docs' | '
 - Content length indicators
 
 **Backend Integration**:
+
 - `POST /kb-drafts/{id}/documents/text` - Add pasted text
 
 **Validation**:
+
 - Content required
 - Title optional
 - Description optional
@@ -135,9 +161,11 @@ type SourceType = 'file_upload' | 'website_crawl' | 'notion' | 'google_docs' | '
 ---
 
 ### 7. **DocumentAnnotationForm.tsx** `/src/components/kb/DocumentAnnotationForm.tsx`
+
 **Purpose**: Add metadata to documents
 
 **Features**:
+
 - Tag input with add/remove
 - Category dropdown (9 predefined categories)
 - Author field
@@ -146,6 +174,7 @@ type SourceType = 'file_upload' | 'website_crawl' | 'notion' | 'google_docs' | '
 - Real-time metadata updates via onChange callback
 
 **Metadata Structure**:
+
 ```typescript
 interface DocumentMetadata {
   tags: string[];
@@ -161,9 +190,11 @@ interface DocumentMetadata {
 ---
 
 ### 8. **ChunkConfigPanel.tsx** `/src/components/kb/ChunkConfigPanel.tsx`
+
 **Purpose**: Configure chunking settings
 
 **Features**:
+
 - 4 chunking strategies: Recursive, Sentence, Token, Semantic
 - Chunk size slider (100-4000 chars)
 - Chunk overlap slider (0-500 chars)
@@ -174,9 +205,10 @@ interface DocumentMetadata {
 - Visual feedback for size appropriateness
 
 **Configuration**:
+
 ```typescript
 interface ChunkConfig {
-  strategy: 'recursive' | 'sentence' | 'token' | 'semantic';
+  strategy: "recursive" | "sentence" | "token" | "semantic";
   chunk_size: number;
   chunk_overlap: number;
   separator?: string;
@@ -184,6 +216,7 @@ interface ChunkConfig {
 ```
 
 **Recommendations**:
+
 - 1000-2000 chars for most docs
 - 10-20% overlap
 - Recursive strategy recommended
@@ -191,9 +224,11 @@ interface ChunkConfig {
 ---
 
 ### 9. **IndexingConfigPanel.tsx** `/src/components/kb/IndexingConfigPanel.tsx`
+
 **Purpose**: Configure indexing and embedding settings
 
 **Features**:
+
 - 5 embedding models with specs:
   - OpenAI Ada 002 (1536 dims)
   - OpenAI Embedding 3 Small (1536 dims)
@@ -207,10 +242,11 @@ interface ChunkConfig {
 - Model comparison table
 
 **Configuration**:
+
 ```typescript
 interface IndexingConfig {
   embedding_model: string;
-  distance_metric: 'cosine' | 'euclidean' | 'dot_product';
+  distance_metric: "cosine" | "euclidean" | "dot_product";
   enable_hybrid_search: boolean;
   enable_reranking: boolean;
 }
@@ -219,9 +255,11 @@ interface IndexingConfig {
 ---
 
 ### 10. **ChunkPreview.tsx** `/src/components/kb/ChunkPreview.tsx`
+
 **Purpose**: Preview how documents will be chunked
 
 **Features**:
+
 - Summary statistics (total, avg, min, max size)
 - Chunk navigation (prev/next)
 - Chunk grid navigator
@@ -232,9 +270,11 @@ interface IndexingConfig {
 - Scrollable chunk content
 
 **Backend Integration**:
+
 - `POST /kb-drafts/{id}/preview-chunks` - Generate chunk preview
 
 **Visualization**:
+
 - Yellow highlights: Overlap from previous chunk
 - Blue highlights: Overlap to next chunk
 - Main content in monospace font
@@ -242,9 +282,11 @@ interface IndexingConfig {
 ---
 
 ### 11. **SourcesList.tsx** `/src/components/kb/SourcesList.tsx`
+
 **Purpose**: List all added sources in draft
 
 **Features**:
+
 - Source list with status badges (Pending, Processing, Completed, Error)
 - Type icons for each source type
 - Search functionality
@@ -256,18 +298,22 @@ interface IndexingConfig {
 - Auto-refresh every 5 seconds (polling)
 
 **Source Types**:
+
 - File, URL, Website Crawl, Notion, Google Docs, Text
 
 **Backend Integration**:
+
 - `GET /kb-drafts/{id}/sources` - Fetch sources (polled every 5s)
 - `DELETE /kb-drafts/{id}/sources/{sourceId}` - Remove source
 
 ---
 
 ### 12. **KBDraftSummary.tsx** `/src/components/kb/KBDraftSummary.tsx`
+
 **Purpose**: Final summary before finalization
 
 **Features**:
+
 - KB info display (name, description)
 - Source statistics (count, documents, chunks)
 - Chunking configuration summary
@@ -279,11 +325,13 @@ interface IndexingConfig {
 - Gradient cost card
 
 **Estimations**:
+
 - Indexing cost: $0.10 per 1M tokens (Ada pricing)
 - Processing time: ~100 chunks per second
 - Token calculation: chars / 4
 
 **Props**:
+
 ```typescript
 interface KBDraftSummaryProps {
   draftData: {
@@ -303,6 +351,7 @@ interface KBDraftSummaryProps {
 ## Common Patterns
 
 ### 1. **OAuth Integration** (Notion, Google Drive)
+
 - Check credential existence first
 - Redirect to OAuth URL if not connected
 - Show connection prompt with external link button
@@ -310,6 +359,7 @@ interface KBDraftSummaryProps {
 - Refresh functionality
 
 ### 2. **Multi-select with Search**
+
 - Search input with real-time filtering
 - Select All / Deselect All buttons
 - Checkbox selection
@@ -317,12 +367,14 @@ interface KBDraftSummaryProps {
 - Bulk add button
 
 ### 3. **Status Tracking** (SourcesList)
+
 - Status badges with icons and colors
 - Auto-refresh/polling
 - Error state handling
 - Visual feedback per item
 
 ### 4. **Configuration Panels** (Chunk, Indexing)
+
 - Sliders for numeric values
 - Dropdowns for options
 - Real-time calculation/preview
@@ -330,6 +382,7 @@ interface KBDraftSummaryProps {
 - Recommendations and tips
 
 ### 5. **Preview & Validation** (ChunkPreview, Summary)
+
 - Before finalization
 - Visual feedback
 - Statistics display
@@ -372,18 +425,18 @@ Step 4: Review
 ## Usage Example
 
 ```tsx
-import { useState } from 'react';
-import SourceSelector from '@/components/kb/SourceSelector';
-import FileUploader from '@/components/kb/FileUploader';
-import WebsiteCrawler from '@/components/kb/WebsiteCrawler';
-import ChunkConfigPanel from '@/components/kb/ChunkConfigPanel';
-import KBDraftSummary from '@/components/kb/KBDraftSummary';
+import { useState } from "react";
+import SourceSelector from "@/components/kb/SourceSelector";
+import FileUploader from "@/components/kb/FileUploader";
+import WebsiteCrawler from "@/components/kb/WebsiteCrawler";
+import ChunkConfigPanel from "@/components/kb/ChunkConfigPanel";
+import KBDraftSummary from "@/components/kb/KBDraftSummary";
 
 function KBCreationWizard() {
-  const [draftId, setDraftId] = useState('draft-123');
+  const [draftId, setDraftId] = useState("draft-123");
   const [selectedSource, setSelectedSource] = useState(null);
   const [chunkConfig, setChunkConfig] = useState({
-    strategy: 'recursive',
+    strategy: "recursive",
     chunk_size: 1000,
     chunk_overlap: 200,
   });
@@ -394,10 +447,10 @@ function KBCreationWizard() {
       <SourceSelector onSelectSource={setSelectedSource} />
 
       {/* Step 2: Add Documents */}
-      {selectedSource === 'file_upload' && (
+      {selectedSource === "file_upload" && (
         <FileUploader draftId={draftId} onFilesUploaded={(files) => {}} />
       )}
-      {selectedSource === 'website_crawl' && (
+      {selectedSource === "website_crawl" && (
         <WebsiteCrawler draftId={draftId} onCrawlStarted={() => {}} />
       )}
 
@@ -439,12 +492,14 @@ npm install zustand
 ## Backend API Endpoints Used
 
 ### Draft Management
+
 - `POST /kb-drafts/` - Create draft
 - `GET /kb-drafts/{id}` - Get draft
 - `PATCH /kb-drafts/{id}` - Update draft
 - `POST /kb-drafts/{id}/finalize` - Finalize KB
 
 ### Document Sources
+
 - `POST /kb-drafts/{id}/documents/upload` - Upload file
 - `POST /kb-drafts/{id}/documents/url` - Add URL
 - `POST /kb-drafts/{id}/documents/crawl` - Start website crawl
@@ -453,13 +508,16 @@ npm install zustand
 - `POST /kb-drafts/{id}/documents/text` - Add pasted text
 
 ### Source Management
+
 - `GET /kb-drafts/{id}/sources` - List sources
 - `DELETE /kb-drafts/{id}/sources/{sourceId}` - Remove source
 
 ### Preview & Testing
+
 - `POST /kb-drafts/{id}/preview-chunks` - Preview chunking
 
 ### Integrations
+
 - `GET /credentials/` - Check credentials
 - `GET /integrations/notion/pages` - Fetch Notion pages
 - `GET /integrations/google-drive/files` - Fetch Google Drive files
@@ -470,18 +528,22 @@ npm install zustand
 ## Design Principles
 
 ### 1. **Progressive Disclosure**
+
 Components reveal complexity gradually:
+
 - Start with simple source selection
 - Show advanced options when needed
 - Hide OAuth complexity behind "Connect" button
 
 ### 2. **Visual Feedback**
+
 - Status badges (Pending, Processing, Completed, Error)
 - Progress indicators
 - Color coding (green=success, red=error, yellow=warning, blue=info)
 - Icons for each source type
 
 ### 3. **Validation & Guidance**
+
 - URL validation
 - Minimum content length warnings
 - Cost/time estimations
@@ -489,11 +551,13 @@ Components reveal complexity gradually:
 - Configuration recommendations
 
 ### 4. **Real-time Updates**
+
 - Polling for status changes (SourcesList)
 - Optimistic UI updates
 - Auto-refresh buttons
 
 ### 5. **Error Handling**
+
 - Error message display
 - Retry mechanisms
 - Fallback states
@@ -507,18 +571,18 @@ Components reveal complexity gradually:
 /frontend/src/
 └── components/
     └── kb/
-        ├── SourceSelector.tsx              ✅ Created
-        ├── FileUploader.tsx                ✅ Created
-        ├── WebsiteCrawler.tsx              ✅ Created
-        ├── NotionIntegration.tsx           ✅ Created
-        ├── GoogleDocsIntegration.tsx       ✅ Created
-        ├── TextPasteInput.tsx              ✅ Created
-        ├── DocumentAnnotationForm.tsx      ✅ Created
-        ├── ChunkConfigPanel.tsx            ✅ Created
-        ├── IndexingConfigPanel.tsx         ✅ Created
-        ├── ChunkPreview.tsx                ✅ Created
-        ├── SourcesList.tsx                 ✅ Created
-        └── KBDraftSummary.tsx              ✅ Created
+        ├── SourceSelector.tsx              #
+        ├── FileUploader.tsx                #
+        ├── WebsiteCrawler.tsx              #
+        ├── NotionIntegration.tsx           #
+        ├── GoogleDocsIntegration.tsx       #
+        ├── TextPasteInput.tsx              #
+        ├── DocumentAnnotationForm.tsx      #
+        ├── ChunkConfigPanel.tsx            #
+        ├── IndexingConfigPanel.tsx         #
+        ├── ChunkPreview.tsx                #
+        ├── SourcesList.tsx                 #
+        └── KBDraftSummary.tsx              #
 ```
 
 ---
@@ -529,15 +593,15 @@ Components reveal complexity gradually:
 
 ```typescript
 // SourceSelector.test.tsx
-import { render, screen, fireEvent } from '@testing-library/react';
-import SourceSelector from './SourceSelector';
+import { render, screen, fireEvent } from "@testing-library/react";
+import SourceSelector from "./SourceSelector";
 
-test('calls onSelectSource when source is clicked', () => {
+test("calls onSelectSource when source is clicked", () => {
   const mockOnSelect = jest.fn();
   render(<SourceSelector onSelectSource={mockOnSelect} />);
 
   fireEvent.click(screen.getByText(/Upload Files/i));
-  expect(mockOnSelect).toHaveBeenCalledWith('file_upload');
+  expect(mockOnSelect).toHaveBeenCalledWith("file_upload");
 });
 ```
 
@@ -545,17 +609,21 @@ test('calls onSelectSource when source is clicked', () => {
 
 ```typescript
 // ChunkConfigPanel.test.tsx
-import { render, screen, fireEvent } from '@testing-library/react';
-import ChunkConfigPanel from './ChunkConfigPanel';
+import { render, screen, fireEvent } from "@testing-library/react";
+import ChunkConfigPanel from "./ChunkConfigPanel";
 
-test('updates config when slider changes', () => {
+test("updates config when slider changes", () => {
   const mockOnChange = jest.fn();
-  const config = { strategy: 'recursive', chunk_size: 1000, chunk_overlap: 200 };
+  const config = {
+    strategy: "recursive",
+    chunk_size: 1000,
+    chunk_overlap: 200,
+  };
 
   render(<ChunkConfigPanel config={config} onChange={mockOnChange} />);
 
   const slider = screen.getByLabelText(/chunk size/i);
-  fireEvent.change(slider, { target: { value: '2000' } });
+  fireEvent.change(slider, { target: { value: "2000" } });
 
   expect(mockOnChange).toHaveBeenCalledWith({
     ...config,
@@ -569,6 +637,7 @@ test('updates config when slider changes', () => {
 ## Status: ✅ COMPLETE
 
 All 12 KB components are production-ready with:
+
 - Full TypeScript implementation
 - OAuth integration for cloud sources
 - Multi-select functionality
