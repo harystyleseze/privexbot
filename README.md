@@ -517,6 +517,103 @@ Helpers like permission checks (`hasPermission()`).
 
 ---
 
+## 🐳 Docker Development Setup
+
+PrivexBot services can be run using Docker for local development. This provides a consistent development environment across all platforms.
+
+### Quick Start with Docker
+
+```bash
+# Start frontend development server
+docker compose up frontend
+
+# Or run in detached mode
+docker compose up -d frontend
+```
+
+The frontend will be available at **http://localhost:5173** with hot module replacement enabled.
+
+### Available Services
+
+Currently dockerized:
+- **Frontend** (React + Vite + TypeScript) - Port 5173
+
+Coming soon:
+- **Backend** (FastAPI + Python) - Port 8000
+- **PostgreSQL** - Port 5432
+- **Redis** - Port 6379
+- **Widget** (Vanilla JS + Webpack) - Port 8080
+- **Nginx** (Reverse Proxy) - Ports 80, 443
+
+### Docker Commands
+
+```bash
+# Build services
+docker compose build frontend
+
+# View logs
+docker compose logs -f frontend
+
+# Stop services
+docker compose down
+
+# Clean up (remove volumes)
+docker compose down -v
+```
+
+### Documentation
+
+- **Development**: [DOCKER_SETUP.md](./DOCKER_SETUP.md) - Local development with hot reload
+- **Production**: [DOCKER_PRODUCTION.md](./DOCKER_PRODUCTION.md) - Production deployment guide
+
+---
+
+## 🚀 Docker Production Deployment
+
+For production deployments, use optimized multi-stage builds with Nginx.
+
+### Quick Production Build
+
+```bash
+# 1. Setup environment
+cp .env.prod.example .env.prod
+# Edit .env.prod with your production values
+
+# 2. Build production image
+./scripts/build-prod.sh
+
+# 3. Test locally
+./scripts/test-prod.sh
+
+# 4. Deploy
+./scripts/deploy-prod.sh
+```
+
+### Production Features
+
+- ✅ **Multi-stage builds** - Optimized image size (~50MB)
+- ✅ **Nginx web server** - High-performance static file serving
+- ✅ **Security headers** - CSP, X-Frame-Options, etc.
+- ✅ **Gzip compression** - Reduced bandwidth usage
+- ✅ **Rate limiting** - DDoS protection
+- ✅ **Health checks** - Automated monitoring
+- ✅ **Non-root user** - Enhanced security
+- ✅ **Resource limits** - CPU and memory constraints
+- ✅ **Logging** - Structured with rotation
+
+### Production Architecture
+
+```
+Build Stage (Node.js) → Production Stage (Nginx Alpine)
+     ↓                           ↓
+  npm build                 Static files only
+  ~1GB image                   ~50MB image
+```
+
+**See [DOCKER_PRODUCTION.md](./DOCKER_PRODUCTION.md) for complete production guide.**
+
+---
+
 ### How Backend & Frontend Interact
 
 | Frontend Component  | Backend Component      | Purpose                          |

@@ -3,7 +3,6 @@ docs/ai/*
 node_modules/
 dist/
 .DS_Store
-.env
 .vscode/
 .idea/
 *.log
@@ -12,3 +11,19 @@ coverage/
 *.bak
 *.swp
 *.swo
+
+# Environment files (keep examples)
+.env
+.env.local
+.env.*.local
+.env.prod
+.env.production
+!.env.example
+!.env.prod.example
+
+# Docker volumes
+docker-volumes/
+
+# Build artifacts
+build/
+*.tsbuildinfo

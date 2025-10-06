@@ -1,0 +1,104 @@
+services:
+  # Frontend Service - React + Vite
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: privexbot-frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      # Mount source code for hot reload
+      - ./frontend:/app
+      # Use named volume for node_modules to prevent conflicts
+      - frontend_node_modules:/app/node_modules
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8000/api/v1
+      - VITE_WIDGET_CDN_URL=http://localhost:8080
+      - VITE_ENV=development
+    networks:
+      - privexbot-network
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+
+  # TODO: Backend Service (FastAPI + PostgreSQL + Redis)
+  # backend:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile
+  #   container_name: privexbot-backend
+  #   ports:
+  #     - "8000:8000"
+  #   volumes:
+  #     - ./backend:/app
+  #   networks:
+  #     - privexbot-network
+  #   depends_on:
+  #     - postgres
+  #     - redis
+
+  # TODO: Widget Service (Vanilla JS + Webpack)
+  # widget:
+  #   build:
+  #     context: ./widget
+  #     dockerfile: Dockerfile
+  #   container_name: privexbot-widget
+  #   ports:
+  #     - "8080:8080"
+  #   volumes:
+  #     - ./widget:/app
+  #   networks:
+  #     - privexbot-network
+
+  # TODO: PostgreSQL Database
+  # postgres:
+  #   image: postgres:16-alpine
+  #   container_name: privexbot-postgres
+  #   environment:
+  #     - POSTGRES_DB=privexbot
+  #     - POSTGRES_USER=privexbot
+  #     - POSTGRES_PASSWORD=privexbot
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   networks:
+  #     - privexbot-network
+
+  # TODO: Redis Cache
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: privexbot-redis
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis_data:/data
+  #   networks:
+  #     - privexbot-network
+
+  # TODO: Nginx Reverse Proxy
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: privexbot-nginx
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+  #     - ./nginx/ssl:/etc/nginx/ssl
+  #   networks:
+  #     - privexbot-network
+  #   depends_on:
+  #     - frontend
+  #     - backend
+  #     - widget
+
+volumes:
+  frontend_node_modules:
+  # postgres_data:
+  # redis_data:
+
+networks:
+  privexbot-network:
+    driver: bridge

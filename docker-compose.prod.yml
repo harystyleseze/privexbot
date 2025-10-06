@@ -1,0 +1,203 @@
+services:
+  # ==========================================
+  # Frontend Service - Production
+  # ==========================================
+  frontend:
+    # Pull from Docker Hub (no build needed on deployment)
+    image: harystyles/privexbot-frontend:${VERSION:-dev}
+    # Uncomment below to build locally instead of pulling from Docker Hub
+    # build:
+    #   context: ./frontend
+    #   dockerfile: Dockerfile.prod
+    #   args:
+    #     VITE_API_BASE_URL: ${VITE_API_BASE_URL:-https://api.privexbot.com/api/v1}
+    #     VITE_WIDGET_CDN_URL: ${VITE_WIDGET_CDN_URL:-https://cdn.privexbot.com}
+    #     VITE_ENV: production
+    container_name: privexbot-frontend-prod
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    environment:
+      # Runtime configuration - injected at container startup
+      # These are NOT baked into the build, allowing same image for all environments
+      - API_BASE_URL=${API_BASE_URL:-https://api.privexbot.com/api/v1}
+      - WIDGET_CDN_URL=${WIDGET_CDN_URL:-https://cdn.privexbot.com}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+    networks:
+      - privexbot-prod-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "com.privexbot.service=frontend"
+      - "com.privexbot.environment=production"
+
+  # ==========================================
+  # Backend Service - Production (Placeholder)
+  # ==========================================
+  # backend:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile.prod
+  #   image: privexbot/backend:${VERSION:-latest}
+  #   container_name: privexbot-backend-prod
+  #   ports:
+  #     - "${BACKEND_PORT:-8000}:8000"
+  #   environment:
+  #     - DATABASE_URL=${DATABASE_URL}
+  #     - REDIS_URL=${REDIS_URL}
+  #     - SECRET_KEY=${SECRET_KEY}
+  #     - ENVIRONMENT=production
+  #   networks:
+  #     - privexbot-prod-network
+  #   depends_on:
+  #     - postgres
+  #     - redis
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '1.0'
+  #         memory: 1G
+  #       reservations:
+  #         cpus: '0.5'
+  #         memory: 512M
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "10m"
+  #       max-file: "3"
+
+  # ==========================================
+  # PostgreSQL Database - Production (Placeholder)
+  # ==========================================
+  # postgres:
+  #   image: postgres:16-alpine
+  #   container_name: privexbot-postgres-prod
+  #   environment:
+  #     - POSTGRES_DB=${POSTGRES_DB:-privexbot}
+  #     - POSTGRES_USER=${POSTGRES_USER:-privexbot}
+  #     - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+  #   ports:
+  #     - "${POSTGRES_PORT:-5432}:5432"
+  #   volumes:
+  #     - postgres_data_prod:/var/lib/postgresql/data
+  #     - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql
+  #   networks:
+  #     - privexbot-prod-network
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-privexbot}"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '1.0'
+  #         memory: 1G
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "10m"
+  #       max-file: "3"
+
+  # ==========================================
+  # Redis Cache - Production (Placeholder)
+  # ==========================================
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: privexbot-redis-prod
+  #   command: redis-server --requirepass ${REDIS_PASSWORD}
+  #   ports:
+  #     - "${REDIS_PORT:-6379}:6379"
+  #   volumes:
+  #     - redis_data_prod:/data
+  #   networks:
+  #     - privexbot-prod-network
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '0.5'
+  #         memory: 512M
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "10m"
+  #       max-file: "3"
+
+  # ==========================================
+  # Nginx Reverse Proxy - Production (Placeholder)
+  # ==========================================
+  # nginx:
+  #   image: nginx:1.25-alpine
+  #   container_name: privexbot-nginx-prod
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx/nginx-prod.conf:/etc/nginx/nginx.conf:ro
+  #     - ./nginx/ssl:/etc/nginx/ssl:ro
+  #     - ./nginx/conf.d:/etc/nginx/conf.d:ro
+  #   networks:
+  #     - privexbot-prod-network
+  #   depends_on:
+  #     - frontend
+  #     - backend
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "nginx", "-t"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '0.5'
+  #         memory: 256M
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "10m"
+  #       max-file: "3"
+
+# Volumes (uncomment when needed)
+# volumes:
+#   postgres_data_prod:
+#     driver: local
+#   redis_data_prod:
+#     driver: local
+
+networks:
+  privexbot-prod-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
