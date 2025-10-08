@@ -64,26 +64,21 @@ jobs:
       - name: Determine version and tags
         id: meta
         run: |
+          # Default prelaunch version (reserved: 1.0.0 for official launch)
+          DEFAULT_VERSION="0.1.0"
+
           # Determine version
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             VERSION="${{ github.event.inputs.version }}"
             ENVIRONMENT="${{ github.event.inputs.environment }}"
           else
-            # Auto-generate version from branch and commit
+            # Use default prelaunch version for all auto builds
+            VERSION="${DEFAULT_VERSION}"
             BRANCH="${{ github.ref_name }}"
-            SHORT_SHA=$(git rev-parse --short HEAD)
-            TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 
             if [ "$BRANCH" == "main" ]; then
-              # Production: use timestamp-based version
-              VERSION="0.1.0-${TIMESTAMP}"
               ENVIRONMENT="production"
-            elif [ "$BRANCH" == "dev" ]; then
-              # Development: use dev tag
-              VERSION="dev-${TIMESTAMP}"
-              ENVIRONMENT="development"
             else
-              VERSION="${BRANCH}-${SHORT_SHA}"
               ENVIRONMENT="development"
             fi
           fi
@@ -92,9 +87,11 @@ jobs:
           echo "environment=${ENVIRONMENT}" >> $GITHUB_OUTPUT
           echo "build_date=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
           echo "git_sha=${GITHUB_SHA}" >> $GITHUB_OUTPUT
+          echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
           echo "📦 Version: ${VERSION}"
           echo "🌍 Environment: ${ENVIRONMENT}"
+          echo "🔖 Git SHA: ${GITHUB_SHA:0:7}"
 
       # Step 5: Build and push Docker image
       - name: Build and push Docker image
@@ -108,10 +105,6 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
             ${{ env.REGISTRY }}/${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
             ${{ env.REGISTRY }}/${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest
-          build-args: |
-            BUILD_DATE=${{ steps.meta.outputs.build_date }}
-            VERSION=${{ steps.meta.outputs.version }}
-            GIT_SHA=${{ steps.meta.outputs.git_sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64
@@ -138,41 +131,76 @@ jobs:
 
           ### Image Information
           - **Image Name**: \`${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}\`
-          - **Version**: \`${{ steps.meta.outputs.version }}\`
+          - **Version**: \`${{ steps.meta.outputs.version }}\` (Prelaunch - 1.0.0 reserved for official launch)
           - **Environment**: \`${{ steps.meta.outputs.environment }}\`
           - **Build Date**: \`${{ steps.meta.outputs.build_date }}\`
-          - **Git SHA**: \`${{ steps.meta.outputs.git_sha }}\`
+          - **Git SHA**: \`${{ steps.meta.outputs.short_sha }}\`
 
-          ### Tags
+          ### Docker Hub Tags
           \`\`\`
           ${{ env.REGISTRY }}/${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.version }}
           ${{ env.REGISTRY }}/${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
           ${{ env.REGISTRY }}/${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest
           \`\`\`
 
-          ### Digest (for SecretVM deployment)
+          ### 🎯 Image Digest (Use this for SecretVM)
           \`\`\`
           ${{ steps.digest.outputs.full_image }}
           \`\`\`
 
-          ### Next Steps
+          ---
 
-          #### For Production Deployment:
-          1. Update \`docker-compose.prod.yml\` with the digest above
-          2. Commit and push the changes
-          3. Deploy to production server:
-             \`\`\`bash
-             docker compose -f docker-compose.prod.yml pull
-             docker compose -f docker-compose.prod.yml up -d
-             \`\`\`
+          ## 🚀 Deployment Instructions
 
-          #### For SecretVM Deployment:
-          1. Copy the full image digest above
-          2. Update your SecretVM compose file
-          3. Deploy via SecretVM Portal or CLI
+          ### SecretVM Deployment (Primary)
 
-          ### Docker Hub
-          [View on Docker Hub](https://hub.docker.com/r/${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }})
+          **1. Update \`docker-compose.secretvm.yml\`:**
+          \`\`\`yaml
+          services:
+            app:
+              image: ${{ steps.digest.outputs.full_image }}
+          \`\`\`
+
+          **2. Deploy to SecretVM:**
+          \`\`\`bash
+          # SSH into SecretVM
+          ssh user@silver-hedgehog.vm.scrtlabs.com
+
+          # Upload updated compose file
+          # (On your local machine)
+          scp docker-compose.secretvm.yml user@silver-hedgehog.vm.scrtlabs.com:/mnt/secure/docker_wd/docker-compose.yml
+
+          # On SecretVM, deploy
+          cd /mnt/secure/docker_wd/
+          docker compose down
+          docker pull ${{ steps.digest.outputs.full_image }}
+          docker compose up -d
+
+          # Verify deployment
+          docker compose ps
+          docker logs docker_wd-traefik-1 | grep "Creating router"
+          \`\`\`
+
+          ### Standalone Production Deployment
+
+          **Update \`docker-compose.yml\`:**
+          \`\`\`yaml
+          services:
+            frontend:
+              image: ${{ steps.digest.outputs.full_image }}
+          \`\`\`
+
+          **Deploy:**
+          \`\`\`bash
+          docker compose pull
+          docker compose up -d
+          \`\`\`
+
+          ---
+
+          ### 🔗 Resources
+          - [Docker Hub Image](https://hub.docker.com/r/${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }})
+          - [Deployment Documentation](../frontend/docs/DOCKER.md)
           EOF
 
       # Step 8: Save artifacts
@@ -188,43 +216,77 @@ jobs:
             "environment": "${{ steps.meta.outputs.environment }}",
             "build_date": "${{ steps.meta.outputs.build_date }}",
             "git_sha": "${{ steps.meta.outputs.git_sha }}",
+            "short_sha": "${{ steps.meta.outputs.short_sha }}",
             "git_ref": "${{ github.ref }}",
             "git_branch": "${{ github.ref_name }}"
           }
           EOF
 
           cat > artifacts/deploy-instructions.md <<EOF
-          # Deployment Instructions
+          # PrivexBot Frontend Deployment Instructions
 
           ## Image Details
-          - **Version**: ${{ steps.meta.outputs.version }}
+          - **Version**: ${{ steps.meta.outputs.version }} (Prelaunch - 1.0.0 reserved for launch)
           - **Environment**: ${{ steps.meta.outputs.environment }}
-          - **Digest**: ${{ steps.digest.outputs.digest }}
+          - **Git SHA**: ${{ steps.meta.outputs.short_sha }}
+          - **Full Image**: \`${{ steps.digest.outputs.full_image }}\`
 
-          ## Production Deployment
+          ---
 
-          Update \`docker-compose.prod.yml\`:
+          ## SecretVM Deployment (Primary)
+
+          ### Step 1: Update docker-compose.secretvm.yml
 
           \`\`\`yaml
           services:
-            frontend-prod:
+            app:
               image: ${{ steps.digest.outputs.full_image }}
           \`\`\`
 
-          Then deploy:
+          ### Step 2: Deploy to SecretVM
 
           \`\`\`bash
-          docker compose -f docker-compose.prod.yml pull
-          docker compose -f docker-compose.prod.yml up -d
+          # SSH into SecretVM
+          ssh user@silver-hedgehog.vm.scrtlabs.com
+
+          # Upload compose file (from local machine)
+          scp docker-compose.secretvm.yml user@silver-hedgehog.vm.scrtlabs.com:/mnt/secure/docker_wd/docker-compose.yml
+
+          # Deploy on SecretVM
+          cd /mnt/secure/docker_wd/
+          docker compose down
+          docker pull ${{ steps.digest.outputs.full_image }}
+          docker compose up -d
+
+          # Verify
+          docker compose ps
+          docker logs docker_wd-traefik-1 | grep "Creating router"
           \`\`\`
 
-          ## SecretVM Deployment
+          ---
 
-          Use the following image in your SecretVM compose file:
+          ## Standalone Production Deployment
 
+          ### Update docker-compose.yml
+
+          \`\`\`yaml
+          services:
+            frontend:
+              image: ${{ steps.digest.outputs.full_image }}
           \`\`\`
-          ${{ steps.digest.outputs.full_image }}
+
+          ### Deploy
+
+          \`\`\`bash
+          docker compose pull
+          docker compose up -d
           \`\`\`
+
+          ---
+
+          ## Docker Hub
+
+          View image: https://hub.docker.com/r/${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}
           EOF
 
       # Step 9: Upload artifacts

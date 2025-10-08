@@ -2,8 +2,6 @@
 # Purpose: Local development with hot reload and live code changes
 # Usage: docker compose -f docker-compose.dev.yml up --build
 
-version: "3.8"
-
 services:
   frontend-dev:
     build:
