@@ -96,7 +96,7 @@ export default function SourcesList({ draftId }: SourcesListProps) {
   });
 
   const getSourceIcon = (type: string) => {
-    const icons: Record<string, JSX.Element> = {
+    const icons: Record<string, React.ReactElement> = {
       file: <FileText className="w-5 h-5 text-blue-500" />,
       url: <Link2 className="w-5 h-5 text-purple-500" />,
       website_crawl: <Globe className="w-5 h-5 text-green-500" />,
@@ -108,7 +108,7 @@ export default function SourcesList({ draftId }: SourcesListProps) {
   };
 
   const getStatusBadge = (status: string) => {
-    const badges: Record<string, JSX.Element> = {
+    const badges: Record<string, React.ReactElement> = {
       pending: (
         <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
           <Loader2 className="w-3 h-3" />

@@ -31,7 +31,7 @@ export const useAutoSave = ({
   debounceMs = 500,
 }: UseAutoSaveOptions) => {
   const { updateDraft, markSaved, currentDraft } = useDraftStore();
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   // Save mutation
   const saveMutation = useMutation({

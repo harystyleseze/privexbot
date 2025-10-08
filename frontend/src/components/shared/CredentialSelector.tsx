@@ -35,7 +35,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import apiClient, { handleApiError } from '@/lib/api-client';
-import { useWorkspaceStore } from '@/stores/workspace-store';
+import { useWorkspaceStore } from '@/store/workspace-store';
 
 type CredentialProvider =
   | 'openai'
