@@ -68,11 +68,33 @@ test_service "API Docs" "api.sapphire-finch.vm.scrtlabs.com" "/api/docs" "200"
 # Test Redis UI
 test_service "Redis UI" "redis-ui.sapphire-finch.vm.scrtlabs.com" "/" "200"
 
-# Test PgAdmin
-test_service "PgAdmin" "pgadmin.sapphire-finch.vm.scrtlabs.com" "/" "200"
+# Test PgAdmin (expects 302 redirect to /login when not authenticated)
+echo -e "${BLUE}Testing PgAdmin...${NC}"
+response=$(curl -k -s -w "\n%{http_code}" -H "Host: pgadmin.sapphire-finch.vm.scrtlabs.com" "${BASE_URL}/" 2>&1)
+http_code=$(echo "$response" | tail -n 1)
+if [ "$http_code" = "302" ] || [ "$http_code" = "200" ]; then
+    echo -e "${GREEN}✅ PgAdmin: HTTP ${http_code}${NC}"
+    if [ "$http_code" = "302" ]; then
+        echo -e "${YELLOW}  (Redirect to /login - this is normal when not authenticated)${NC}"
+    fi
+else
+    echo -e "${RED}❌ PgAdmin: HTTP ${http_code} (expected 302 or 200)${NC}"
+fi
+echo
 
-# Test Traefik Dashboard
-test_service "Traefik Dashboard" "traefik.sapphire-finch.vm.scrtlabs.com" "/" "200"
+# Test Traefik Dashboard (expects 302 redirect to /dashboard/)
+echo -e "${BLUE}Testing Traefik Dashboard...${NC}"
+response=$(curl -k -s -w "\n%{http_code}" -H "Host: traefik.sapphire-finch.vm.scrtlabs.com" "${BASE_URL}/" 2>&1)
+http_code=$(echo "$response" | tail -n 1)
+if [ "$http_code" = "302" ] || [ "$http_code" = "200" ]; then
+    echo -e "${GREEN}✅ Traefik Dashboard: HTTP ${http_code}${NC}"
+    if [ "$http_code" = "302" ]; then
+        echo -e "${YELLOW}  (Redirect to /dashboard/ - this is normal)${NC}"
+    fi
+else
+    echo -e "${RED}❌ Traefik Dashboard: HTTP ${http_code} (expected 302 or 200)${NC}"
+fi
+echo
 
 # DNS Check
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

@@ -13,7 +13,8 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 # Configuration
-SECRETVM_DOMAIN="sapphire-finch.vm.scrtlabs.com"
+# SECRETVM_DOMAIN="sapphire-finch.vm.scrtlabs.com"
+SECRETVM_DOMAIN="harystyles.store"
 COMPOSE_FILE="docker-compose.secretvm.yml"
 
 # Function to display usage
