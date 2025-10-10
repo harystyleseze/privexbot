@@ -1,0 +1,96 @@
+"""
+WorkspaceMember model - User membership in workspace with role.
+
+WHY:
+- Fine-grained access control within workspaces
+- Not all org members need access to all workspaces
+- Separate permissions for different teams/projects
+
+HOW:
+- Junction table between User and Workspace
+- User must be org member to be workspace member
+- Role determines what user can do in this workspace
+
+PSEUDOCODE:
+-----------
+class WorkspaceMember(Base):
+    __tablename__ = "workspace_members"
+
+    # Fields
+    id: UUID (primary key, auto-generated)
+
+    user_id: UUID (foreign key -> users.id, indexed, cascade delete)
+        WHY: Which user has access to this workspace
+        HOW: When user deleted, their workspace access is removed
+
+    workspace_id: UUID (foreign key -> workspaces.id, indexed, cascade delete)
+        WHY: Which workspace this membership grants access to
+        HOW: When workspace deleted, all memberships deleted
+
+    role: str (enum: 'admin', 'editor', 'viewer', required)
+        WHY: Determines user's permissions in this workspace
+        HOW: Used to control chatbot create/edit/delete operations
+
+        ROLES EXPLAINED:
+        - 'admin': Full workspace control
+            * Create/edit/delete chatbots
+            * Manage workspace members
+            * Edit workspace settings
+            * View all workspace data
+
+        - 'editor': Content management
+            * Create/edit chatbots
+            * Cannot delete chatbots
+            * Cannot manage members
+            * View workspace data
+
+        - 'viewer': Read-only access
+            * View chatbots and configurations
+            * Cannot create or edit
+            * Cannot manage members
+            * Good for stakeholders/observers
+
+    created_at: datetime (auto-set on creation)
+    updated_at: datetime (auto-update on modification)
+
+    # Constraints
+    unique_constraint: (user_id, workspace_id)
+        WHY: User can only have one role per workspace
+        HOW: Prevents conflicting permissions
+
+    # Relationships
+    user: User (many-to-one back reference)
+        WHY: Access user details
+
+    workspace: Workspace (many-to-one back reference)
+        WHY: Access workspace and parent org details
+
+PERMISSION HIERARCHY:
+---------------------
+WHY: Org admins/owners should access all workspaces
+HOW: Check permissions in this order:
+    1. If user is org 'owner' or 'admin' -> grant admin access to workspace
+    2. Else check WorkspaceMember role for this workspace
+    3. If no WorkspaceMember entry -> no access
+
+EXAMPLE ACCESS CONTROL:
+-----------------------
+Scenario: User wants to delete chatbot in Workspace X
+
+Check 1: Is user active?
+Check 2: Get user's org role from OrganizationMember
+    - If 'owner' or 'admin' -> ALLOW (org admins can do anything)
+
+Check 3: Get user's workspace role from WorkspaceMember
+    - If 'admin' -> ALLOW
+    - If 'editor' or 'viewer' -> DENY
+    - If no entry -> DENY
+
+VALIDATION RULES:
+-----------------
+WHY: User must be org member before becoming workspace member
+HOW: Before creating WorkspaceMember:
+    1. Get workspace.organization_id
+    2. Verify OrganizationMember exists for (user_id, organization_id)
+    3. If not -> reject with error "Must be organization member first"
+"""

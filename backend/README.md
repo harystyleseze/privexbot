@@ -1,0 +1,432 @@
+# PrivexBot Backend
+
+Privacy-First AI Chatbot Builder - FastAPI Backend Application
+
+[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-brightgreen.svg)](https://www.docker.com/)
+[![Production](https://img.shields.io/badge/Prod-SecretVM-purple.svg)](https://harystyles.store)
+
+## 🚀 Quick Start
+
+### Prerequisites
+
+- Docker & Docker Compose
+- Python 3.11+ (for local development)
+- Git
+
+### Run Locally (Development)
+
+```bash
+# 1. Clone repository
+git clone <repository-url>
+cd backend
+
+# 2. Check prerequisites
+./scripts/docker/check.sh
+
+# 3. Start development environment
+./scripts/docker/dev.sh up
+
+# 4. Access services
+# - Backend API:  http://localhost:8000
+# - API Docs:     http://localhost:8000/api/docs
+# - ReDoc:        http://localhost:8000/api/redoc
+# - Health Check: http://localhost:8000/health
+```
+
+## 📚 Documentation
+
+Comprehensive guides available in `/docs`:
+
+| Document | Description |
+|----------|-------------|
+| **[Architecture](docs/ARCHITECTURE.md)** | System design, components, and data flow |
+| **[Docker Guide](docs/DOCKER.md)** | Complete Docker setup and deployment |
+| **[Deployment Guide](docs/DEPLOYMENT.md)** | Deploy to local, production, or SecretVM |
+| **[API Documentation](docs/API.md)** | All API routes with examples |
+| **[Troubleshooting](docs/TROUBLESHOOTING.md)** | Common issues and solutions |
+
+## 🏗️ Project Structure
+
+```
+backend/
+├── src/app/                    # Application code
+│   ├── main.py                 # FastAPI entry point
+│   ├── api/v1/                 # API version 1 routes
+│   │   ├── routes/             # API endpoints
+│   │   │   ├── auth.py         # Authentication
+│   │   │   ├── chatbot.py      # Chatbot management
+│   │   │   ├── knowledge_bases.py
+│   │   │   └── webhooks/       # Integration webhooks
+│   │   └── dependencies.py     # Route dependencies
+│   ├── core/                   # Core configuration
+│   │   ├── config.py           # Settings
+│   │   └── security.py         # Security utilities
+│   ├── db/                     # Database
+│   │   ├── init_db.py          # Database initialization
+│   │   └── models/             # SQLAlchemy models
+│   ├── auth/                   # Authentication strategies
+│   │   └── strategies/         # Wallet auth (EVM, Solana, Cosmos)
+│   └── tasks/                  # Background tasks (Celery)
+├── scripts/docker/             # Docker helper scripts
+│   ├── check.sh                # Prerequisites checker
+│   ├── dev.sh                  # Development helper
+│   ├── build-push.sh           # Build & push images
+│   └── secretvm-deploy.sh      # SecretVM deployment
+├── deploy/secretvm/            # SecretVM configuration
+│   └── .env                    # Production environment vars
+├── docs/                       # Comprehensive documentation
+├── docker-compose.yml          # Production compose
+├── docker-compose.dev.yml      # Development compose
+├── docker-compose.secretvm.yml # SecretVM compose with Traefik
+├── Dockerfile                  # Production image
+└── Dockerfile.dev              # Development image
+```
+
+## 🐳 Deployment Options
+
+### 1. Development (Local)
+
+Hot reload enabled for rapid development:
+
+```bash
+./scripts/docker/dev.sh up
+```
+
+**Services**:
+- Backend (port 8000) - Hot reload enabled
+- PostgreSQL (port 5432)
+- Redis (port 6379)
+
+### 2. Production (Standalone)
+
+Optimized for production with Gunicorn + Uvicorn:
+
+```bash
+docker compose up -d
+```
+
+**Services**:
+- Backend - 4 Uvicorn workers
+- PostgreSQL 16
+- Redis 7
+
+### 3. SecretVM (Confidential Computing)
+
+Deployed on SecretVM with Traefik reverse proxy:
+
+```bash
+# See docs/DEPLOYMENT.md for complete guide
+./scripts/docker/secretvm-deploy.sh show
+```
+
+**Live Services**:
+- **Backend API**: https://api.harystyles.store
+- **API Docs**: https://api.harystyles.store/api/docs
+- **PgAdmin**: https://pgadmin.harystyles.store
+- **Redis UI**: https://redis-ui.harystyles.store
+- **Traefik Dashboard**: https://traefik.harystyles.store/dashboard/
+
+## 🔧 Development
+
+### Local Setup (Without Docker)
+
+```bash
+# 1. Create virtual environment
+python3.11 -m venv venv
+source venv/bin/activate  # or `venv\Scripts\activate` on Windows
+
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Create environment file
+cp .env.dev.example .env.dev
+
+# 4. Start PostgreSQL and Redis (via Docker)
+docker compose -f docker-compose.dev.yml up postgres redis
+
+# 5. Run development server
+uvicorn src.app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+### Helper Scripts
+
+```bash
+# Development
+./scripts/docker/dev.sh up       # Start all services
+./scripts/docker/dev.sh down     # Stop all services
+./scripts/docker/dev.sh logs     # View logs
+./scripts/docker/dev.sh shell    # Access backend shell
+./scripts/docker/dev.sh db       # Access PostgreSQL shell
+
+# Production Build
+./scripts/docker/build-push.sh 0.1.0  # Build and push to Docker Hub
+
+# SecretVM Deployment
+./scripts/docker/secretvm-deploy.sh prepare  # Prepare .env file
+./scripts/docker/secretvm-deploy.sh show     # Show compose file
+./scripts/docker/secretvm-deploy.sh test     # Test all endpoints
+```
+
+## 📦 Services & Technologies
+
+| Service | Version | Purpose |
+|---------|---------|---------|
+| **FastAPI** | 0.104+ | Modern web framework |
+| **Python** | 3.11+ | Programming language |
+| **PostgreSQL** | 16 | Primary database |
+| **Redis** | 7 | Cache & session storage |
+| **SQLAlchemy** | 2.0+ | ORM |
+| **Celery** | 5.3+ | Background task queue |
+| **Gunicorn** | 21.2+ | WSGI HTTP server |
+| **Uvicorn** | 0.24+ | ASGI server |
+| **PgAdmin** | 4.8.11 | Database management UI |
+| **Redis Commander** | Latest | Redis management UI |
+| **Traefik** | 2.10 | Reverse proxy (SecretVM) |
+
+## 🔐 Security Features
+
+- **Multi-chain Wallet Authentication**: EVM (Ethereum, Polygon), Solana, Cosmos
+- **Email Authentication**: Traditional email/password
+- **JWT Tokens**: Secure token-based auth
+- **CORS Protection**: Restricted origins
+- **TLS/HTTPS**: Enforced in production
+- **Environment Variables**: Secrets management
+- **Non-root Containers**: Enhanced security
+- **Health Checks**: All services monitored
+
+## 🌐 API Endpoints
+
+### Core Endpoints (Currently Implemented)
+
+| Method | Path | Description | Status |
+|--------|------|-------------|--------|
+| `GET` | `/` | Root with API info | ✅ |
+| `GET` | `/health` | Health check | ✅ |
+| `GET` | `/api/v1/ping` | Connectivity test | ✅ |
+| `GET` | `/api/v1/status` | Detailed status | ✅ |
+| `POST` | `/api/v1/test` | CORS test | ✅ |
+
+### Documentation Endpoints
+
+| Path | Description | Status |
+|------|-------------|--------|
+| `/api/docs` | Swagger UI (interactive) | ✅ |
+| `/api/redoc` | ReDoc (alternative docs) | ✅ |
+
+**Live Documentation**: https://api.harystyles.store/api/docs
+
+### Future API Routes (Planned)
+
+The following routes are defined in the codebase but not yet registered:
+
+| Route | Purpose | Files |
+|-------|---------|-------|
+| `/api/v1/auth/*` | Authentication & authorization | `routes/auth.py` |
+| `/api/v1/org/*` | Organization management | `routes/org.py` |
+| `/api/v1/workspace/*` | Workspace operations | `routes/workspace.py` |
+| `/api/v1/chatbots/*` | Chatbot CRUD | `routes/chatbot.py` |
+| `/api/v1/chatflows/*` | Chatflow configuration | `routes/chatflows.py` |
+| `/api/v1/knowledge-bases/*` | Knowledge base management | `routes/knowledge_bases.py` |
+| `/api/v1/documents/*` | Document upload & processing | `routes/documents.py` |
+| `/api/v1/leads/*` | Lead capture & management | `routes/leads.py` |
+| `/api/v1/webhooks/*` | Webhook integrations | `routes/webhooks/` |
+
+**Note**: To enable these routes, import and register them in `src/app/main.py`
+
+**Example**:
+```python
+from app.api.v1.routes import auth, chatbot, workspace
+app.include_router(auth.router, prefix="/api/v1")
+app.include_router(chatbot.router, prefix="/api/v1")
+app.include_router(workspace.router, prefix="/api/v1")
+```
+
+## 🛠️ Scripts Reference
+
+### check.sh
+
+Verify all prerequisites before deployment:
+
+```bash
+./scripts/docker/check.sh
+```
+
+Checks for: Docker, Docker Compose, required files
+
+### dev.sh
+
+Manage development environment:
+
+```bash
+./scripts/docker/dev.sh up      # Start services
+./scripts/docker/dev.sh down    # Stop services
+./scripts/docker/dev.sh logs    # View logs (follow)
+./scripts/docker/dev.sh shell   # Backend container shell
+./scripts/docker/dev.sh db      # PostgreSQL shell
+```
+
+### build-push.sh
+
+Build and push Docker images:
+
+```bash
+./scripts/docker/build-push.sh <version>
+
+# Example
+./scripts/docker/build-push.sh 0.1.0
+```
+
+Outputs image digest for SecretVM deployment.
+
+### secretvm-deploy.sh
+
+Manage SecretVM deployment:
+
+```bash
+./scripts/docker/secretvm-deploy.sh prepare  # Create .env file
+./scripts/docker/secretvm-deploy.sh show     # Display compose file
+./scripts/docker/secretvm-deploy.sh test     # Test all endpoints
+```
+
+## 📊 Monitoring & Health
+
+### Health Checks
+
+```bash
+# Local
+curl http://localhost:8000/health
+
+# Production (SecretVM)
+curl https://api.harystyles.store/health
+```
+
+Expected response:
+```json
+{
+  "status": "healthy",
+  "service": "privexbot-backend",
+  "version": "0.1.0"
+}
+```
+
+### Logs
+
+```bash
+# Development
+docker compose -f docker-compose.dev.yml logs -f backend
+
+# Production (local)
+docker compose logs -f backend
+
+# SecretVM
+# View logs in SecretVM Dev Portal
+```
+
+### Test Suite
+
+```bash
+# Run automated tests (SecretVM)
+./scripts/test-secretvm.sh
+```
+
+Tests all services and provides comprehensive status report.
+
+## 📝 Environment Variables
+
+Key environment variables (see `.env.example` for complete list):
+
+```bash
+# Application
+PROJECT_NAME=PrivexBot
+ENVIRONMENT=development|production
+API_V1_PREFIX=/api/v1
+
+# Database
+POSTGRES_PASSWORD=<strong-password>
+DATABASE_URL=postgresql://privexbot:${POSTGRES_PASSWORD}@postgres:5432/privexbot
+
+# Redis
+REDIS_URL=redis://redis:6379/0
+
+# Security
+SECRET_KEY=<generate-with-openssl-rand-hex-32>
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# CORS
+BACKEND_CORS_ORIGINS=http://localhost:5173,http://localhost:3000
+
+# Production (SecretVM)
+BACKEND_CORS_ORIGINS=https://harystyles.store,https://api.harystyles.store
+
+# PgAdmin
+PGADMIN_PASSWORD=<strong-password>
+```
+
+**Security Note**: Never commit `.env` files! Use `.env.example` as template.
+
+## 🤝 Contributing
+
+### Getting Started
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Commit your changes: `git commit -m 'Add amazing feature'`
+4. Push to the branch: `git push origin feature/amazing-feature`
+5. Open a Pull Request
+
+### Development Guidelines
+
+- **Code Style**: Follow PEP 8
+- **Type Hints**: Use type annotations
+- **Documentation**: Update docs for new features
+- **Tests**: Write tests for new functionality
+- **Commits**: Use meaningful commit messages
+- **PR**: Include description and testing steps
+
+### Code Quality
+
+```bash
+# Format code
+black src/
+
+# Lint
+flake8 src/
+
+# Type check
+mypy src/
+```
+
+## 🔗 Links
+
+- **Production API**: https://api.harystyles.store
+- **API Documentation**: https://api.harystyles.store/api/docs
+- **PgAdmin**: https://pgadmin.harystyles.store
+- **Redis UI**: https://redis-ui.harystyles.store
+- **Repository**: <repository-url>
+
+## 🆘 Support
+
+Need help? Check these resources:
+
+1. **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)** - Common issues & solutions
+2. **[API Documentation](docs/API.md)** - Complete API reference
+3. **[Deployment Guide](docs/DEPLOYMENT.md)** - Step-by-step deployment
+4. **GitHub Issues** - Report bugs or request features
+5. **Team Contact** - [your-contact-info]
+
+## 📄 License
+
+[Your License Here]
+
+## 👥 Team
+
+[Your Team Information]
+
+---
+
+**Built with ❤️ using FastAPI, Docker, and deployed on SecretVM**
+
+For detailed guides, see the [docs/](docs/) directory.
