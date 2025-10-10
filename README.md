@@ -4,13 +4,23 @@
 
 <h3 align="center">Privacy-First AI Chatbot Builder Powered by Secret VM</h3>
 
-<br>
-
 <div align="center">
 
-| [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) |
-|---|
-| [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/) [![React 18](https://img.shields.io/badge/react-18-blue.svg)](https://reactjs.org/) [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com/) [![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](https://www.docker.com/) |
+  <a href="https://opensource.org/licenses/Apache-2.0">
+    <img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License" />
+  </a>
+  <a href="https://www.python.org/downloads/">
+    <img src="https://img.shields.io/badge/python-3.11+-blue.svg" alt="Python 3.11+" />
+  </a>
+  <a href="https://reactjs.org/">
+    <img src="https://img.shields.io/badge/react-18-blue.svg" alt="React 18" />
+  </a>
+  <a href="https://fastapi.tiangolo.com/">
+    <img src="https://img.shields.io/badge/FastAPI-0.104+-green.svg" alt="FastAPI" />
+  </a>
+  <a href="https://www.docker.com/">
+    <img src="https://img.shields.io/badge/docker-ready-blue.svg" alt="Docker" />
+  </a>
 
 </div>
 
