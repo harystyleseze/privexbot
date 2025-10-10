@@ -79,6 +79,7 @@ FILES=(
     "uv.lock"
     ".env.example"
     ".env.dev.example"
+    ".env.secretvm.local"
 )
 
 for file in "${FILES[@]}"; do

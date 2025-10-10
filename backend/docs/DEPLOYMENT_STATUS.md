@@ -88,7 +88,7 @@ docker compose ps
 
 **Network**:
 - IP: `67.43.239.18`
-- Domain: `sapphire-finch.vm.scrtlabs.com`
+- Domain: `harystyles.store`
 
 **Files**:
 - `docker-compose.secretvm.yml` - Traefik + all services
@@ -97,7 +97,7 @@ docker compose ps
 - `scripts/docker/secretvm-deploy.sh` - Deployment helper
 
 **Services**:
-1. **Backend API**: `https://api.sapphire-finch.vm.scrtlabs.com`
+1. **Backend API**: `https://api.harystyles.store`
    - Gunicorn + 4 Uvicorn workers
    - Health check enabled
    - CORS configured for SecretVM domains
@@ -111,15 +111,15 @@ docker compose ps
    - Cache and sessions
    - Health checks enabled
 
-4. **PgAdmin**: `https://pgadmin.sapphire-finch.vm.scrtlabs.com`
+4. **PgAdmin**: `https://pgadmin.harystyles.store`
    - Web-based PostgreSQL admin
    - Default email: admin@scrtlabs.com
 
-5. **Redis Commander**: `https://redis-ui.sapphire-finch.vm.scrtlabs.com`
+5. **Redis Commander**: `https://redis-ui.harystyles.store`
    - Web-based Redis admin
    - Port: 8081
 
-6. **Traefik Dashboard**: `https://traefik.sapphire-finch.vm.scrtlabs.com`
+6. **Traefik Dashboard**: `https://traefik.harystyles.store`
    - Reverse proxy dashboard
    - TLS termination with certificates from `/mnt/secure/cert/`
 
@@ -151,11 +151,11 @@ docker compose ps
 
 **Expected Test Results**:
 ```bash
-✅ Backend API health  - https://api.sapphire-finch.vm.scrtlabs.com/health
-✅ Backend API status  - https://api.sapphire-finch.vm.scrtlabs.com/api/v1/status
-✅ PgAdmin accessible  - https://pgadmin.sapphire-finch.vm.scrtlabs.com
-✅ Redis UI accessible - https://redis-ui.sapphire-finch.vm.scrtlabs.com
-✅ Traefik accessible  - https://traefik.sapphire-finch.vm.scrtlabs.com
+✅ Backend API health  - https://api.harystyles.store/health
+✅ Backend API status  - https://api.harystyles.store/api/v1/status
+✅ PgAdmin accessible  - https://pgadmin.harystyles.store
+✅ Redis UI accessible - https://redis-ui.harystyles.store
+✅ Traefik accessible  - https://traefik.harystyles.store
 ```
 
 ---
@@ -204,7 +204,7 @@ BACKEND_CORS_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
 
 ### SecretVM
 ```bash
-BACKEND_CORS_ORIGINS=https://sapphire-finch.vm.scrtlabs.com,https://api.sapphire-finch.vm.scrtlabs.com,https://app.yourdomain.com
+BACKEND_CORS_ORIGINS=https://harystyles.store,https://api.harystyles.store,https://app.yourdomain.com
 ```
 
 **Note**: Update `BACKEND_CORS_ORIGINS` in your `.env` files to include your frontend domains.
@@ -258,9 +258,9 @@ BACKEND_CORS_ORIGINS=https://sapphire-finch.vm.scrtlabs.com,https://api.sapphire
 4. Run `./scripts/docker/secretvm-deploy.sh deploy`
 5. Test with `./scripts/docker/secretvm-deploy.sh test`
 6. Access:
-   - API: https://api.sapphire-finch.vm.scrtlabs.com
-   - PgAdmin: https://pgadmin.sapphire-finch.vm.scrtlabs.com
-   - Redis UI: https://redis-ui.sapphire-finch.vm.scrtlabs.com
+   - API: https://api.harystyles.store
+   - PgAdmin: https://pgadmin.harystyles.store
+   - Redis UI: https://redis-ui.harystyles.store
 
 ---
 

@@ -45,14 +45,14 @@ test_service() {
 }
 
 # Test backend health
-test_service "Backend Health" "api.sapphire-finch.vm.scrtlabs.com" "/health" "200"
+test_service "Backend Health" "api.harystyles.store" "/health" "200"
 
 # Test backend status (check CORS)
-test_service "Backend Status" "api.sapphire-finch.vm.scrtlabs.com" "/api/v1/status" "200"
+test_service "Backend Status" "api.harystyles.store" "/api/v1/status" "200"
 
 # Check CORS origins specifically
 echo -e "${BLUE}Checking CORS Configuration...${NC}"
-cors_check=$(curl -k -s -H "Host: api.sapphire-finch.vm.scrtlabs.com" "${BASE_URL}/api/v1/status" | grep -o '"cors_origins":\[.*\]')
+cors_check=$(curl -k -s -H "Host: api.harystyles.store" "${BASE_URL}/api/v1/status" | grep -o '"cors_origins":\[.*\]')
 if echo "$cors_check" | grep -q "silver-hedgehog"; then
     echo -e "${RED}⚠️  WARNING: Old CORS config detected (includes silver-hedgehog)${NC}"
     echo -e "${YELLOW}Action: Upload updated .env file and restart backend container${NC}"
@@ -63,14 +63,14 @@ echo "$cors_check"
 echo
 
 # Test API docs
-test_service "API Docs" "api.sapphire-finch.vm.scrtlabs.com" "/api/docs" "200"
+test_service "API Docs" "api.harystyles.store" "/api/docs" "200"
 
 # Test Redis UI
-test_service "Redis UI" "redis-ui.sapphire-finch.vm.scrtlabs.com" "/" "200"
+test_service "Redis UI" "redis-ui.harystyles.store" "/" "200"
 
 # Test PgAdmin (expects 302 redirect to /login when not authenticated)
 echo -e "${BLUE}Testing PgAdmin...${NC}"
-response=$(curl -k -s -w "\n%{http_code}" -H "Host: pgadmin.sapphire-finch.vm.scrtlabs.com" "${BASE_URL}/" 2>&1)
+response=$(curl -k -s -w "\n%{http_code}" -H "Host: pgadmin.harystyles.store" "${BASE_URL}/" 2>&1)
 http_code=$(echo "$response" | tail -n 1)
 if [ "$http_code" = "302" ] || [ "$http_code" = "200" ]; then
     echo -e "${GREEN}✅ PgAdmin: HTTP ${http_code}${NC}"
@@ -84,7 +84,7 @@ echo
 
 # Test Traefik Dashboard (expects 302 redirect to /dashboard/)
 echo -e "${BLUE}Testing Traefik Dashboard...${NC}"
-response=$(curl -k -s -w "\n%{http_code}" -H "Host: traefik.sapphire-finch.vm.scrtlabs.com" "${BASE_URL}/" 2>&1)
+response=$(curl -k -s -w "\n%{http_code}" -H "Host: traefik.harystyles.store" "${BASE_URL}/" 2>&1)
 http_code=$(echo "$response" | tail -n 1)
 if [ "$http_code" = "302" ] || [ "$http_code" = "200" ]; then
     echo -e "${GREEN}✅ Traefik Dashboard: HTTP ${http_code}${NC}"
@@ -103,21 +103,21 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo
 
 dns_ok=false
-if nslookup api.sapphire-finch.vm.scrtlabs.com > /dev/null 2>&1; then
+if nslookup api.harystyles.store > /dev/null 2>&1; then
     echo -e "${GREEN}✅ DNS resolving correctly${NC}"
     dns_ok=true
 
     # If DNS works, test via domain
     echo
     echo -e "${BLUE}Testing via domain name...${NC}"
-    curl -k -s https://api.sapphire-finch.vm.scrtlabs.com/health -w "\nHTTP Code: %{http_code}\n"
+    curl -k -s https://api.harystyles.store/health -w "\nHTTP Code: %{http_code}\n"
 else
     echo -e "${RED}❌ DNS not resolving${NC}"
     echo -e "${YELLOW}Workaround: Add to /etc/hosts:${NC}"
-    echo "67.43.239.18 api.sapphire-finch.vm.scrtlabs.com"
-    echo "67.43.239.18 pgadmin.sapphire-finch.vm.scrtlabs.com"
-    echo "67.43.239.18 redis-ui.sapphire-finch.vm.scrtlabs.com"
-    echo "67.43.239.18 traefik.sapphire-finch.vm.scrtlabs.com"
+    echo "67.43.239.18 api.harystyles.store"
+    echo "67.43.239.18 pgadmin.harystyles.store"
+    echo "67.43.239.18 redis-ui.harystyles.store"
+    echo "67.43.239.18 traefik.harystyles.store"
 fi
 echo
 
@@ -127,11 +127,11 @@ echo -e "${BLUE}Service URLs${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo
 
-echo "Backend API:        https://api.sapphire-finch.vm.scrtlabs.com"
-echo "API Docs:           https://api.sapphire-finch.vm.scrtlabs.com/api/docs"
-echo "PgAdmin:            https://pgadmin.sapphire-finch.vm.scrtlabs.com"
-echo "Redis UI:           https://redis-ui.sapphire-finch.vm.scrtlabs.com"
-echo "Traefik Dashboard:  https://traefik.sapphire-finch.vm.scrtlabs.com"
+echo "Backend API:        https://api.harystyles.store"
+echo "API Docs:           https://api.harystyles.store/api/docs"
+echo "PgAdmin:            https://pgadmin.harystyles.store"
+echo "Redis UI:           https://redis-ui.harystyles.store"
+echo "Traefik Dashboard:  https://traefik.harystyles.store"
 echo
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

@@ -108,6 +108,10 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64
+          build-args: |
+            BUILD_DATE=${{ steps.meta.outputs.build_date }}
+            VCS_REF=${{ steps.meta.outputs.short_sha }}
+            VERSION=${{ steps.meta.outputs.version }}
 
       # Step 6: Get image digest
       - name: Get image digest
@@ -152,7 +156,7 @@ jobs:
 
           ## 🚀 Deployment Instructions
 
-          ### SecretVM Deployment (Primary)
+          ### SecretVM Deployment (Primary - harystyles.store)
 
           **1. Update \`docker-compose.secretvm.yml\`:**
           \`\`\`yaml
@@ -161,34 +165,29 @@ jobs:
               image: ${{ steps.digest.outputs.full_image }}
           \`\`\`
 
-          **2. Deploy to SecretVM:**
+          **2. Deploy via SecretVM Dev Portal:**
           \`\`\`bash
-          # SSH into SecretVM
-          ssh user@silver-hedgehog.vm.scrtlabs.com
+          # On your local machine
+          cd backend
 
-          # Upload updated compose file
-          # (On your local machine)
-          scp backend/docker-compose.secretvm.yml user@silver-hedgehog.vm.scrtlabs.com:/mnt/secure/docker_wd/
+          # Show updated compose file
+          ./scripts/docker/secretvm-deploy.sh show
 
-          # On SecretVM, deploy
-          cd /mnt/secure/docker_wd/
-          docker compose down
-          docker pull ${{ steps.digest.outputs.full_image }}
-          docker compose up -d
-
-          # Verify deployment
-          docker compose ps
-          docker logs docker_wd-traefik-1 | grep "Creating router"
-          docker logs docker_wd-backend-1 | grep "PrivexBot Backend starting"
+          # Copy the output and paste into SecretVM Dev Portal
+          # Then click "Deploy" in the portal
           \`\`\`
 
           **3. Test Backend:**
           \`\`\`bash
           # Health check
-          curl https://api.silver-hedgehog.vm.scrtlabs.com/health
+          curl https://api.harystyles.store/health
 
           # API status
-          curl https://api.silver-hedgehog.vm.scrtlabs.com/api/v1/status
+          curl https://api.harystyles.store/api/v1/status
+
+          # Or run comprehensive tests
+          cd backend
+          ./scripts/test-secretvm.sh
           \`\`\`
 
           ### Standalone Production Deployment
@@ -208,10 +207,17 @@ jobs:
 
           ---
 
+          ### 🔗 Production Services
+          - [Backend API](https://api.harystyles.store)
+          - [API Documentation](https://api.harystyles.store/api/docs)
+          - [PgAdmin](https://pgadmin.harystyles.store)
+          - [Redis UI](https://redis-ui.harystyles.store)
+          - [Traefik Dashboard](https://traefik.harystyles.store/dashboard/)
+
           ### 🔗 Resources
           - [Docker Hub Image](https://hub.docker.com/r/${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }})
-          - [Deployment Documentation](../backend/docs/DOCKER.md)
-          - [API Documentation](https://api.silver-hedgehog.vm.scrtlabs.com/api/docs)
+          - [Deployment Documentation](https://github.com/${{ github.repository}}/blob/main/backend/docs/DEPLOYMENT.md)
+          - [SecretVM Guide](https://github.com/${{ github.repository}}/blob/main/backend/docs/SECRETVM_DEPLOYMENT.md)
           EOF
 
       # Step 8: Save artifacts
@@ -244,7 +250,7 @@ jobs:
 
           ---
 
-          ## SecretVM Deployment (Primary)
+          ## SecretVM Deployment (Primary - harystyles.store)
 
           ### Step 1: Update docker-compose.secretvm.yml
 
@@ -254,26 +260,47 @@ jobs:
               image: ${{ steps.digest.outputs.full_image }}
           \`\`\`
 
-          ### Step 2: Deploy to SecretVM
+          ### Step 2: Deploy via SecretVM Dev Portal
 
           \`\`\`bash
-          # SSH into SecretVM
-          ssh user@silver-hedgehog.vm.scrtlabs.com
+          # On your local machine
+          cd backend
 
-          # Upload compose file (from local machine)
-          scp backend/docker-compose.secretvm.yml user@silver-hedgehog.vm.scrtlabs.com:/mnt/secure/docker_wd/
+          # Show updated compose file
+          ./scripts/docker/secretvm-deploy.sh show
 
-          # Deploy on SecretVM
-          cd /mnt/secure/docker_wd/
-          docker compose down
-          docker pull ${{ steps.digest.outputs.full_image }}
-          docker compose up -d
-
-          # Verify
-          docker compose ps
-          docker logs docker_wd-backend-1 | grep "PrivexBot Backend starting"
-          curl https://api.silver-hedgehog.vm.scrtlabs.com/health
+          # Copy the output to clipboard and paste into SecretVM Dev Portal
+          # Upload deploy/secretvm/.env file to portal
+          # Click "Deploy" button in portal
           \`\`\`
+
+          ### Step 3: Verify Deployment
+
+          \`\`\`bash
+          # Run comprehensive tests
+          cd backend
+          ./scripts/test-secretvm.sh
+          \`\`\`
+
+          **Expected Results:**
+          - ✅ Backend Health: HTTP 200
+          - ✅ Backend Status: HTTP 200
+          - ✅ API Docs: HTTP 200
+          - ✅ PgAdmin: HTTP 302
+          - ✅ Redis UI: HTTP 200
+          - ✅ Traefik: HTTP 302
+
+          ---
+
+          ## Production Services
+
+          After deployment, services will be available at:
+
+          - **Backend API**: https://api.harystyles.store
+          - **API Docs**: https://api.harystyles.store/api/docs
+          - **PgAdmin**: https://pgadmin.harystyles.store
+          - **Redis UI**: https://redis-ui.harystyles.store
+          - **Traefik**: https://traefik.harystyles.store/dashboard/
 
           ---
 
@@ -292,6 +319,7 @@ jobs:
           \`\`\`bash
           docker compose pull
           docker compose up -d
+          docker compose ps
           \`\`\`
 
           ---
@@ -307,7 +335,7 @@ jobs:
           # Configure required variables
           POSTGRES_PASSWORD=STRONG_PASSWORD_HERE
           SECRET_KEY=RANDOM_SECRET_KEY_HERE
-          BACKEND_CORS_ORIGINS=https://your-domain.com
+          BACKEND_CORS_ORIGINS=https://harystyles.store,https://api.harystyles.store
           \`\`\`
 
           **Generate secure secrets:**
@@ -316,16 +344,7 @@ jobs:
           openssl rand -base64 32
 
           # JWT secret key
-          python3 -c "import secrets; print(secrets.token_urlsafe(64))"
-          \`\`\`
-
-          ---
-
-          ## Database Migrations
-
-          **Run migrations after deployment:**
-          \`\`\`bash
-          docker compose exec backend alembic upgrade head
+          openssl rand -hex 32
           \`\`\`
 
           ---
@@ -334,17 +353,23 @@ jobs:
 
           **Health check:**
           \`\`\`bash
-          curl https://api.silver-hedgehog.vm.scrtlabs.com/health
+          curl https://api.harystyles.store/health
           \`\`\`
 
           **API status:**
           \`\`\`bash
-          curl https://api.silver-hedgehog.vm.scrtlabs.com/api/v1/status
+          curl https://api.harystyles.store/api/v1/status
           \`\`\`
 
           **Interactive API docs:**
           \`\`\`
-          https://api.silver-hedgehog.vm.scrtlabs.com/api/docs
+          https://api.harystyles.store/api/docs
+          \`\`\`
+
+          **Comprehensive tests:**
+          \`\`\`bash
+          cd backend
+          ./scripts/test-secretvm.sh
           \`\`\`
 
           ---
@@ -352,6 +377,22 @@ jobs:
           ## Docker Hub
 
           View image: https://hub.docker.com/r/${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}
+
+          ---
+
+          ## Troubleshooting
+
+          If deployment fails:
+
+          1. Check SecretVM portal logs for errors
+          2. Verify .env file has correct configuration
+          3. Ensure all services are stopped before redeploying
+          4. Check network connectivity and DNS
+          5. Review backend/docs/TROUBLESHOOTING.md
+
+          For detailed troubleshooting, see:
+          - [Troubleshooting Guide](https://github.com/${{ github.repository}}/blob/main/backend/docs/TROUBLESHOOTING.md)
+          - [SecretVM Guide](https://github.com/${{ github.repository}}/blob/main/backend/docs/SECRETVM_DEPLOYMENT.md)
           EOF
 
       # Step 9: Upload artifacts
@@ -368,4 +409,5 @@ jobs:
           echo "✅ Build completed successfully"
           echo "📦 Version: ${{ steps.meta.outputs.version }}"
           echo "🎯 Image: ${{ steps.digest.outputs.full_image }}"
+          echo "🌐 Production: https://api.harystyles.store"
           echo "📋 Check the Actions summary for full deployment instructions"

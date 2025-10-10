@@ -261,7 +261,7 @@ SecretVM provides a trusted execution environment for confidential computation o
 
 ### Quick Start
 
-**Network**: `67.43.239.18` / `sapphire-finch.vm.scrtlabs.com`
+**Network**: `67.43.239.18` / `harystyles.store`
 
 ```bash
 # 1. Prepare deployment
@@ -279,7 +279,7 @@ SecretVM provides a trusted execution environment for confidential computation o
 ### Prerequisites
 
 1. **SecretVM Access** with Secret Network
-2. **Domain**: `sapphire-finch.vm.scrtlabs.com` (IP: `67.43.239.18`)
+2. **Domain**: `harystyles.store` (IP: `67.43.239.18`)
 3. **TLS Certificates** mounted at `/mnt/secure/cert/`
 4. **SSH Access**: `ssh root@67.43.239.18`
 
@@ -322,7 +322,7 @@ services:
    SECRET_KEY=RANDOM_SECRET_KEY
 
    # SecretVM domain
-   BACKEND_CORS_ORIGINS=https://sapphire-finch.vm.scrtlabs.com,https://api.sapphire-finch.vm.scrtlabs.com
+   BACKEND_CORS_ORIGINS=https://harystyles.store,https://api.harystyles.store
    ```
 
 ### TLS Certificate Setup

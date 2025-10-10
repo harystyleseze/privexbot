@@ -88,24 +88,24 @@ Internet (HTTPS)
 
 ### SecretVM Details
 - **IP Address**: `67.43.239.18`
-- **Base Domain**: `sapphire-finch.vm.scrtlabs.com`
+- **Base Domain**: `harystyles.store`
 
 ### Subdomains (All with HTTPS)
 | Service | Subdomain | Port | Purpose |
 |---------|-----------|------|---------|
-| Backend API | `api.sapphire-finch.vm.scrtlabs.com` | 8000 | FastAPI application |
-| PgAdmin | `pgadmin.sapphire-finch.vm.scrtlabs.com` | 80 | Database admin |
-| Redis UI | `redis-ui.sapphire-finch.vm.scrtlabs.com` | 8081 | Redis admin |
-| Traefik | `traefik.sapphire-finch.vm.scrtlabs.com` | 8080 | Traefik dashboard |
+| Backend API | `api.harystyles.store` | 8000 | FastAPI application |
+| PgAdmin | `pgadmin.harystyles.store` | 80 | Database admin |
+| Redis UI | `redis-ui.harystyles.store` | 8081 | Redis admin |
+| Traefik | `traefik.harystyles.store` | 8080 | Traefik dashboard |
 
 ### DNS Configuration (Required)
 
 Ensure these DNS A records point to `67.43.239.18`:
 ```
-api.sapphire-finch.vm.scrtlabs.com      → 67.43.239.18
-pgadmin.sapphire-finch.vm.scrtlabs.com  → 67.43.239.18
-redis-ui.sapphire-finch.vm.scrtlabs.com → 67.43.239.18
-traefik.sapphire-finch.vm.scrtlabs.com  → 67.43.239.18
+api.harystyles.store      → 67.43.239.18
+pgadmin.harystyles.store  → 67.43.239.18
+redis-ui.harystyles.store → 67.43.239.18
+traefik.harystyles.store  → 67.43.239.18
 ```
 
 ---
@@ -150,7 +150,7 @@ traefik.sapphire-finch.vm.scrtlabs.com  → 67.43.239.18
    PGADMIN_PASSWORD=$(openssl rand -base64 24)
 
    # Update CORS origins with your frontend domain
-   BACKEND_CORS_ORIGINS=https://sapphire-finch.vm.scrtlabs.com,https://api.sapphire-finch.vm.scrtlabs.com,https://app.yourdomain.com
+   BACKEND_CORS_ORIGINS=https://harystyles.store,https://api.harystyles.store,https://app.yourdomain.com
    ```
 
 3. **Prepare .env for upload**
@@ -191,11 +191,11 @@ traefik.sapphire-finch.vm.scrtlabs.com  → 67.43.239.18
 
 **Expected results:**
 ```
-✅ Backend API health  - https://api.sapphire-finch.vm.scrtlabs.com/health
-✅ Backend API status  - https://api.sapphire-finch.vm.scrtlabs.com/api/v1/status
-✅ PgAdmin accessible  - https://pgadmin.sapphire-finch.vm.scrtlabs.com
-✅ Redis UI accessible - https://redis-ui.sapphire-finch.vm.scrtlabs.com
-✅ Traefik accessible  - https://traefik.sapphire-finch.vm.scrtlabs.com
+✅ Backend API health  - https://api.harystyles.store/health
+✅ Backend API status  - https://api.harystyles.store/api/v1/status
+✅ PgAdmin accessible  - https://pgadmin.harystyles.store
+✅ Redis UI accessible - https://redis-ui.harystyles.store
+✅ Traefik accessible  - https://traefik.harystyles.store
 ```
 
 ---
@@ -213,19 +213,19 @@ traefik.sapphire-finch.vm.scrtlabs.com  → 67.43.239.18
 
 1. **Backend API Health**
    ```bash
-   curl -k https://api.sapphire-finch.vm.scrtlabs.com/health
+   curl -k https://api.harystyles.store/health
    # Expected: {"status": "healthy", "service": "privexbot-backend", "version": "0.1.0"}
    ```
 
 2. **Backend API Status**
    ```bash
-   curl -k https://api.sapphire-finch.vm.scrtlabs.com/api/v1/status
+   curl -k https://api.harystyles.store/api/v1/status
    # Expected: Environment, CORS, database info
    ```
 
 3. **CORS Test** (from your frontend domain)
    ```bash
-   curl -k -X POST https://api.sapphire-finch.vm.scrtlabs.com/api/v1/test \
+   curl -k -X POST https://api.harystyles.store/api/v1/test \
      -H "Content-Type: application/json" \
      -H "Origin: https://app.yourdomain.com" \
      -d '{"test": "cors"}' \
@@ -235,19 +235,19 @@ traefik.sapphire-finch.vm.scrtlabs.com  → 67.43.239.18
 
 4. **PgAdmin** (Browser)
    ```
-   https://pgadmin.sapphire-finch.vm.scrtlabs.com
+   https://pgadmin.harystyles.store
    Email: admin@scrtlabs.com
    Password: [from your .env PGADMIN_PASSWORD]
    ```
 
 5. **Redis Commander** (Browser)
    ```
-   https://redis-ui.sapphire-finch.vm.scrtlabs.com
+   https://redis-ui.harystyles.store
    ```
 
 6. **Traefik Dashboard** (Browser)
    ```
-   https://traefik.sapphire-finch.vm.scrtlabs.com
+   https://traefik.harystyles.store
    ```
 
 ### Expected Results
@@ -264,7 +264,7 @@ All services should return:
 
 ### Issue: 404 Not Found
 
-**Symptoms**: `curl https://api.sapphire-finch.vm.scrtlabs.com/health` returns 404
+**Symptoms**: `curl https://api.harystyles.store/health` returns 404
 
 **Possible Causes**:
 1. Traefik not routing correctly
@@ -283,7 +283,7 @@ docker compose ps backend
 docker compose logs backend
 
 # Verify DNS
-nslookup api.sapphire-finch.vm.scrtlabs.com
+nslookup api.harystyles.store
 # Should return 67.43.239.18
 ```
 
@@ -344,7 +344,7 @@ docker compose up -d
 **Solutions**:
 ```bash
 # Check current CORS config
-curl -k https://api.sapphire-finch.vm.scrtlabs.com/api/v1/status | jq '.cors_origins'
+curl -k https://api.harystyles.store/api/v1/status | jq '.cors_origins'
 
 # Update .env on SecretVM
 ssh root@67.43.239.18
@@ -438,7 +438,7 @@ View logs through the SecretVM Dev Portal interface, or if you have access to th
 
 ### Database Backup
 
-Use SecretVM platform tools or PgAdmin interface at `https://pgadmin.sapphire-finch.vm.scrtlabs.com` to:
+Use SecretVM platform tools or PgAdmin interface at `https://pgadmin.harystyles.store` to:
 - Export database backups
 - Schedule automated backups
 - Download backup files
@@ -530,14 +530,14 @@ To increase backend workers:
 ### Endpoints
 ```bash
 # Backend API
-https://api.sapphire-finch.vm.scrtlabs.com/health
-https://api.sapphire-finch.vm.scrtlabs.com/api/v1/status
-https://api.sapphire-finch.vm.scrtlabs.com/api/docs
+https://api.harystyles.store/health
+https://api.harystyles.store/api/v1/status
+https://api.harystyles.store/api/docs
 
 # Admin Interfaces
-https://pgadmin.sapphire-finch.vm.scrtlabs.com
-https://redis-ui.sapphire-finch.vm.scrtlabs.com
-https://traefik.sapphire-finch.vm.scrtlabs.com
+https://pgadmin.harystyles.store
+https://redis-ui.harystyles.store
+https://traefik.harystyles.store
 ```
 
 ---
@@ -550,4 +550,4 @@ For issues or questions:
 3. Verify DNS and SSL certificate configuration
 4. Check SecretVM documentation
 
-**SecretVM Network**: `67.43.239.18` / `sapphire-finch.vm.scrtlabs.com`
+**SecretVM Network**: `67.43.239.18` / `harystyles.store`
