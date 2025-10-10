@@ -28,7 +28,7 @@ on:
 
 # Environment variables
 env:
-  DOCKER_USERNAME: privexbot
+  DOCKER_USERNAME: harystyles
   IMAGE_NAME: privexbot-backend
   REGISTRY: docker.io
 
