@@ -21,7 +21,7 @@ Configure these in **Settings → Secrets and variables → Actions**:
 
 | Secret Name | Value | Description |
 |------------|-------|-------------|
-| `DOCKER_USERNAME` | `harystyles` | Docker Hub username |
+| `DOCKER_USERNAME` | e.g `harystyles` | Docker Hub username |
 | `DOCKER_PASSWORD` | `<your-token>` | Docker Hub access token or password |
 
 #### How to Set Up Secrets
