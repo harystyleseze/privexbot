@@ -1,18 +1,16 @@
-<div align="center">
+<p align="center">
+  <img src="https://avatars.githubusercontent.com/u/232574133?v=4" alt="PrivexBot Logo" width="180" height="180" style="border-radius: 50%; border: 3px solid #ddd;" />
+</p>
 
-<h3 style="background: linear-gradient(135deg, #a5b4fc 0%, #4361EE 100%); padding: 20px; border-radius: 20px; display: inline-block; margin-bottom: 20px;">
-  <img src="https://avatars.githubusercontent.com/u/232574133?v=4" alt="PrivexBot Logo" width="150" height="150" style="border-radius: 50%; border: 4px solid white;"/>
-</h3>
-
- <h3>Privacy-First AI Chatbot Builder Powered by Secret VM</h3>
+<h3 align="center">Privacy-First AI Chatbot Builder Powered by Secret VM</h3>
 
 <br>
 
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![React 19](https://img.shields.io/badge/react-19-blue.svg)](https://reactjs.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com/)
-[![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](https://www.docker.com/)
+<div align="center">
+
+| [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) |
+|---|
+| [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/) [![React 18](https://img.shields.io/badge/react-18-blue.svg)](https://reactjs.org/) [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com/) [![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](https://www.docker.com/) |
 
 </div>
 
@@ -23,10 +21,8 @@
 - [Overview](#-overview)
 - [Key Features](#-key-features)
 - [Why PrivexBot?](#-why-privexbot)
-- [Architecture](#-architecture)
 - [Quick Start](#-quick-start)
 - [Documentation](#-documentation)
-- [Technology Stack](#-technology-stack)
 - [Project Structure](#-project-structure)
 - [Development](#-development)
 - [Deployment](#-deployment)
