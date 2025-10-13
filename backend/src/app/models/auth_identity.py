@@ -53,11 +53,62 @@ class AuthIdentity(Base):
     user: User (many-to-one back reference)
         WHY: Access user data from auth identity
         HOW: user_identity.user.username
-
+        EXAMPLE: auth_identity.user.username -> 'alice'
 USAGE FLOW:
 -----------
 1. User logs in with MetaMask (provider='evm', provider_id='0x123...')
 2. Query: SELECT user_id FROM auth_identities WHERE provider='evm' AND provider_id='0x123...'
 3. If found: Get user and create JWT
 4. If not found: Create new User, create new AuthIdentity, link them
+5. User can later link email by creating another AuthIdentity with provider='email'
 """
+
+# ACTUAL IMPLEMENTATION
+from sqlalchemy import Column, String, DateTime, ForeignKey, UniqueConstraint
+from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.orm import relationship
+from app.db.base_class import Base
+import uuid
+from datetime import datetime
+
+
+class AuthIdentity(Base):
+    """
+    AuthIdentity model - Multiple auth methods per user
+
+    Allows linking email + multiple wallets to same account
+    """
+    __tablename__ = "auth_identities"
+
+    # Primary key
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Foreign key to user
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    # Provider info
+    provider = Column(String(50), nullable=False)  # 'email', 'evm', 'solana', 'cosmos'
+    provider_id = Column(String(255), nullable=False, index=True)  # email or wallet address
+
+    # Provider-specific data (JSONB for flexibility)
+    data = Column(JSONB, nullable=False, default=dict)
+
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    # Relationships
+    user = relationship("User", back_populates="auth_identities")
+
+    # Constraints
+    __table_args__ = (
+        UniqueConstraint("provider", "provider_id", name="uq_provider_provider_id"),
+    )
+
+    def __repr__(self):
+        return f"<AuthIdentity(provider={self.provider}, provider_id={self.provider_id})>"

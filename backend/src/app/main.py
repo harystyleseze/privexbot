@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.db.init_db import init_db
+from app.api.v1.routes import auth
 
 # Create FastAPI app
 app = FastAPI(
@@ -24,6 +25,15 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+# Include API routers
+# WHY: Mount authentication routes under /api/v1 prefix
+# HOW: Use include_router with prefix and tags
+app.include_router(
+    auth.router,
+    prefix=settings.API_V1_PREFIX,
+    tags=["authentication"]
 )
 
 
