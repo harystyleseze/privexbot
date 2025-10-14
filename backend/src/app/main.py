@@ -2,11 +2,39 @@
 PrivexBot Backend - FastAPI Application
 Main entry point for the API server
 """
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.db.init_db import init_db
 from app.api.v1.routes import auth
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Lifespan context manager for startup and shutdown events
+
+    WHY: Modern FastAPI pattern replacing deprecated on_event decorators
+    HOW: Code before yield runs on startup, code after yield runs on shutdown
+    """
+    # Startup
+    print(f"🚀 {settings.PROJECT_NAME} Backend starting...")
+    print(f"📝 Environment: {settings.ENVIRONMENT}")
+    print(f"🔐 CORS enabled for: {settings.cors_origins}")
+
+    # Initialize database tables
+    try:
+        init_db()
+    except Exception as e:
+        print(f"⚠️  Database initialization warning: {e}")
+        print("   (This is normal if database is not yet accessible)")
+
+    yield
+
+    # Shutdown
+    print(f"👋 {settings.PROJECT_NAME} Backend shutting down...")
+
 
 # Create FastAPI app
 app = FastAPI(
@@ -15,6 +43,7 @@ app = FastAPI(
     version="0.1.0",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
+    lifespan=lifespan,
 )
 
 # CORS Configuration
@@ -93,29 +122,6 @@ async def test_post(data: dict):
         "data": data,
         "cors": "enabled"
     }
-
-
-# Startup event
-@app.on_event("startup")
-async def startup_event():
-    """Run on application startup"""
-    print(f"🚀 {settings.PROJECT_NAME} Backend starting...")
-    print(f"📝 Environment: {settings.ENVIRONMENT}")
-    print(f"🔐 CORS enabled for: {settings.cors_origins}")
-
-    # Initialize database tables
-    try:
-        init_db()
-    except Exception as e:
-        print(f"⚠️  Database initialization warning: {e}")
-        print("   (This is normal if database is not yet accessible)")
-
-
-# Shutdown event
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Run on application shutdown"""
-    print(f"👋 {settings.PROJECT_NAME} Backend shutting down...")
 
 
 if __name__ == "__main__":
