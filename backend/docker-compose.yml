@@ -4,15 +4,14 @@
 
 services:
   backend:
-    image: harystyles/privexbot-backend@sha256:9fb3b1d1152e5965f8b0c22a7cc9f317a6564edae257bc208a8c9516e330608b
+    image: harystyles/privexbot-backend@sha256:bc5cd3a5c8ae2aa2c0a67f4e5aec4bcd7fb8c63b4e25a3889639d8d6b8c842de
     container_name: privexbot-backend
     ports:
       - "8000:8000"
+    # NOTE: DATABASE_URL is read from .env file, not set here
+    # This allows Python to read the complete URL with hard-coded password
     env_file:
       - .env
-    environment:
-      - DATABASE_URL=postgresql://privexbot:${POSTGRES_PASSWORD}@postgres:5432/privexbot
-      - REDIS_URL=redis://redis:6379/0
     depends_on:
       postgres:
         condition: service_healthy
@@ -22,7 +21,13 @@ services:
       - privexbot
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
