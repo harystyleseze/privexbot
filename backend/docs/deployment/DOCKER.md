@@ -76,7 +76,7 @@ This starts:
 - **Backend (FastAPI)** on port 8000 with hot reload
 - **PostgreSQL 16** on port 5432
 - **Redis 7** on port 6379
-- **Celery Worker** for background tasks (requires celery to be added to dependencies)
+- **Celery Worker** for background tasks (Celery is already installed. Uncomment the celery-worker service in docker-compose files when ready to use background tasks.)
 
 ### Development Features
 
@@ -181,7 +181,7 @@ Replace the placeholder digest in `docker-compose.yml`:
 ```yaml
 services:
   backend:
-    image: harystyles/privexbot-backend@sha256:ACTUAL_DIGEST_HERE
+    image: harystyles/privexbot-backend@sha256:bc5cd3a5c8ae2aa2c0a67f4e5aec4bcd7fb8c63b4e25a3889639d8d6b8c842de
 ```
 
 ### Configure Environment
@@ -396,8 +396,8 @@ Traefik handles:
 - **Routing** to backend service
 
 Access:
-- **API**: `https://api.silver-hedgehog.vm.scrtlabs.com`
-- **Docs**: `https://api.silver-hedgehog.vm.scrtlabs.com/api/docs`
+- **API**: `https://api.harystyles.store`
+- **Docs**: `https://api.harystyles.store/api/docs`
 
 ## Environment Configuration
 
@@ -720,12 +720,14 @@ docker inspect CONTAINER_NAME | grep -A 10 Health
 
 **Error:** `celery: executable file not found`
 
-**Solution:** Add celery to `pyproject.toml`:
-```toml
-dependencies = [
-    "celery[redis]>=5.3.0",
-    # ... other dependencies
-]
+**Solution:** Celery is already installed in `pyproject.toml`. Uncomment the celery-worker service in docker-compose files when ready to use background tasks:
+```yaml
+# Uncomment this service in docker-compose.dev.yml or docker-compose.yml
+# celery-worker:
+#   build:
+#     context: .
+#     dockerfile: Dockerfile.dev
+#   command: celery -A app.celery worker --loglevel=info
 ```
 
 Then rebuild:
@@ -887,4 +889,4 @@ For issues or questions:
 ---
 
 **Version**: 0.1.0
-**Last Updated**: 2025-10-09
+**Last Updated**: 2025-10-15

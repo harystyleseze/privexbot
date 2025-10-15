@@ -68,11 +68,12 @@ PSEUDOCODE:
 # Import Base first
 from app.db.base_class import Base  # noqa
 
-#  TODO: Uncomment these imports as you implement each model
-# Import all models so they are registered with SQLAlchemy
+# Import models so they are registered with SQLAlchemy
 # These imports ensure Alembic can detect all tables for migrations
-# from app.models.user import User  # noqa
-# from app.models.auth_identity import AuthIdentity  # noqa
+from app.models.user import User  # noqa
+from app.models.auth_identity import AuthIdentity  # noqa
+
+#  TODO: Uncomment these imports as you implement each model
 # from app.models.organization import Organization  # noqa
 # from app.models.workspace import Workspace  # noqa
 # from app.models.organization_member import OrganizationMember  # noqa
