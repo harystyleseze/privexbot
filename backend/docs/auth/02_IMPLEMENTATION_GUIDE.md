@@ -111,12 +111,12 @@ dependencies = [
     "pydantic>=2.11.9",
     "pydantic-settings>=2.7.1",
     "python-dotenv>=1.1.1",
-    "redis>=5.0.0,<6.0.0",
+    "redis>=5.0.0",
     "sqlalchemy>=2.0.43",
 
     # NEW: Authentication
     "passlib[bcrypt]>=1.7.4",              # Password hashing
-    "bcrypt>=4.0.1",                        # Bcrypt backend
+    "bcrypt>=4.0.0,<5.0.0",                 # Bcrypt backend
     "python-jose[cryptography]>=3.3.0",     # JWT tokens
     "python-multipart>=0.0.6",              # Form data parsing
 

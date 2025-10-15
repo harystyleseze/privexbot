@@ -1,16 +1,16 @@
 # Backend Deployment Status
 
-**Status**: ✅ **READY FOR DEPLOYMENT**  
-**Version**: 0.1.0  
-**Date**: 2025-10-09
+**Status**: ✅ **READY FOR DEPLOYMENT**
+**Version**: 0.1.1
+**Date**: 2025-10-15
 
 ---
 
 ## Production Build
 
 ### Docker Image
-- **Image**: `harystyles/privexbot-backend:0.1.0`
-- **Digest**: `sha256:9fb3b1d1152e5965f8b0c22a7cc9f317a6564edae257bc208a8c9516e330608b`
+- **Image**: `harystyles/privexbot-backend:0.1.1`
+- **Digest**: `sha256:bc5cd3a5c8ae2aa2c0a67f4e5aec4bcd7fb8c63b4e25a3889639d8d6b8c842de`
 - **Status**: ✅ Built and pushed to Docker Hub
 - **Registry**: https://hub.docker.com/r/harystyles/privexbot-backend
 
@@ -68,7 +68,7 @@ curl http://localhost:8000/api/v1/status
 - PostgreSQL (port 5432 internal) - privexbot database
 - Redis (port 6379 internal) - Cache and sessions
 
-**Image**: `harystyles/privexbot-backend@sha256:9fb3b1d1152e5965f8b0c22a7cc9f317a6564edae257bc208a8c9516e330608b`
+**Image**: `harystyles/privexbot-backend@sha256:bc5cd3a5c8ae2aa2c0a67f4e5aec4bcd7fb8c63b4e25a3889639d8d6b8c842de`
 
 **Usage**:
 ```bash
@@ -113,7 +113,7 @@ docker compose ps
 
 4. **PgAdmin**: `https://pgadmin.harystyles.store`
    - Web-based PostgreSQL admin
-   - Default email: admin@scrtlabs.com
+   - Default email: privexbot@gmail.com
 
 5. **Redis Commander**: `https://redis-ui.harystyles.store`
    - Web-based Redis admin
@@ -123,29 +123,28 @@ docker compose ps
    - Reverse proxy dashboard
    - TLS termination with certificates from `/mnt/secure/cert/`
 
-**Image**: `harystyles/privexbot-backend@sha256:9fb3b1d1152e5965f8b0c22a7cc9f317a6564edae257bc208a8c9516e330608b`
+**Image**: `harystyles/privexbot-backend@sha256:bc5cd3a5c8ae2aa2c0a67f4e5aec4bcd7fb8c63b4e25a3889639d8d6b8c842de`
 
 **Deployment Workflow**:
 ```bash
 # 1. Build and push image
-./scripts/docker/build-push.sh 0.1.0
+./scripts/docker/build-push.sh 0.1.1
 
 # 2. Update digest in docker-compose.secretvm.yml
 
-# 3. Prepare .env file
-./scripts/docker/secretvm-deploy.sh prepare
-# (Update credentials in deploy/secretvm/.env)
+# 3. Prepare .env file locally
+cp .env.secretvm .env.secretvm.local
+# Edit .env.secretvm.local with actual credentials
 
-# 4. Show compose file for copying
-./scripts/docker/secretvm-deploy.sh show
+# 4. Upload to SecretVM portal at: /mnt/secure/docker_wd/usr/.env
+# NOTE: SecretVM requires env file at usr/.env path
 
-# 5. Copy & paste to SecretVM Dev Portal
+# 5. Upload docker-compose.secretvm.yml to portal at:
+#    /mnt/secure/docker_wd/docker-compose.yml
 
-# 6. Upload deploy/secretvm/.env to portal
+# 6. Deploy from SecretVM portal (docker compose up -d)
 
-# 7. Deploy from portal
-
-# 8. Test endpoints
+# 7. Test endpoints
 ./scripts/docker/secretvm-deploy.sh test
 ```
 
@@ -294,6 +293,14 @@ For detailed troubleshooting, see:
 ---
 
 ## Version History
+
+### v0.1.1 (2025-10-15)
+- ✅ Enhanced entrypoint script with detailed migration diagnostics
+- ✅ Auto-recovery for common migration issues (tables already exist)
+- ✅ Full error capture and reporting for alembic migrations
+- ✅ Fixed PgAdmin redirect loop with proxy configuration
+- ✅ Updated documentation for SecretVM usr/.env path requirement
+- ✅ Hardcoded PgAdmin password for reliable initialization
 
 ### v0.1.0 (2025-10-09)
 - ✅ Initial production build

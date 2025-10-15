@@ -121,17 +121,31 @@ traefik.harystyles.store  → 67.43.239.18
 
 2. **Copy the image digest from output**
    ```
-   Image: harystyles/privexbot-backend@sha256:9fb3b1d1152e5965f8b0c22a7cc9f317a6564edae257bc208a8c9516e330608b
+   Image: harystyles/privexbot-backend@sha256:bc5cd3a5c8ae2aa2c0a67f4e5aec4bcd7fb8c63b4e25a3889639d8d6b8c842de
    ```
 
 3. **Update `docker-compose.secretvm.yml` with the digest**
    ```yaml
    services:
      backend:
-       image: harystyles/privexbot-backend@sha256:YOUR_DIGEST_HERE
+       image: harystyles/privexbot-backend@sha256:bc5cd3a5c8ae2aa2c0a67f4e5aec4bcd7fb8c63b4e25a3889639d8d6b8c842de
    ```
 
 ### Step 2: Prepare Environment Configuration
+
+#### Environment File Location
+
+**Important**: SecretVM uses a specific path convention for environment files.
+
+**Local Development**:
+- Copy `.env.secretvm` to `.env.secretvm.local`
+- Edit `.env.secretvm.local` with actual credentials
+- DO NOT commit `.env.secretvm.local` to Git
+
+**SecretVM Upload**:
+- Upload `.env.secretvm.local` to SecretVM portal at path: `/mnt/secure/docker_wd/usr/.env`
+- The `usr/.env` path is required by SecretVM's file system structure
+- The `docker-compose.secretvm.yml` file references `usr/.env` in all `env_file` directives
 
 1. **Create `.env` file from template**
    ```bash
