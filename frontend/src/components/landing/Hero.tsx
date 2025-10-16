@@ -1,75 +1,124 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, Play } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Container } from "@/components/shared/Container";
+import { ArrowRight } from "lucide-react";
+import {
+  ContainerAnimated,
+  ContainerInset,
+  ContainerScroll,
+  ContainerSticky,
+  HeroButton,
+  HeroVideo,
+} from "@/components/ui/animated-video-on-scroll";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export function Hero() {
+  const { actualTheme } = useTheme();
+
+  // Different gradient backgrounds for light and dark mode
+  const getBackgroundStyle = () => {
+    if (actualTheme === "dark") {
+      return {
+        background:
+          "radial-gradient(40% 40% at 50% 20%, hsl(var(--primary) / 0.3) 0%, hsl(var(--primary) / 0.15) 22.92%, hsl(var(--primary) / 0.08) 42.71%, hsl(var(--background)) 88.54%)",
+      };
+    } else {
+      return {
+        background:
+          "radial-gradient(40% 40% at 50% 20%, hsl(var(--primary) / 0.15) 0%, hsl(var(--primary) / 0.08) 22.92%, hsl(var(--primary) / 0.04) 42.71%, hsl(var(--background)) 88.54%)",
+      };
+    }
+  };
+
   return (
-    <section className="relative overflow-hidden bg-gradient-to-br from-primary/5 via-background to-secondary/5 py-20 sm:py-28 lg:py-36">
-      {/* Background decoration */}
-      <div className="absolute inset-0 -z-10">
-        <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
-        <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-96 h-96 bg-primary/10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/2 w-96 h-96 bg-secondary/10 rounded-full blur-3xl"></div>
-      </div>
+    <section>
+      <ContainerScroll className="h-[350vh]">
+        <ContainerSticky
+          style={getBackgroundStyle()}
+          className="px-6 py-10 text-foreground"
+        >
+          <ContainerAnimated className="space-y-4 text-center">
+            <h1 className="text-5xl font-bold tracking-tight md:text-6xl">
+              Build Privacy-First AI Chatbots
+            </h1>
+            <p className="mx-auto max-w-[54ch] text-lg text-muted-foreground">
+              Deploy intelligent chatbots powered by Secret VM. Zero coding required.
+              Complete privacy guaranteed. Your data never leaves the secure enclave.
+            </p>
+          </ContainerAnimated>
 
-      <Container>
-        <div className="mx-auto max-w-4xl text-center">
-          {/* Headline */}
-          <h1 className="text-4xl font-bold tracking-tight sm:text-6xl lg:text-7xl animate-in fade-in slide-in-from-bottom-4 duration-1000">
-            Build Privacy-First AI Chatbots
-          </h1>
+          <ContainerInset className="max-h-[450px] w-auto py-6">
+            <HeroVideo
+              src="https://videos.pexels.com/video-files/3129671/3129671-uhd_2560_1440_30fps.mp4"
+              data-src="https://videos.pexels.com/video-files/3129671/3129671-uhd_2560_1440_30fps.mp4"
+              poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1920 1080'%3E%3Crect fill='%23000' width='1920' height='1080'/%3E%3C/svg%3E"
+            />
+          </ContainerInset>
 
-          {/* Subheadline */}
-          <p className="mt-6 text-lg leading-8 text-muted-foreground sm:text-xl animate-in fade-in slide-in-from-bottom-6 duration-1000 delay-150">
-            Deploy intelligent chatbots on Secret VM with zero coding. Your data, your control.
-          </p>
-
-          {/* CTAs */}
-          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-300">
+          <ContainerAnimated
+            transition={{ delay: 0.4 }}
+            outputRange={[-120, 0]}
+            inputRange={[0, 0.7]}
+            className="mx-auto mt-2 w-fit"
+          >
             <Link to="/signup">
-              <Button size="lg" className="w-full sm:w-auto text-base px-8">
-                Start Building Free
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
+              <HeroButton>
+                <span className="text-foreground">Start Building Free</span>
+                <ArrowRight className="ml-2 h-4 w-4 text-foreground transition-transform group-hover:translate-x-1" />
+              </HeroButton>
             </Link>
-            <Button
-              size="lg"
-              variant="outline"
-              className="w-full sm:w-auto text-base px-8"
-              onClick={() => {
-                // Placeholder for demo modal or video
-                console.log("View Demo clicked");
-              }}
-            >
-              <Play className="mr-2 h-5 w-5" />
-              View Demo
-            </Button>
-          </div>
+          </ContainerAnimated>
 
           {/* Trust indicators */}
-          <div className="mt-12 flex flex-wrap items-center justify-center gap-x-6 gap-y-4 text-sm text-muted-foreground animate-in fade-in duration-1000 delay-500">
+          <ContainerAnimated
+            transition={{ delay: 0.6 }}
+            outputRange={[-100, 0]}
+            inputRange={[0, 0.7]}
+            className="mx-auto mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-4 text-sm text-muted-foreground"
+          >
             <div className="flex items-center gap-2">
-              <svg className="h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              <svg
+                className="h-5 w-5 text-green-500"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                  clipRule="evenodd"
+                />
               </svg>
-              <span>No credit card required</span>
+              <span>No credit card</span>
             </div>
             <div className="flex items-center gap-2">
-              <svg className="h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              <svg
+                className="h-5 w-5 text-green-500"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                  clipRule="evenodd"
+                />
               </svg>
-              <span>Free forever plan</span>
+              <span>Free forever</span>
             </div>
             <div className="flex items-center gap-2">
-              <svg className="h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+              <svg
+                className="h-5 w-5 text-green-500"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                  clipRule="evenodd"
+                />
               </svg>
-              <span>Setup in 5 minutes</span>
+              <span>5-min setup</span>
             </div>
-          </div>
-        </div>
-      </Container>
+          </ContainerAnimated>
+        </ContainerSticky>
+      </ContainerScroll>
     </section>
   );
 }

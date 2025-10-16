@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Sun, Moon, Monitor } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/shared/Container";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { theme, setTheme } = useTheme();
 
   const navLinks = [
     { name: "Features", href: "#features" },
@@ -20,6 +22,24 @@ export function Header() {
     if (element) {
       element.scrollIntoView({ behavior: "smooth" });
       setMobileMenuOpen(false);
+    }
+  };
+
+  const cycleTheme = () => {
+    const themes: Array<"light" | "dark" | "system"> = ["light", "dark", "system"];
+    const currentIndex = themes.indexOf(theme);
+    const nextIndex = (currentIndex + 1) % themes.length;
+    setTheme(themes[nextIndex]);
+  };
+
+  const getThemeIcon = () => {
+    switch (theme) {
+      case "light":
+        return <Sun className="h-4 w-4" />;
+      case "dark":
+        return <Moon className="h-4 w-4" />;
+      case "system":
+        return <Monitor className="h-4 w-4" />;
     }
   };
 
@@ -51,6 +71,14 @@ export function Header() {
 
           {/* Desktop Auth Buttons */}
           <div className="hidden md:flex md:items-center md:space-x-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={cycleTheme}
+              title={`Theme: ${theme}`}
+            >
+              {getThemeIcon()}
+            </Button>
             <Link to="/login">
               <Button variant="ghost">Sign In</Button>
             </Link>
@@ -87,6 +115,14 @@ export function Header() {
                 </a>
               ))}
               <div className="flex flex-col space-y-2 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  onClick={cycleTheme}
+                  className="w-full justify-start"
+                >
+                  {getThemeIcon()}
+                  <span className="ml-2 capitalize">Theme: {theme}</span>
+                </Button>
                 <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
                   <Button variant="ghost" className="w-full">
                     Sign In
