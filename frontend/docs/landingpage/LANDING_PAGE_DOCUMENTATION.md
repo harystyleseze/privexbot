@@ -142,7 +142,7 @@ frontend/src/
 - Main headline: "Build Privacy-First AI Chatbots"
 - Supporting subheadline
 - Two CTAs: "Start Building Free" + "View Demo"
-- Trust indicators: No CC, Free plan, 5-min setup
+- Trust indicators: No CC, Free plan, fast deployment
 - Gradient background with decorative elements
 - Fade-in animation on load
 

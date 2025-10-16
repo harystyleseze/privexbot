@@ -168,25 +168,22 @@ TypeScript: No errors
 
 1. Video Loading:
 
-
-    - Poster image for instant visual feedback
-    - Lazy loading when in viewport
-    - Autoplay muted for browser compatibility
-    - playsInline for iOS support
+   - Poster image for instant visual feedback
+   - Lazy loading when in viewport
+   - Autoplay muted for browser compatibility
+   - playsInline for iOS support
 
 2. Bundle Size:
 
-
-    - Code splitting implemented
-    - Tree-shaking enabled
-    - Gzip compression (152.68 KB)
+   - Code splitting implemented
+   - Tree-shaking enabled
+   - Gzip compression (152.68 KB)
 
 3. Animation Performance:
 
-
-    - GPU-accelerated transforms
-    - Spring physics for natural motion
-    - Viewport-based triggering
+   - GPU-accelerated transforms
+   - Spring physics for natural motion
+   - Viewport-based triggering
 
 🔧 How to Use:
 
@@ -230,5 +227,5 @@ The hero section now clearly communicates:
 - "Powered by Secret VM" - Trust anchor
 - "Zero coding required" - Ease of use
 - "Complete privacy guaranteed" - Security focus
-- Trust badges: No credit card, Free forever, 5-min setup
+- Trust badges: No credit card, secure enclave, fast deployment
   All features are production-ready and aligned with your privacy-first platform!

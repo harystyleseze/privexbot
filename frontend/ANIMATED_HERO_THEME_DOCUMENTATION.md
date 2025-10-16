@@ -23,6 +23,7 @@
 ## Overview
 
 This documentation covers the integration of:
+
 - **Animated Video Scroll Hero Section** - Smooth scroll-based animations with video content
 - **Dark/Light Theme System** - System preference detection with manual toggle
 - **Theme-Responsive Components** - Components that adapt to theme changes
@@ -48,6 +49,7 @@ This documentation covers the integration of:
 - **System Theme Listener** - Responds to OS theme changes
 
 **Supported Themes:**
+
 - `light` - Light mode with bright background
 - `dark` - Dark mode with dark background
 - `system` - Follows OS preference (default)
@@ -61,6 +63,7 @@ This documentation covers the integration of:
 - **Video Optimization** - Poster image for instant loading
 
 **Animation Effects:**
+
 - Blur-to-focus fade-in
 - Vertical slide-in
 - Scale transformation
@@ -104,6 +107,7 @@ frontend/src/
 **Purpose**: Manage application-wide theme state
 
 **State Management**:
+
 ```typescript
 {
   theme: "light" | "dark" | "system";           // User preference
@@ -113,12 +117,14 @@ frontend/src/
 ```
 
 **Features**:
+
 - **System Detection**: Uses `window.matchMedia("(prefers-color-scheme: dark)")`
 - **localStorage**: Persists theme preference
 - **Document Root Update**: Adds `.light` or `.dark` class to `<html>`
 - **Event Listener**: Responds to OS theme changes when in `system` mode
 
 **Usage**:
+
 ```tsx
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -138,6 +144,7 @@ function MyComponent() {
 ### Theme Toggle Implementation
 
 **Header.tsx Changes**:
+
 ```tsx
 // Import theme hook
 import { useTheme } from "@/contexts/ThemeContext";
@@ -147,7 +154,11 @@ const { theme, setTheme } = useTheme();
 
 // Cycle through themes
 const cycleTheme = () => {
-  const themes: Array<"light" | "dark" | "system"> = ["light", "dark", "system"];
+  const themes: Array<"light" | "dark" | "system"> = [
+    "light",
+    "dark",
+    "system",
+  ];
   const currentIndex = themes.indexOf(theme);
   const nextIndex = (currentIndex + 1) % themes.length;
   setTheme(themes[nextIndex]);
@@ -156,14 +167,18 @@ const cycleTheme = () => {
 // Icon based on current theme
 const getThemeIcon = () => {
   switch (theme) {
-    case "light": return <Sun className="h-4 w-4" />;
-    case "dark": return <Moon className="h-4 w-4" />;
-    case "system": return <Monitor className="h-4 w-4" />;
+    case "light":
+      return <Sun className="h-4 w-4" />;
+    case "dark":
+      return <Moon className="h-4 w-4" />;
+    case "system":
+      return <Monitor className="h-4 w-4" />;
   }
 };
 ```
 
 **Desktop Button**:
+
 ```tsx
 <Button
   variant="ghost"
@@ -176,12 +191,9 @@ const getThemeIcon = () => {
 ```
 
 **Mobile Button**:
+
 ```tsx
-<Button
-  variant="outline"
-  onClick={cycleTheme}
-  className="w-full justify-start"
->
+<Button variant="outline" onClick={cycleTheme} className="w-full justify-start">
   {getThemeIcon()}
   <span className="ml-2 capitalize">Theme: {theme}</span>
 </Button>
@@ -220,11 +232,13 @@ export function Hero() {
   const getBackgroundStyle = () => {
     if (actualTheme === "dark") {
       return {
-        background: "radial-gradient(40% 40% at 50% 20%, hsl(var(--primary) / 0.3) 0%, ...)",
+        background:
+          "radial-gradient(40% 40% at 50% 20%, hsl(var(--primary) / 0.3) 0%, ...)",
       };
     } else {
       return {
-        background: "radial-gradient(40% 40% at 50% 20%, hsl(var(--primary) / 0.15) 0%, ...)",
+        background:
+          "radial-gradient(40% 40% at 50% 20%, hsl(var(--primary) / 0.15) 0%, ...)",
       };
     }
   };
@@ -232,14 +246,18 @@ export function Hero() {
   return (
     <section>
       <ContainerScroll className="h-[350vh]">
-        <ContainerSticky style={getBackgroundStyle()} className="px-6 py-10 text-foreground">
+        <ContainerSticky
+          style={getBackgroundStyle()}
+          className="px-6 py-10 text-foreground"
+        >
           {/* Animated headline */}
           <ContainerAnimated className="space-y-4 text-center">
             <h1 className="text-5xl font-bold tracking-tight md:text-6xl">
               Build Privacy-First AI Chatbots
             </h1>
             <p className="mx-auto max-w-[54ch] text-lg text-muted-foreground">
-              Deploy intelligent chatbots powered by Secret VM. Zero coding required.
+              Seamlessly deploy intelligent chatbots powered by Secret VM — zero
+              coding required.
             </p>
           </ContainerAnimated>
 
@@ -276,18 +294,20 @@ export function Hero() {
 
 **Scroll Progress: 0% → 100%**
 
-| Progress | Element | Effect |
-|----------|---------|--------|
-| 0-20% | Headline | Fade in, blur to focus, slide up |
-| 0-80% | Video | Scale from 0.7 to 1.0, inset morphs |
-| 0-70% | Button | Slide up from -120px to 0 |
-| 0-70% | Trust badges | Slide up from -100px to 0 |
+| Progress | Element      | Effect                              |
+| -------- | ------------ | ----------------------------------- |
+| 0-20%    | Headline     | Fade in, blur to focus, slide up    |
+| 0-80%    | Video        | Scale from 0.7 to 1.0, inset morphs |
+| 0-70%    | Button       | Slide up from -120px to 0           |
+| 0-70%    | Trust badges | Slide up from -100px to 0           |
 
 **Inset Morphing**:
+
 - Start: 45% inset, 1000px border radius (circular)
 - End: 0% inset, 16px border radius (rectangle)
 
 **Video Scale**:
+
 - Start: 0.7x (70% size)
 - End: 1.0x (100% size)
 
@@ -298,20 +318,18 @@ export function Hero() {
 ### Setting Up the Theme System
 
 **1. Wrap App with ThemeProvider**:
+
 ```tsx
 // App.tsx
 import { ThemeProvider } from "@/contexts/ThemeContext";
 
 function App() {
-  return (
-    <ThemeProvider>
-      {/* Your app content */}
-    </ThemeProvider>
-  );
+  return <ThemeProvider>{/* Your app content */}</ThemeProvider>;
 }
 ```
 
 **2. Use Theme in Components**:
+
 ```tsx
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -329,32 +347,38 @@ function MyComponent() {
 ### Using Animated Components
 
 **Basic Scroll Animation**:
+
 ```tsx
-import { ContainerScroll, ContainerAnimated } from "@/components/ui/animated-video-on-scroll";
+import {
+  ContainerScroll,
+  ContainerAnimated,
+} from "@/components/ui/animated-video-on-scroll";
 
 <ContainerScroll className="h-[300vh]">
   <ContainerAnimated className="text-center">
     <h1>Animated on Scroll</h1>
   </ContainerAnimated>
-</ContainerScroll>
+</ContainerScroll>;
 ```
 
 **Custom Animation Ranges**:
+
 ```tsx
 <ContainerAnimated
-  inputRange={[0, 0.5]}        // Animate from 0% to 50% scroll
-  outputRange={[-100, 0]}      // Move from -100px to 0
-  transition={{ delay: 0.3 }}  // 300ms delay
+  inputRange={[0, 0.5]} // Animate from 0% to 50% scroll
+  outputRange={[-100, 0]} // Move from -100px to 0
+  transition={{ delay: 0.3 }} // 300ms delay
 >
   <p>Custom animated text</p>
 </ContainerAnimated>
 ```
 
 **Video with Custom Poster**:
+
 ```tsx
 <HeroVideo
   src="https://example.com/video.mp4"
-  poster="/path/to/poster.jpg"  // Shows before video loads
+  poster="/path/to/poster.jpg" // Shows before video loads
   className="max-w-4xl"
 />
 ```
@@ -366,19 +390,23 @@ import { ContainerScroll, ContainerAnimated } from "@/components/ui/animated-vid
 ### Video Loading Strategy
 
 **1. Poster Image** - Instant visual feedback
+
 ```tsx
-poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1920 1080'%3E%3Crect fill='%23000' width='1920' height='1080'/%3E%3C/svg%3E"
+poster =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1920 1080'%3E%3Crect fill='%23000' width='1920' height='1080'/%3E%3C/svg%3E";
 ```
 
 **2. Lazy Loading** - Video loads only when in viewport
+
 ```tsx
 <HeroVideo
   src="video-url"
-  loading="lazy"  // Browser native lazy loading
+  loading="lazy" // Browser native lazy loading
 />
 ```
 
 **3. Video Attributes**:
+
 - `autoPlay` - Starts automatically (muted)
 - `muted` - Required for autoplay
 - `loop` - Continuous playback
@@ -387,17 +415,20 @@ poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 
 ### Bundle Size Optimization
 
 **Production Build Results**:
+
 ```
 dist/assets/index-D7uOCSri.js   476.15 kB │ gzip: 152.68 kB
 ```
 
 **Breakdown**:
+
 - React + React Router: ~140 KB
 - Framer Motion: ~100 KB
 - TailwindCSS: ~10 KB
 - PrivexBot Components: ~226 KB
 
 **Optimization Tips**:
+
 - Use `React.lazy()` for code splitting
 - Enable gzip/brotli compression
 - Use CDN for video assets
@@ -406,6 +437,7 @@ dist/assets/index-D7uOCSri.js   476.15 kB │ gzip: 152.68 kB
 ### Theme Performance
 
 **Instant Theme Switching**:
+
 - No page reload required
 - CSS variables update in <16ms
 - localStorage write is non-blocking
@@ -418,21 +450,19 @@ dist/assets/index-D7uOCSri.js   476.15 kB │ gzip: 152.68 kB
 ### Changing Video
 
 **Option 1: Use Your Own Video**:
+
 ```tsx
-<HeroVideo
-  src="/path/to/your-video.mp4"
-  poster="/path/to/poster.jpg"
-/>
+<HeroVideo src="/path/to/your-video.mp4" poster="/path/to/poster.jpg" />
 ```
 
 **Option 2: Use Different Stock Video**:
+
 ```tsx
-<HeroVideo
-  src="https://videos.pexels.com/video-files/{ID}/{ID}-uhd_2560_1440_30fps.mp4"
-/>
+<HeroVideo src="https://videos.pexels.com/video-files/{ID}/{ID}-uhd_2560_1440_30fps.mp4" />
 ```
 
 **Recommended Video Specs**:
+
 - Resolution: 1920x1080 or 2560x1440
 - Format: MP4 (H.264 codec)
 - Duration: 10-30 seconds (loops)
@@ -442,12 +472,13 @@ dist/assets/index-D7uOCSri.js   476.15 kB │ gzip: 152.68 kB
 ### Customizing Animations
 
 **Change Animation Speed**:
+
 ```tsx
 <ContainerAnimated
   transition={{
     type: "spring",
-    stiffness: 150,  // Higher = faster
-    damping: 20,     // Higher = less bounce
+    stiffness: 150, // Higher = faster
+    damping: 20, // Higher = less bounce
   }}
 >
   {/* Content */}
@@ -455,16 +486,18 @@ dist/assets/index-D7uOCSri.js   476.15 kB │ gzip: 152.68 kB
 ```
 
 **Change Scroll Range**:
+
 ```tsx
 <ContainerAnimated
-  inputRange={[0.1, 0.6]}  // Animate from 10% to 60% scroll
-  outputRange={[-200, 0]}   // Start 200px below
+  inputRange={[0.1, 0.6]} // Animate from 10% to 60% scroll
+  outputRange={[-200, 0]} // Start 200px below
 >
   {/* Content */}
 </ContainerAnimated>
 ```
 
 **Disable Blur Effect**:
+
 ```tsx
 // In animated-video-on-scroll.tsx
 const variants: Variants = {
@@ -476,37 +509,41 @@ const variants: Variants = {
     // filter: "blur(0px)",   // Comment out
     opacity: 1,
   },
-}
+};
 ```
 
 ### Customizing Theme Colors
 
 **Update CSS Variables** (`/styles/index.css`):
+
 ```css
 :root {
-  --primary: 222.2 47.4% 11.2%;         /* Dark blue */
-  --background: 0 0% 100%;              /* White */
+  --primary: 222.2 47.4% 11.2%; /* Dark blue */
+  --background: 0 0% 100%; /* White */
   /* ... other variables */
 }
 
 .dark {
-  --primary: 210 40% 98%;               /* Light blue */
-  --background: 222.2 84% 4.9%;         /* Dark gray */
+  --primary: 210 40% 98%; /* Light blue */
+  --background: 222.2 84% 4.9%; /* Dark gray */
   /* ... other variables */
 }
 ```
 
 **Custom Gradient Backgrounds**:
+
 ```tsx
 // In Hero.tsx
 const getBackgroundStyle = () => {
   if (actualTheme === "dark") {
     return {
-      background: "radial-gradient(circle at top, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
+      background:
+        "radial-gradient(circle at top, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
     };
   } else {
     return {
-      background: "radial-gradient(circle at top, #f0f8ff 0%, #e6f2ff 50%, #cce7ff 100%)",
+      background:
+        "radial-gradient(circle at top, #f0f8ff 0%, #e6f2ff 50%, #cce7ff 100%)",
     };
   }
 };
@@ -523,19 +560,21 @@ const getBackgroundStyle = () => {
 **Symptoms**: Video element visible but not playing
 
 **Causes**:
+
 - Browser autoplay restrictions
 - Missing `muted` attribute
 - CORS issues with video URL
 
 **Solutions**:
+
 ```tsx
 // Ensure all required attributes
 <HeroVideo
   src="video-url"
-  autoPlay      // ✓ Required
-  muted         // ✓ Required for autoplay
-  loop          // ✓ Recommended
-  playsInline   // ✓ Required for iOS
+  autoPlay // ✓ Required
+  muted // ✓ Required for autoplay
+  loop // ✓ Recommended
+  playsInline // ✓ Required for iOS
 />
 ```
 
@@ -546,6 +585,7 @@ const getBackgroundStyle = () => {
 **Cause**: localStorage not working or blocked
 
 **Solution**:
+
 ```tsx
 // Check localStorage availability
 if (typeof window !== "undefined" && window.localStorage) {
@@ -558,11 +598,13 @@ if (typeof window !== "undefined" && window.localStorage) {
 **Symptoms**: Scroll animations are janky
 
 **Causes**:
+
 - Video too large (>10MB)
 - Too many animated elements
 - Browser performance
 
 **Solutions**:
+
 1. Compress video: Use HandBrake or FFmpeg
    ```bash
    ffmpeg -i input.mp4 -vcodec h264 -crf 28 output.mp4
@@ -577,13 +619,12 @@ if (typeof window !== "undefined" && window.localStorage) {
 **Cause**: ThemeProvider not wrapping App
 
 **Solution**:
+
 ```tsx
 // Ensure correct provider hierarchy
 <ThemeProvider>
   <AuthProvider>
-    <Router>
-      {/* Routes */}
-    </Router>
+    <Router>{/* Routes */}</Router>
   </AuthProvider>
 </ThemeProvider>
 ```
@@ -595,15 +636,16 @@ if (typeof window !== "undefined" && window.localStorage) {
 **Cause**: Type incompatibility with framer-motion version
 
 **Solution**:
+
 ```tsx
 // Use 'as const' for literal types
 const SPRING_TRANSITION_CONFIG = {
-  type: "spring" as const,  // Fix type narrowing
+  type: "spring" as const, // Fix type narrowing
   stiffness: 100,
   damping: 16,
   mass: 0.75,
   restDelta: 0.005,
-}
+};
 ```
 
 ---
@@ -611,11 +653,13 @@ const SPRING_TRANSITION_CONFIG = {
 ## Build Verification
 
 **Production Build Command**:
+
 ```bash
 npm run build
 ```
 
 **Expected Output**:
+
 ```
 ✓ 2169 modules transformed.
 dist/index.html                   0.58 kB │ gzip:   0.35 kB
@@ -625,6 +669,7 @@ dist/assets/index-D7uOCSri.js   476.15 kB │ gzip: 152.68 kB
 ```
 
 **Development Server**:
+
 ```bash
 npm run dev
 # Opens at http://localhost:5173
@@ -635,6 +680,7 @@ npm run dev
 ## Testing Checklist
 
 ### Theme System
+
 - [ ] Theme toggle button visible in header
 - [ ] Clicking cycles through light → dark → system
 - [ ] Icon changes to match theme (Sun/Moon/Monitor)
@@ -645,6 +691,7 @@ npm run dev
 - [ ] Mobile menu shows theme button
 
 ### Animated Hero
+
 - [ ] Video loads and plays automatically
 - [ ] Video is muted (no sound)
 - [ ] Poster image shows before video loads
@@ -657,6 +704,7 @@ npm run dev
 - [ ] Smooth scrolling performance (60fps)
 
 ### Responsive Design
+
 - [ ] Works on mobile (320px width)
 - [ ] Works on tablet (768px width)
 - [ ] Works on desktop (1920px width)
@@ -665,6 +713,7 @@ npm run dev
 - [ ] Buttons are tappable (44x44px min)
 
 ### Performance
+
 - [ ] Page loads in <3 seconds
 - [ ] Video loads progressively
 - [ ] No layout shifts (CLS < 0.1)
@@ -678,16 +727,19 @@ npm run dev
 **Recommended Enhancements**:
 
 1. **Video Optimization**
+
    - Add multiple video sources (WebM, MP4)
    - Implement adaptive bitrate loading
    - Preload video on faster connections
 
 2. **Animation Improvements**
+
    - Add parallax effect to background
    - Implement scroll progress indicator
    - Add microinteractions on hover
 
 3. **Theme Enhancements**
+
    - Add more theme presets (e.g., high contrast)
    - Implement custom color picker
    - Add smooth color transitions

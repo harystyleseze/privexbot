@@ -14,16 +14,17 @@ export function Hero() {
   const { actualTheme } = useTheme();
 
   // Different gradient backgrounds for light and dark mode
+  // Using PrivexBot brand colors: Primary #4361EE, Secondary #C0ECFB
   const getBackgroundStyle = () => {
     if (actualTheme === "dark") {
       return {
         background:
-          "radial-gradient(40% 40% at 50% 20%, hsl(var(--primary) / 0.3) 0%, hsl(var(--primary) / 0.15) 22.92%, hsl(var(--primary) / 0.08) 42.71%, hsl(var(--background)) 88.54%)",
+          "radial-gradient(50% 50% at 50% 20%, hsl(var(--primary) / 0.35) 0%, hsl(var(--primary) / 0.18) 22.92%, hsl(var(--primary) / 0.09) 42.71%, hsl(var(--background)) 88.54%)",
       };
     } else {
       return {
         background:
-          "radial-gradient(40% 40% at 50% 20%, hsl(var(--primary) / 0.15) 0%, hsl(var(--primary) / 0.08) 22.92%, hsl(var(--primary) / 0.04) 42.71%, hsl(var(--background)) 88.54%)",
+          "radial-gradient(50% 50% at 50% 20%, hsl(var(--primary) / 0.18) 0%, hsl(var(--primary) / 0.10) 22.92%, hsl(var(--primary) / 0.05) 42.71%, hsl(var(--background)) 88.54%)",
       };
     }
   };
@@ -40,16 +41,16 @@ export function Hero() {
               Build Privacy-First AI Chatbots
             </h1>
             <p className="mx-auto max-w-[54ch] text-lg text-muted-foreground">
-              Deploy intelligent chatbots powered by Secret VM. Zero coding required.
-              Complete privacy guaranteed. Your data never leaves the secure enclave.
+              Seamlessly deploy your bots with built-in privacy protections and
+              verifiable execution in a secure, trusted environment.
             </p>
           </ContainerAnimated>
 
-          <ContainerInset className="max-h-[450px] w-auto py-6">
+          <ContainerInset className="max-h-[500px] w-auto py-8">
             <HeroVideo
-              src="https://videos.pexels.com/video-files/3129671/3129671-uhd_2560_1440_30fps.mp4"
-              data-src="https://videos.pexels.com/video-files/3129671/3129671-uhd_2560_1440_30fps.mp4"
-              poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1920 1080'%3E%3Crect fill='%23000' width='1920' height='1080'/%3E%3C/svg%3E"
+              src="/videos/privexbot-anime.mp4"
+              data-src="/videos/privexbot-anime.mp4"
+              poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1920 1080'%3E%3Crect fill='%234361EE' width='1920' height='1080'/%3E%3C/svg%3E"
             />
           </ContainerInset>
 
@@ -86,7 +87,7 @@ export function Hero() {
                   clipRule="evenodd"
                 />
               </svg>
-              <span>No credit card</span>
+              <span>Verifiable Execution</span>
             </div>
             <div className="flex items-center gap-2">
               <svg
@@ -100,7 +101,7 @@ export function Hero() {
                   clipRule="evenodd"
                 />
               </svg>
-              <span>Free forever</span>
+              <span>TEE Computing</span>
             </div>
             <div className="flex items-center gap-2">
               <svg
@@ -114,7 +115,7 @@ export function Hero() {
                   clipRule="evenodd"
                 />
               </svg>
-              <span>5-min setup</span>
+              <span>Confidential AI</span>
             </div>
           </ContainerAnimated>
         </ContainerSticky>

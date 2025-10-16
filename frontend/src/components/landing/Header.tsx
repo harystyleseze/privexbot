@@ -7,7 +7,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { theme, setTheme } = useTheme();
+  const { theme, actualTheme, setTheme } = useTheme();
 
   const navLinks = [
     { name: "Features", href: "#features" },
@@ -47,10 +47,14 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <Container>
         <nav className="flex h-16 items-center justify-between">
-          {/* Logo */}
+          {/* Logo - Red in dark mode, Black in light mode */}
           <Link to="/" className="flex items-center space-x-2">
             <div className="flex items-center">
-              <img src="/logo.png" alt="PrivexBot" className="h-8 w-auto" />
+              <img
+                src={actualTheme === "dark" ? "/privexbot-logo-red.png" : "/privexbot-logo-black.png"}
+                alt="PrivexBot"
+                className="h-8 w-auto transition-all duration-300"
+              />
               <span className="ml-2 text-xl font-bold">PrivexBot</span>
             </div>
           </Link>

@@ -131,13 +131,14 @@ export const HeroVideo = React.forwardRef<
   HTMLMotionProps<"video">
 >(({ style, className, transition, ...props }, ref) => {
   const { scrollYProgress } = useContainerScrollContext()
-  const scale = useTransform(scrollYProgress, [0, 0.8], [0.7, 1])
+  // Improved visibility: starts at 0.85 and scales to 1.02 for better prominence
+  const scale = useTransform(scrollYProgress, [0, 0.75], [0.85, 1.02])
 
   return (
     <motion.video
       ref={ref}
       className={cn(
-        "relative z-10 size-auto max-h-full max-w-full ",
+        "relative z-10 size-auto max-h-full max-w-full shadow-2xl",
         className
       )}
       autoPlay
@@ -145,6 +146,7 @@ export const HeroVideo = React.forwardRef<
       loop
       playsInline
       style={{ scale, ...style }}
+      transition={SPRING_TRANSITION_CONFIG}
       {...props}
     />
   )
