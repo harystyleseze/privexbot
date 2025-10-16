@@ -2,7 +2,7 @@
   <img src="https://avatars.githubusercontent.com/u/232574133?v=4" alt="PrivexBot Logo" width="180" height="180" style="border-radius: 50%; border: 3px solid #ddd;" />
 </p>
 
-<h3 align="center">Privacy-First AI Chatbot Builder Powered by Secret VM</h3>
+<h3 align="center">Privacy-First AI Chatbot Builder run on Secret VM</h3>
 
 <div align="center">
 

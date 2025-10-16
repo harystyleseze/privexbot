@@ -1,11 +1,11 @@
 /**
- * Login Page
+ * Signup Page
  *
- * WHY: Allow users to authenticate via email/password or wallet
- * HOW: Form with email/password + wallet connect buttons
+ * WHY: Allow new users to create account via email/password or wallet
+ * HOW: Registration form with email/password + wallet connect buttons
  *
  * SUPPORTS:
- * - Email/password login
+ * - Email/password signup
  * - MetaMask (EVM) wallet
  * - Phantom (Solana) wallet
  * - Keplr (Cosmos) wallet
@@ -19,41 +19,55 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Wallet, Mail, AlertCircle, Loader2 } from "lucide-react";
+import { Wallet, Mail, AlertCircle, Loader2, CheckCircle2 } from "lucide-react";
 
-export function LoginPage() {
+export function SignupPage() {
   const navigate = useNavigate();
-  const { emailLogin, walletLogin, isLoading, error, clearError } = useAuth();
+  const { emailSignup, walletLogin, isLoading, error, clearError } = useAuth();
 
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [localError, setLocalError] = useState<string | null>(null);
 
-  const handleEmailLogin = async (e: FormEvent) => {
+  const handleEmailSignup = async (e: FormEvent) => {
     e.preventDefault();
     clearError();
     setLocalError(null);
 
+    // Validate passwords match
+    if (password !== confirmPassword) {
+      setLocalError("Passwords do not match");
+      return;
+    }
+
+    // Validate password strength (basic check)
+    if (password.length < 8) {
+      setLocalError("Password must be at least 8 characters");
+      return;
+    }
+
     try {
-      await emailLogin({ email, password });
+      await emailSignup({ username, email, password });
       navigate("/dashboard");
     } catch (err) {
       // Error is already set in AuthContext
-      console.error("Login failed:", err);
+      console.error("Signup failed:", err);
     }
   };
 
-  const handleWalletLogin = async (provider: "evm" | "solana" | "cosmos") => {
+  const handleWalletSignup = async (provider: "evm" | "solana" | "cosmos") => {
     clearError();
     setLocalError(null);
 
     try {
       if (provider === "evm") {
-        await handleMetaMaskLogin();
+        await handleMetaMaskSignup();
       } else if (provider === "solana") {
-        await handlePhantomLogin();
+        await handlePhantomSignup();
       } else if (provider === "cosmos") {
-        await handleKeplrLogin();
+        await handleKeplrSignup();
       }
     } catch (err: any) {
       setLocalError(err.message || "Wallet authentication failed");
@@ -61,9 +75,9 @@ export function LoginPage() {
   };
 
   /**
-   * MetaMask (EVM) Login
+   * MetaMask (EVM) Signup
    */
-  const handleMetaMaskLogin = async () => {
+  const handleMetaMaskSignup = async () => {
     if (!window.ethereum) {
       throw new Error("MetaMask not installed. Please install MetaMask extension.");
     }
@@ -85,7 +99,7 @@ export function LoginPage() {
         params: [challenge.message, address],
       });
 
-      // Verify signature with backend
+      // Verify signature with backend (creates account if new)
       await walletLogin("evm", {
         address,
         signed_message: challenge.message,
@@ -102,9 +116,9 @@ export function LoginPage() {
   };
 
   /**
-   * Phantom (Solana) Login
+   * Phantom (Solana) Signup
    */
-  const handlePhantomLogin = async () => {
+  const handlePhantomSignup = async () => {
     if (!window.solana || !window.solana.isPhantom) {
       throw new Error("Phantom wallet not installed. Please install Phantom extension.");
     }
@@ -123,7 +137,7 @@ export function LoginPage() {
       const signedMessage = await window.solana.signMessage(encodedMessage, "utf8");
       const signature = Buffer.from(signedMessage.signature).toString("base64");
 
-      // Verify signature with backend
+      // Verify signature with backend (creates account if new)
       await walletLogin("solana", {
         address,
         signed_message: challenge.message,
@@ -140,15 +154,15 @@ export function LoginPage() {
   };
 
   /**
-   * Keplr (Cosmos) Login
+   * Keplr (Cosmos) Signup
    */
-  const handleKeplrLogin = async () => {
+  const handleKeplrSignup = async () => {
     if (!window.keplr) {
       throw new Error("Keplr wallet not installed. Please install Keplr extension.");
     }
 
     try {
-      // Enable Keplr for Secret Network (or Cosmos Hub)
+      // Enable Keplr for Secret Network
       const chainId = "secret-4"; // Secret Network mainnet
       await window.keplr.enable(chainId);
 
@@ -165,7 +179,7 @@ export function LoginPage() {
       const signature = await window.keplr.signArbitrary(chainId, address, challenge.message);
       const signatureBase64 = Buffer.from(signature.signature).toString("base64");
 
-      // Verify signature with backend
+      // Verify signature with backend (creates account if new)
       await walletLogin("cosmos", {
         address,
         signed_message: challenge.message,
@@ -184,13 +198,23 @@ export function LoginPage() {
 
   const displayError = error || localError;
 
+  // Password strength indicator
+  const getPasswordStrength = (pass: string): { strength: string; color: string } => {
+    if (pass.length === 0) return { strength: "", color: "" };
+    if (pass.length < 8) return { strength: "Weak", color: "text-red-500" };
+    if (pass.length < 12) return { strength: "Medium", color: "text-yellow-500" };
+    return { strength: "Strong", color: "text-green-500" };
+  };
+
+  const passwordStrength = getPasswordStrength(password);
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Welcome Back</CardTitle>
+          <CardTitle className="text-2xl font-bold text-center">Create Account</CardTitle>
           <CardDescription className="text-center">
-            Sign in to your PrivexBot account
+            Start building privacy-first AI chatbots
           </CardDescription>
         </CardHeader>
 
@@ -202,8 +226,23 @@ export function LoginPage() {
             </Alert>
           )}
 
-          {/* Email/Password Login */}
-          <form onSubmit={handleEmailLogin} className="space-y-4">
+          {/* Email/Password Signup */}
+          <form onSubmit={handleEmailSignup} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="username">Username</Label>
+              <Input
+                id="username"
+                type="text"
+                placeholder="alice_wonderland"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                minLength={3}
+                maxLength={50}
+                disabled={isLoading}
+              />
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -229,18 +268,43 @@ export function LoginPage() {
                 minLength={8}
                 disabled={isLoading}
               />
+              {password.length > 0 && (
+                <p className={`text-xs ${passwordStrength.color}`}>
+                  {passwordStrength.strength}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                placeholder="••••••••"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                minLength={8}
+                disabled={isLoading}
+              />
+              {confirmPassword.length > 0 && password === confirmPassword && (
+                <p className="text-xs text-green-500 flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3" />
+                  Passwords match
+                </p>
+              )}
             </div>
 
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing in...
+                  Creating account...
                 </>
               ) : (
                 <>
                   <Mail className="mr-2 h-4 w-4" />
-                  Sign in with Email
+                  Sign up with Email
                 </>
               )}
             </Button>
@@ -256,13 +320,13 @@ export function LoginPage() {
             </div>
           </div>
 
-          {/* Wallet Login Buttons */}
+          {/* Wallet Signup Buttons */}
           <div className="space-y-3">
             <Button
               type="button"
               variant="outline"
               className="w-full"
-              onClick={() => handleWalletLogin("evm")}
+              onClick={() => handleWalletSignup("evm")}
               disabled={isLoading}
             >
               <Wallet className="mr-2 h-4 w-4" />
@@ -273,7 +337,7 @@ export function LoginPage() {
               type="button"
               variant="outline"
               className="w-full"
-              onClick={() => handleWalletLogin("solana")}
+              onClick={() => handleWalletSignup("solana")}
               disabled={isLoading}
             >
               <Wallet className="mr-2 h-4 w-4" />
@@ -284,20 +348,25 @@ export function LoginPage() {
               type="button"
               variant="outline"
               className="w-full"
-              onClick={() => handleWalletLogin("cosmos")}
+              onClick={() => handleWalletSignup("cosmos")}
               disabled={isLoading}
             >
               <Wallet className="mr-2 h-4 w-4" />
               Keplr (Cosmos)
             </Button>
           </div>
+
+          {/* Terms */}
+          <p className="text-xs text-muted-foreground text-center">
+            By signing up, you agree to our Terms of Service and Privacy Policy
+          </p>
         </CardContent>
 
         <CardFooter className="flex justify-center">
           <p className="text-sm text-muted-foreground">
-            Don't have an account?{" "}
-            <Link to="/signup" className="text-primary hover:underline font-medium">
-              Sign up
+            Already have an account?{" "}
+            <Link to="/login" className="text-primary hover:underline font-medium">
+              Sign in
             </Link>
           </p>
         </CardFooter>
