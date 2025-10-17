@@ -28,6 +28,25 @@ const pricingTiers = [
     popular: false,
   },
   {
+    name: "Starter",
+    description: "For small businesses getting started",
+    priceMonthly: 19,
+    priceAnnual: 180,
+    features: [
+      "3 Chatbots",
+      "2 Knowledge Bases",
+      "10,000 messages/month",
+      "Advanced analytics",
+      "Email support",
+      "Custom branding",
+      "Basic API access",
+      "WhatsApp integration",
+    ],
+    cta: "Start Free Trial",
+    ctaVariant: "outline" as const,
+    popular: false,
+  },
+  {
     name: "Pro",
     description: "For growing teams and businesses",
     priceMonthly: 49,
@@ -36,12 +55,12 @@ const pricingTiers = [
       "10 Chatbots",
       "5 Knowledge Bases",
       "50,000 messages/month",
-      "Advanced analytics",
       "Priority support",
-      "Custom branding",
-      "API access",
+      "Full API access",
       "Webhook integrations",
       "Multi-language support",
+      "Advanced workflows",
+      "A/B testing",
     ],
     cta: "Start Free Trial",
     ctaVariant: "default" as const,
@@ -56,13 +75,13 @@ const pricingTiers = [
       "Unlimited chatbots",
       "Unlimited knowledge bases",
       "Unlimited messages",
-      "Advanced security",
       "Dedicated support",
       "Custom deployment",
       "SLA guarantee",
       "White-label solution",
       "On-premise option",
       "Custom integrations",
+      "Advanced security",
     ],
     cta: "Contact Sales",
     ctaVariant: "outline" as const,
@@ -98,7 +117,7 @@ export function Pricing() {
         </div>
 
         {/* Pricing Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {pricingTiers.map((tier, index) => (
             <Card
               key={index}
@@ -115,26 +134,30 @@ export function Pricing() {
                 </div>
               )}
 
-              <CardHeader className="text-center pb-8 pt-8">
-                <h3 className="text-2xl font-bold mb-2">{tier.name}</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  {tier.description}
-                </p>
+              <CardHeader className="text-center pb-6 pt-8 space-y-4">
+                <div>
+                  <h3 className="text-2xl font-bold mb-2">{tier.name}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {tier.description}
+                  </p>
+                </div>
 
                 {/* Price */}
-                <div className="mb-6">
+                <div className="min-h-[120px] flex flex-col items-center justify-center">
                   {tier.priceMonthly !== null ? (
-                    <>
-                      <span className="text-4xl font-bold">
-                        ${annual ? tier.priceAnnual / 12 : tier.priceMonthly}
-                      </span>
-                      <span className="text-muted-foreground">/month</span>
+                    <div className="space-y-2">
+                      <div>
+                        <span className="text-4xl font-bold">
+                          ${annual ? Math.round(tier.priceAnnual / 12) : tier.priceMonthly}
+                        </span>
+                        <span className="text-base text-muted-foreground">/month</span>
+                      </div>
                       {annual && tier.priceAnnual > 0 && (
-                        <p className="text-sm text-muted-foreground mt-2">
+                        <p className="text-sm text-muted-foreground">
                           Billed ${tier.priceAnnual}/year
                         </p>
                       )}
-                    </>
+                    </div>
                   ) : (
                     <span className="text-4xl font-bold">Custom</span>
                   )}

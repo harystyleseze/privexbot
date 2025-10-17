@@ -56,14 +56,14 @@ export function Footer() {
                 <img src="/logo.png" alt="PrivexBot" className="h-8 w-auto" />
                 <span className="text-xl font-bold">PrivexBot</span>
               </Link>
-              <p className="text-sm text-muted-foreground mb-6 max-w-xs">
+              <p className="text-sm text-muted-foreground dark:text-foreground/70 mb-6 max-w-xs">
                 Privacy-first AI chatbot builder run on Secret VM. Build
                 intelligent assistants without compromising security.
               </p>
 
               {/* Newsletter Signup */}
               <div className="space-y-2">
-                <p className="text-sm font-medium">
+                <p className="text-sm font-medium text-foreground">
                   Subscribe to our newsletter
                 </p>
                 <form onSubmit={handleNewsletterSubmit} className="flex gap-2">
@@ -82,13 +82,13 @@ export function Footer() {
 
             {/* Product Links */}
             <div>
-              <h3 className="font-semibold mb-4">Product</h3>
+              <h3 className="font-semibold mb-4 text-foreground">Product</h3>
               <ul className="space-y-3">
                 {footerLinks.product.map((link) => (
                   <li key={link.name}>
                     <a
                       href={link.href}
-                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      className="text-sm text-muted-foreground dark:text-foreground/70 hover:text-foreground dark:hover:text-foreground transition-colors"
                     >
                       {link.name}
                     </a>
@@ -99,13 +99,13 @@ export function Footer() {
 
             {/* Company Links */}
             <div>
-              <h3 className="font-semibold mb-4">Company</h3>
+              <h3 className="font-semibold mb-4 text-foreground">Company</h3>
               <ul className="space-y-3">
                 {footerLinks.company.map((link) => (
                   <li key={link.name}>
                     <a
                       href={link.href}
-                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      className="text-sm text-muted-foreground dark:text-foreground/70 hover:text-foreground dark:hover:text-foreground transition-colors"
                     >
                       {link.name}
                     </a>
@@ -116,13 +116,13 @@ export function Footer() {
 
             {/* Resources Links */}
             <div>
-              <h3 className="font-semibold mb-4">Resources</h3>
+              <h3 className="font-semibold mb-4 text-foreground">Resources</h3>
               <ul className="space-y-3">
                 {footerLinks.resources.map((link) => (
                   <li key={link.name}>
                     <a
                       href={link.href}
-                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      className="text-sm text-muted-foreground dark:text-foreground/70 hover:text-foreground dark:hover:text-foreground transition-colors"
                     >
                       {link.name}
                     </a>
@@ -133,13 +133,13 @@ export function Footer() {
 
             {/* Legal Links */}
             <div>
-              <h3 className="font-semibold mb-4">Legal</h3>
+              <h3 className="font-semibold mb-4 text-foreground">Legal</h3>
               <ul className="space-y-3">
                 {footerLinks.legal.map((link) => (
                   <li key={link.name}>
                     <a
                       href={link.href}
-                      className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                      className="text-sm text-muted-foreground dark:text-foreground/70 hover:text-foreground dark:hover:text-foreground transition-colors"
                     >
                       {link.name}
                     </a>
@@ -152,7 +152,7 @@ export function Footer() {
           {/* Bottom Bar */}
           <div className="mt-12 pt-8 border-t flex flex-col md:flex-row items-center justify-between gap-4">
             {/* Copyright */}
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground dark:text-foreground/70">
               <p>
                 &copy; {new Date().getFullYear()} PrivexBot. All rights
                 reserved.
@@ -164,7 +164,7 @@ export function Footer() {
                   href="https://privexlabs.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-primary hover:underline"
+                  className="text-primary dark:text-primary hover:underline"
                 >
                   PrivexLabs Limited
                 </a>
@@ -181,7 +181,7 @@ export function Footer() {
                     href={social.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    className="text-muted-foreground dark:text-foreground/70 hover:text-foreground dark:hover:text-foreground transition-colors"
                     aria-label={social.name}
                   >
                     <Icon className="h-5 w-5" />

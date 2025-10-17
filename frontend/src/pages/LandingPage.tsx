@@ -5,6 +5,7 @@ import { ProductOverview } from "@/components/landing/ProductOverview";
 import { Features } from "@/components/landing/Features";
 import { Testimonials } from "@/components/landing/Testimonials";
 import { Pricing } from "@/components/landing/Pricing";
+import { CaseStudies } from "@/components/landing/CaseStudies";
 import { FinalCTA } from "@/components/landing/FinalCTA";
 import { Footer } from "@/components/landing/Footer";
 
@@ -19,6 +20,7 @@ export function LandingPage() {
         <Features />
         <Testimonials />
         <Pricing />
+        <CaseStudies />
         <FinalCTA />
       </main>
       <Footer />
