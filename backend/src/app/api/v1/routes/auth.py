@@ -54,10 +54,85 @@ from app.schemas.token import (
     Token,
     WalletChallengeResponse
 )
+from app.schemas.user import UserProfile, AuthMethodInfo
 from app.auth.strategies import email, evm, solana, cosmos
 
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
+
+
+# ============================================================
+# CURRENT USER
+# ============================================================
+
+@router.get("/me", response_model=UserProfile)
+async def get_current_user_profile(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get current authenticated user's profile.
+
+    WHY: Allow frontend to fetch user details after login
+    HOW: Extract user from JWT token, load auth methods from DB
+
+    Flow:
+    1. JWT token validated by get_current_user dependency
+    2. Load user's authentication methods from database
+    3. Return UserProfile with all linked auth methods
+
+    Args:
+        current_user: Authenticated user (from JWT token)
+        db: Database session (injected)
+
+    Returns:
+        UserProfile with user data and linked auth methods
+
+    Raises:
+        HTTPException(401): Invalid or missing JWT token (from dependency)
+
+    Example Response:
+        {
+            "id": "123e4567-e89b-12d3-a456-426614174000",
+            "username": "alice_wonderland",
+            "is_active": true,
+            "created_at": "2024-01-15T10:30:00Z",
+            "updated_at": "2024-01-15T10:30:00Z",
+            "auth_methods": [
+                {
+                    "provider": "email",
+                    "provider_id": "alice@example.com",
+                    "linked_at": "2024-01-15T10:30:00Z"
+                }
+            ]
+        }
+    """
+    # Get user's auth identities
+    from app.models.auth_identity import AuthIdentity
+
+    auth_identities = db.query(AuthIdentity).filter(
+        AuthIdentity.user_id == current_user.id
+    ).all()
+
+    # Convert to AuthMethodInfo schemas
+    auth_methods = [
+        AuthMethodInfo(
+            provider=auth.provider,
+            provider_id=auth.provider_id,
+            linked_at=auth.created_at
+        )
+        for auth in auth_identities
+    ]
+
+    # Return UserProfile
+    return UserProfile(
+        id=current_user.id,
+        username=current_user.username,
+        is_active=current_user.is_active,
+        created_at=current_user.created_at,
+        updated_at=current_user.updated_at,
+        auth_methods=auth_methods
+    )
 
 
 # ============================================================

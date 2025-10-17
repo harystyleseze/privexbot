@@ -17,9 +17,16 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Wallet, Mail, AlertCircle, Loader2, CheckCircle2 } from "lucide-react";
+import { Wallet, Mail, AlertCircle, Loader2, CheckCircle2, Check } from "lucide-react";
 
 export function SignupPage() {
   const navigate = useNavigate();
@@ -30,6 +37,7 @@ export function SignupPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [localError, setLocalError] = useState<string | null>(null);
+  const [signupSuccess, setSignupSuccess] = useState(false);
 
   const handleEmailSignup = async (e: FormEvent) => {
     e.preventDefault();
@@ -50,7 +58,11 @@ export function SignupPage() {
 
     try {
       await emailSignup({ username, email, password });
-      navigate("/dashboard");
+      // Show success message briefly before redirecting
+      setSignupSuccess(true);
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 5000); // 3 second delay to show success
     } catch (err) {
       // Error is already set in AuthContext
       console.error("Signup failed:", err);
@@ -79,7 +91,9 @@ export function SignupPage() {
    */
   const handleMetaMaskSignup = async () => {
     if (!window.ethereum) {
-      throw new Error("MetaMask not installed. Please install MetaMask extension.");
+      throw new Error(
+        "MetaMask not installed. Please install MetaMask extension."
+      );
     }
 
     try {
@@ -91,7 +105,9 @@ export function SignupPage() {
 
       // Request challenge from backend
       const { authApi } = await import("@/api/auth");
-      const challenge = await authApi.requestWalletChallenge("evm", { address });
+      const challenge = await authApi.requestWalletChallenge("evm", {
+        address,
+      });
 
       // Sign message with MetaMask
       const signature = await window.ethereum.request({
@@ -120,7 +136,9 @@ export function SignupPage() {
    */
   const handlePhantomSignup = async () => {
     if (!window.solana || !window.solana.isPhantom) {
-      throw new Error("Phantom wallet not installed. Please install Phantom extension.");
+      throw new Error(
+        "Phantom wallet not installed. Please install Phantom extension."
+      );
     }
 
     try {
@@ -130,11 +148,16 @@ export function SignupPage() {
 
       // Request challenge from backend
       const { authApi } = await import("@/api/auth");
-      const challenge = await authApi.requestWalletChallenge("solana", { address });
+      const challenge = await authApi.requestWalletChallenge("solana", {
+        address,
+      });
 
       // Sign message with Phantom
       const encodedMessage = new TextEncoder().encode(challenge.message);
-      const signedMessage = await window.solana.signMessage(encodedMessage, "utf8");
+      const signedMessage = await window.solana.signMessage(
+        encodedMessage,
+        "utf8"
+      );
       const signature = Buffer.from(signedMessage.signature).toString("base64");
 
       // Verify signature with backend (creates account if new)
@@ -158,7 +181,9 @@ export function SignupPage() {
    */
   const handleKeplrSignup = async () => {
     if (!window.keplr) {
-      throw new Error("Keplr wallet not installed. Please install Keplr extension.");
+      throw new Error(
+        "Keplr wallet not installed. Please install Keplr extension."
+      );
     }
 
     try {
@@ -173,11 +198,19 @@ export function SignupPage() {
 
       // Request challenge from backend
       const { authApi } = await import("@/api/auth");
-      const challenge = await authApi.requestWalletChallenge("cosmos", { address });
+      const challenge = await authApi.requestWalletChallenge("cosmos", {
+        address,
+      });
 
       // Sign message with Keplr
-      const signature = await window.keplr.signArbitrary(chainId, address, challenge.message);
-      const signatureBase64 = Buffer.from(signature.signature).toString("base64");
+      const signature = await window.keplr.signArbitrary(
+        chainId,
+        address,
+        challenge.message
+      );
+      const signatureBase64 = Buffer.from(signature.signature).toString(
+        "base64"
+      );
 
       // Verify signature with backend (creates account if new)
       await walletLogin("cosmos", {
@@ -199,10 +232,13 @@ export function SignupPage() {
   const displayError = error || localError;
 
   // Password strength indicator
-  const getPasswordStrength = (pass: string): { strength: string; color: string } => {
+  const getPasswordStrength = (
+    pass: string
+  ): { strength: string; color: string } => {
     if (pass.length === 0) return { strength: "", color: "" };
     if (pass.length < 8) return { strength: "Weak", color: "text-red-500" };
-    if (pass.length < 12) return { strength: "Medium", color: "text-yellow-500" };
+    if (pass.length < 12)
+      return { strength: "Medium", color: "text-yellow-500" };
     return { strength: "Strong", color: "text-green-500" };
   };
 
@@ -212,14 +248,25 @@ export function SignupPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Create Account</CardTitle>
+          <CardTitle className="text-2xl font-bold text-center">
+            Create Account
+          </CardTitle>
           <CardDescription className="text-center">
             Start building privacy-first AI chatbots
           </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-6">
-          {displayError && (
+          {signupSuccess && (
+            <Alert className="bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-900 dark:text-green-400">
+              <Check className="h-4 w-4" />
+              <AlertDescription>
+                Account created successfully! Redirecting to dashboard...
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {displayError && !signupSuccess && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{displayError}</AlertDescription>
@@ -295,11 +342,16 @@ export function SignupPage() {
               )}
             </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full" disabled={isLoading || signupSuccess}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Creating account...
+                </>
+              ) : signupSuccess ? (
+                <>
+                  <Check className="mr-2 h-4 w-4" />
+                  Success!
                 </>
               ) : (
                 <>
@@ -316,7 +368,9 @@ export function SignupPage() {
               <span className="w-full border-t" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+              <span className="bg-background px-2 text-muted-foreground">
+                Or continue with
+              </span>
             </div>
           </div>
 
@@ -365,7 +419,10 @@ export function SignupPage() {
         <CardFooter className="flex justify-center">
           <p className="text-sm text-muted-foreground">
             Already have an account?{" "}
-            <Link to="/login" className="text-primary hover:underline font-medium">
+            <Link
+              to="/login"
+              className="text-primary hover:underline font-medium"
+            >
               Sign in
             </Link>
           </p>

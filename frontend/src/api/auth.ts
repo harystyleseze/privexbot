@@ -26,6 +26,13 @@ import type {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
 
+// Log API configuration for debugging
+console.log("[AuthAPI] Configuration:", {
+  API_BASE_URL,
+  environment: import.meta.env.VITE_ENV || "unknown",
+  mode: import.meta.env.MODE,
+});
+
 class AuthApiClient {
   private client: AxiosInstance;
 
@@ -35,6 +42,7 @@ class AuthApiClient {
       headers: {
         "Content-Type": "application/json",
       },
+      timeout: 30000, // 30 second timeout
     });
 
     // Add auth token to requests if available
@@ -45,6 +53,20 @@ class AuthApiClient {
       }
       return config;
     });
+
+    // Add response interceptor for better error handling
+    this.client.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.code === 'ERR_NETWORK') {
+          console.error('[AuthAPI] Network error - Backend not reachable:', {
+            baseURL: API_BASE_URL,
+            message: 'Ensure backend is running and accessible',
+          });
+        }
+        return Promise.reject(error);
+      }
+    );
   }
 
   // ============================================================

@@ -112,7 +112,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         handleToken(tokenData);
       } catch (err: any) {
         console.error("Signup error:", err);
-        setError(err.response?.data?.detail || "Signup failed");
+
+        // Provide user-friendly error messages
+        if (err.code === 'ERR_NETWORK') {
+          setError("Cannot connect to server. Please ensure the backend is running.");
+        } else if (err.response?.data?.detail) {
+          // Handle FastAPI validation errors
+          const detail = err.response.data.detail;
+          if (Array.isArray(detail)) {
+            // Pydantic validation errors
+            const messages = detail.map((e: any) => e.msg).join(", ");
+            setError(messages);
+          } else {
+            setError(detail);
+          }
+        } else {
+          setError("Signup failed. Please try again.");
+        }
         throw err;
       } finally {
         setIsLoading(false);
@@ -133,7 +149,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         handleToken(tokenData);
       } catch (err: any) {
         console.error("Login error:", err);
-        setError(err.response?.data?.detail || "Login failed");
+
+        // Provide user-friendly error messages
+        if (err.code === 'ERR_NETWORK') {
+          setError("Cannot connect to server. Please ensure the backend is running.");
+        } else if (err.response?.data?.detail) {
+          // Handle FastAPI validation errors
+          const detail = err.response.data.detail;
+          if (Array.isArray(detail)) {
+            // Pydantic validation errors
+            const messages = detail.map((e: any) => e.msg).join(", ");
+            setError(messages);
+          } else {
+            setError(detail);
+          }
+        } else {
+          setError("Login failed. Please try again.");
+        }
         throw err;
       } finally {
         setIsLoading(false);
@@ -157,7 +189,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         handleToken(tokenData);
       } catch (err: any) {
         console.error("Wallet login error:", err);
-        setError(err.response?.data?.detail || "Wallet authentication failed");
+
+        // Provide user-friendly error messages
+        if (err.code === 'ERR_NETWORK') {
+          setError("Cannot connect to server. Please ensure the backend is running.");
+        } else if (err.response?.data?.detail) {
+          const detail = err.response.data.detail;
+          if (Array.isArray(detail)) {
+            const messages = detail.map((e: any) => e.msg).join(", ");
+            setError(messages);
+          } else {
+            setError(detail);
+          }
+        } else {
+          setError("Wallet authentication failed. Please try again.");
+        }
         throw err;
       } finally {
         setIsLoading(false);
