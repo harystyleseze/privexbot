@@ -1,7 +1,13 @@
 #!/bin/bash
 # Build and Push Backend Docker Image to Docker Hub
-# Usage: ./scripts/docker/build-push.sh [version]
-# Example: ./scripts/docker/build-push.sh 0.1.0
+# Usage: ./scripts/docker/build-push.sh [OPTIONS] [version]
+# Options:
+#   --no-cache    Force rebuild without using Docker cache
+#   --help        Show this help message
+# Examples:
+#   ./scripts/docker/build-push.sh 0.1.0
+#   ./scripts/docker/build-push.sh --no-cache 0.2.1
+#   ./scripts/docker/build-push.sh --no-cache
 
 set -e
 
@@ -17,8 +23,56 @@ DOCKER_USERNAME="harystyles"
 IMAGE_NAME="privexbot-backend"
 DEFAULT_VERSION="0.1.0"
 
-# Get version from argument or use default
-VERSION="${1:-$DEFAULT_VERSION}"
+# Parse arguments
+NO_CACHE=""
+VERSION=""
+
+show_help() {
+    echo "Usage: ./scripts/docker/build-push.sh [OPTIONS] [version]"
+    echo ""
+    echo "Options:"
+    echo "  --no-cache    Force rebuild without using Docker cache (useful when files changed)"
+    echo "  --help        Show this help message"
+    echo ""
+    echo "Examples:"
+    echo "  ./scripts/docker/build-push.sh 0.1.0              # Build version 0.1.0 with cache"
+    echo "  ./scripts/docker/build-push.sh --no-cache 0.2.1   # Build version 0.2.1 without cache"
+    echo "  ./scripts/docker/build-push.sh --no-cache         # Build default version without cache"
+    echo ""
+    echo "When to use --no-cache:"
+    echo "  - When you've updated scripts or files that Docker didn't detect as changed"
+    echo "  - When you want to ensure the latest base image is used"
+    echo "  - When debugging build issues"
+    echo ""
+    exit 0
+}
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --no-cache)
+            NO_CACHE="--no-cache"
+            shift
+            ;;
+        --help|-h)
+            show_help
+            ;;
+        *)
+            # If it starts with -, it's an unknown option
+            if [[ $1 == -* ]]; then
+                echo -e "${RED}❌ Error: Unknown option: $1${NC}"
+                echo "Use --help to see available options"
+                exit 1
+            fi
+            # Otherwise, it's the version
+            VERSION="$1"
+            shift
+            ;;
+    esac
+done
+
+# Use default version if not provided
+VERSION="${VERSION:-$DEFAULT_VERSION}"
 
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}PrivexBot Backend - Build and Push${NC}"
@@ -43,8 +97,16 @@ if ! docker info > /dev/null 2>&1; then
 fi
 
 # Build the image
-echo -e "${YELLOW}🔨 Building Docker image...${NC}"
+if [ -n "$NO_CACHE" ]; then
+    echo -e "${YELLOW}🔨 Building Docker image (without cache)...${NC}"
+    echo -e "${BLUE}ℹ️  This will take longer but ensures a fresh build${NC}"
+else
+    echo -e "${YELLOW}🔨 Building Docker image...${NC}"
+fi
+
 docker build \
+    $NO_CACHE \
+    --platform linux/amd64 \
     -f Dockerfile \
     -t "${DOCKER_USERNAME}/${IMAGE_NAME}:${VERSION}" \
     -t "${DOCKER_USERNAME}/${IMAGE_NAME}:latest" \

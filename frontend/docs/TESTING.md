@@ -1,665 +1,339 @@
-# Testing Guide
+# Authentication Testing Guide
 
-Comprehensive testing guide for the PrivexBot Frontend across all deployment environments.
+## ✅ Fixes Applied
 
-## Table of Contents
+All authentication configuration issues have been resolved. The system now correctly uses `localhost:8000` for API calls in development.
 
-1. [Testing Strategy](#testing-strategy)
-2. [Local Testing](#local-testing)
-3. [Development Environment Testing](#development-environment-testing)
-4. [Production Build Testing](#production-build-testing)
-5. [SecretVM Deployment Testing](#secretvm-deployment-testing)
-6. [Automated Testing](#automated-testing)
-7. [Performance Testing](#performance-testing)
+### Key Changes Made:
 
----
+1. **docker-compose.dev.yml** - Changed `VITE_API_BASE_URL` from `http://backend-dev:8000/api/v1` to `http://localhost:8000/api/v1`
+   - **Why**: React runs client-side in the browser, which cannot resolve Docker service names
+   - **Impact**: Browser can now reach the backend via localhost
 
-## Testing Strategy
+2. **AuthContext.tsx** - Enhanced error handling
+   - Network errors now show: "Cannot connect to server. Please ensure the backend is running."
+   - FastAPI validation errors are properly parsed and displayed
+   - Array validation errors are joined into readable messages
 
-### Test Pyramid
+3. **SETUP.md** - Updated documentation
+   - Clarified client-side vs server-side architecture
+   - Removed incorrect Docker networking explanations
+   - Added clear diagrams showing how browser communicates with backend
 
-```
-                    ┌─────────────┐
-                    │   E2E Tests │
-                    └─────────────┘
-                  ┌───────────────────┐
-                  │ Integration Tests │
-                  └───────────────────┘
-              ┌───────────────────────────┐
-              │      Unit Tests           │
-              └───────────────────────────┘
-```
-
-### Testing Environments
-
-| Environment | Purpose | Tools |
-|------------|---------|-------|
-| **Local** | Unit tests, component tests | Vitest, React Testing Library |
-| **Development** | Integration testing, hot reload | Docker Compose (dev) |
-| **Production** | Build validation, performance | Docker Compose (standalone) |
-| **SecretVM** | Production deployment, TLS | Docker Compose (SecretVM) |
+4. **scripts/docker/dev.sh** - Improved startup script
+   - Now checks if backend is accessible via HTTP (not just Docker network)
+   - Provides clearer error messages
 
 ---
 
-## Local Testing
+## 🧪 Testing Instructions
 
 ### Prerequisites
 
+1. **Backend must be running:**
+   ```bash
+   cd ../backend
+   ./scripts/docker/dev.sh up
+   ```
+
+2. **Frontend should be running:**
+   ```bash
+   cd frontend
+   docker compose -f docker-compose.dev.yml up
+   # OR
+   npm run dev
+   ```
+
+3. **Open browser to:** http://localhost:5173
+
+---
+
+## Test Cases
+
+### 1. Email Signup (Success)
+
+**URL:** http://localhost:5173/signup
+
+**Steps:**
+1. Fill in form:
+   - Username: `testuser1`
+   - Email: `test1@example.com`
+   - Password: `TestPass123!`
+   - Confirm Password: `TestPass123!`
+
+2. Click "Sign up with Email"
+
+**Expected Result:**
+- Loading spinner appears
+- No errors displayed
+- Redirect to `/dashboard`
+- Console shows: `[AuthAPI] Configuration: { API_BASE_URL: 'http://localhost:8000/api/v1', ... }`
+
+**Backend Request:**
 ```bash
-# Verify Node.js installation
-node --version
-# Expected: v20.x.x
+POST http://localhost:8000/api/v1/auth/email/signup
+Content-Type: application/json
 
-# Verify npm
-npm --version
-# Expected: 9.x.x or higher
-```
-
-### Install Dependencies
-
-```bash
-# Install dependencies
-npm install
-
-# Verify installation
-npm list --depth=0
-```
-
-### Run Unit Tests
-
-```bash
-# Run tests once
-npm test
-
-# Run tests in watch mode
-npm test -- --watch
-
-# Run tests with coverage
-npm test -- --coverage
-
-# View coverage report
-open coverage/index.html
-```
-
-### Run Linting
-
-```bash
-# Check for linting issues
-npm run lint
-
-# Fix auto-fixable issues
-npm run lint -- --fix
-```
-
-### Type Checking
-
-```bash
-# Run TypeScript type checking
-npm run type-check
-
-# Or use tsc directly
-npx tsc --noEmit
-```
-
-### Component Testing
-
-```bash
-# Start Storybook (if configured)
-npm run storybook
-
-# Build Storybook
-npm run build-storybook
+{
+  "username": "testuser1",
+  "email": "test1@example.com",
+  "password": "TestPass123!"
+}
 ```
 
 ---
 
-## Development Environment Testing
+### 2. Email Signup (Validation Errors)
 
-### Start Development Environment
+**Test weak password:**
+- Password: `weak` (< 8 chars)
 
+**Expected Error:**
+- "String should have at least 8 characters"
+
+**Test password without special character:**
+- Password: `TestPass123`
+
+**Expected Error:**
+- "Password must contain at least one special character (!@#$%^&*(),.?\":{}|<>)"
+
+**Test mismatched passwords:**
+- Password: `TestPass123!`
+- Confirm: `TestPass456!`
+
+**Expected Error:**
+- "Passwords do not match"
+
+---
+
+### 3. Email Login (Success)
+
+**URL:** http://localhost:5173/login
+
+**Steps:**
+1. Use credentials from signup test
+2. Fill in:
+   - Email: `test1@example.com`
+   - Password: `TestPass123!`
+3. Click "Sign in with Email"
+
+**Expected Result:**
+- Loading spinner appears
+- No errors displayed
+- Redirect to `/dashboard`
+
+**Backend Request:**
 ```bash
-# Using helper script
-./scripts/docker/dev.sh up
+POST http://localhost:8000/api/v1/auth/email/login
+Content-Type: application/json
 
-# Or using Docker Compose directly
-docker compose -f docker-compose.dev.yml up
-```
-
-### Access Points
-
-- **Frontend**: http://localhost:5173
-- **Hot Reload**: ✅ Enabled
-
-### Verify Hot Reload
-
-1. Open http://localhost:5173 in browser
-2. Edit a file in `src/` (e.g., change a text)
-3. Save the file
-4. Verify changes appear instantly in browser without refresh
-
-### Test Volume Mounts
-
-```bash
-# Check volume is mounted correctly
-docker compose -f docker-compose.dev.yml exec dev ls -la /app/src
-
-# Verify node_modules is preserved
-docker compose -f docker-compose.dev.yml exec dev ls -la /app/node_modules
-```
-
-### Development Environment Checklist
-
-- [ ] Container starts successfully
-- [ ] Hot reload works (changes reflect instantly)
-- [ ] No errors in browser console
-- [ ] API connections work (if backend is running)
-- [ ] All routes are accessible
-- [ ] TypeScript compilation succeeds
-
-### View Development Logs
-
-```bash
-# Follow logs
-docker compose -f docker-compose.dev.yml logs -f
-
-# View specific service logs
-docker compose -f docker-compose.dev.yml logs dev
+{
+  "email": "test1@example.com",
+  "password": "TestPass123!"
+}
 ```
 
 ---
 
-## Production Build Testing
+### 4. Email Login (Invalid Credentials)
 
-### Build Production Image
+**Steps:**
+1. Enter wrong password: `WrongPass123!`
+2. Click "Sign in with Email"
 
-```bash
-# Build the image
-docker build -t privexbot-frontend-test:latest .
-
-# Or using the script
-./scripts/docker/build-push.sh --test
-```
-
-### Run Production Build Locally
-
-```bash
-# Run container
-docker run -d -p 8080:80 --name frontend-test privexbot-frontend-test:latest
-
-# View logs
-docker logs -f frontend-test
-
-# Stop and remove
-docker stop frontend-test && docker rm frontend-test
-```
-
-### Test Production Build
-
-#### 1. Basic Functionality
-
-```bash
-# Test homepage loads
-curl -I http://localhost:8080
-# Expected: HTTP/1.1 200 OK
-
-# Test HTML content
-curl http://localhost:8080 | grep "<title>"
-# Should show page title
-
-# Test assets load
-curl -I http://localhost:8080/assets/index-*.js
-# Expected: HTTP/1.1 200 OK
-```
-
-#### 2. SPA Routing
-
-```bash
-# Test client-side routes return index.html
-curl http://localhost:8080/dashboard
-curl http://localhost:8080/workspaces
-curl http://localhost:8080/settings
-
-# All should return the same index.html (200 OK, not 404)
-```
-
-#### 3. MIME Types
-
-```bash
-# Verify JavaScript MIME type
-curl -I http://localhost:8080/assets/index-*.js | grep "content-type"
-# Expected: application/javascript
-
-# Verify CSS MIME type
-curl -I http://localhost:8080/assets/index-*.css | grep "content-type"
-# Expected: text/css
-```
-
-#### 4. Gzip Compression
-
-```bash
-# Test gzip encoding
-curl -I -H "Accept-Encoding: gzip" http://localhost:8080/assets/index-*.js | grep "content-encoding"
-# Expected: gzip
-```
-
-#### 5. Caching Headers
-
-```bash
-# Check cache headers for assets
-curl -I http://localhost:8080/assets/index-*.js | grep -i cache
-# Should show cache-control headers
-```
-
-### Using Diagnostic Script
-
-```bash
-# Run comprehensive diagnostics
-./scripts/docker/diagnose.sh http://localhost:8080
-
-# Check output for:
-# ✅ HTTP 200 responses
-# ✅ Correct MIME types
-# ✅ Gzip enabled
-# ✅ Assets loading
-```
-
-### Production Build Checklist
-
-- [ ] Build completes without errors
-- [ ] Image size is reasonable (~50MB or less)
-- [ ] Container starts successfully
-- [ ] Homepage loads (200 OK)
-- [ ] All assets load correctly
-- [ ] SPA routing works (no 404s)
-- [ ] MIME types are correct
-- [ ] Gzip compression enabled
-- [ ] No console errors in browser
-- [ ] All routes accessible
+**Expected Error:**
+- "Invalid email or password" (or similar message from backend)
 
 ---
 
-## SecretVM Deployment Testing
+### 5. Network Error (Backend Down)
 
-### Pre-Deployment Testing
+**Steps:**
+1. Stop backend:
+   ```bash
+   cd ../backend
+   ./scripts/docker/dev.sh down
+   ```
+2. Try to login or signup
 
-Before deploying to SecretVM, test locally with the SecretVM compose file:
-
-```bash
-# Create a test directory
-mkdir -p /tmp/secretvm-test
-cd /tmp/secretvm-test
-
-# Copy the SecretVM compose file
-cp /Users/user/Downloads/privexbot/privexbot-mvp/privexbot/frontend/docker-compose.secretvm.yml docker-compose.yml
-
-# Note: This won't work fully without SecretVM certs, but validates syntax
-docker compose config
-# Should output valid YAML without errors
-```
-
-### Post-Deployment Testing
-
-#### 1. SSH into SecretVM
-
-```bash
-ssh user@silver-hedgehog.vm.scrtlabs.com
-```
-
-#### 2. Check Container Status
-
-```bash
-cd /mnt/secure/docker_wd/
-
-# Check all containers are running
-docker compose ps
-# Expected: Both app and traefik should be "Up"
-
-# Check container health
-docker ps
-```
-
-#### 3. Verify Traefik Discovery
-
-**Critical Check** - Traefik must discover the frontend container:
-
-```bash
-# Check Traefik logs for Docker provider
-docker logs docker_wd-traefik-1 | grep "provider"
-
-# MUST SEE these lines:
-# ✅ "Starting provider *docker.Provider"
-# ✅ "Creating router app@docker"
-# ✅ "Creating service app@docker"
-
-# ❌ BAD if you ONLY see:
-# "Configuration loaded from flags."
-```
-
-If Docker provider is NOT starting:
-```bash
-# Check Docker socket permissions
-docker exec docker_wd-traefik-1 ls -la /var/run/docker.sock
-
-# Check TLS config exists
-docker exec docker_wd-traefik-1 ls -la /etc/traefik/dynamic/
-# Should show: tls.yml
-
-# Restart Traefik
-docker compose restart traefik
-```
-
-#### 4. Test Direct Container Access
-
-```bash
-# Test frontend container directly
-curl http://localhost:8080/
-# Expected: HTML content
-
-# Test from Traefik container
-docker exec docker_wd-traefik-1 wget -qO- http://app
-# Expected: HTML content
-```
-
-#### 5. Test via Traefik (HTTP)
-
-```bash
-# Test HTTP endpoint
-curl -H "Host: silver-hedgehog.vm.scrtlabs.com" http://localhost
-# Expected: HTML content or redirect to HTTPS
-```
-
-#### 6. Test HTTPS
-
-```bash
-# Test HTTPS endpoint (from SecretVM)
-curl https://silver-hedgehog.vm.scrtlabs.com
-# Expected: HTML content
-
-# Check certificate
-echo | openssl s_client -connect silver-hedgehog.vm.scrtlabs.com:443 -servername silver-hedgehog.vm.scrtlabs.com 2>/dev/null | openssl x509 -noout -dates
-```
-
-#### 7. Browser Testing
-
-From your local machine:
-
-1. **Open browser** to: https://silver-hedgehog.vm.scrtlabs.com
-2. **Check DevTools Console**: No errors
-3. **Check Network Tab**:
-   - All resources load with 200 OK
-   - Connection is HTTPS with valid certificate
-4. **Test Navigation**: All routes work correctly
-5. **Test Functionality**: Forms, buttons, API calls work
-
-### Using Diagnostic Script Remotely
-
-```bash
-# On your local machine, run diagnostics against SecretVM
-./scripts/docker/diagnose.sh https://silver-hedgehog.vm.scrtlabs.com
-
-# Review output for any issues
-```
-
-### SecretVM Testing Checklist
-
-- [ ] SSH access to SecretVM works
-- [ ] Both containers (app + traefik) are running
-- [ ] Traefik Docker provider started successfully
-- [ ] Traefik created router and service
-- [ ] Direct container access works (port 8080)
-- [ ] Access via Traefik works (port 80)
-- [ ] HTTPS works with valid certificate (port 443)
-- [ ] Browser loads page successfully
-- [ ] No console errors
-- [ ] All assets load correctly
-- [ ] All routes accessible
-- [ ] API connections work
-
-### Common SecretVM Issues
-
-See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for detailed solutions to:
-- 504 Gateway Timeout
-- Traefik not discovering containers
-- TLS certificate errors
-- Container restart loops
+**Expected Error:**
+- Alert banner appears with: "Cannot connect to server. Please ensure the backend is running."
+- Browser console shows: `[AuthAPI] Network error - Backend not reachable`
 
 ---
 
-## Automated Testing
+### 6. MetaMask Wallet Login (If MetaMask installed)
 
-### GitHub Actions CI/CD
+**Steps:**
+1. Click "MetaMask (EVM)" button
+2. MetaMask popup appears
+3. Select account and click "Connect"
+4. Sign the challenge message
+5. MetaMask popup for signature appears
+6. Click "Sign"
 
-Create `.github/workflows/test.yml`:
+**Expected Result:**
+- Loading spinner during process
+- Redirect to `/dashboard` on success
+- User authenticated via wallet
 
-```yaml
-name: Test
+**Backend Requests:**
+```bash
+# 1. Request challenge
+POST http://localhost:8000/api/v1/auth/evm/challenge
+Content-Type: application/json
+{"address": "0x..."}
 
-on:
-  pull_request:
-  push:
-    branches: [main, dev]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run linting
-        run: npm run lint
-
-      - name: Run type checking
-        run: npm run type-check
-
-      - name: Run tests
-        run: npm test -- --coverage
-
-      - name: Upload coverage
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./coverage/coverage-final.json
-
-  build:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Build Docker image
-        run: docker build -t test .
-
-      - name: Run container
-        run: |
-          docker run -d -p 8080:80 --name test test
-          sleep 5
-
-      - name: Test container
-        run: |
-          curl -f http://localhost:8080 || exit 1
-          docker logs test
-
-      - name: Stop container
-        run: docker stop test
+# 2. Verify signature
+POST http://localhost:8000/api/v1/auth/evm/verify
+Content-Type: application/json
+{
+  "address": "0x...",
+  "signed_message": "...",
+  "signature": "0x..."
+}
 ```
 
-### Pre-commit Hooks
+**Expected Errors:**
+- No MetaMask: "MetaMask not installed. Please install MetaMask extension."
+- User rejects: "MetaMask signature request was rejected"
 
-Create `.husky/pre-commit`:
+---
+
+### 7. Phantom Wallet (Solana) - If Installed
+
+**Steps:**
+1. Click "Phantom (Solana)" button
+2. Follow Phantom wallet prompts
+
+**Expected Result:**
+- Similar flow to MetaMask
+- Challenge → Sign → Verify → Dashboard
+
+**Endpoints:**
+- `POST /auth/solana/challenge`
+- `POST /auth/solana/verify`
+
+---
+
+### 8. Keplr Wallet (Cosmos) - If Installed
+
+**Steps:**
+1. Click "Keplr (Cosmos)" button
+2. Follow Keplr wallet prompts
+
+**Expected Result:**
+- Similar flow to MetaMask
+- Includes public key in verification
+
+**Endpoints:**
+- `POST /auth/cosmos/challenge`
+- `POST /auth/cosmos/verify`
+
+---
+
+## 🔍 Debugging
+
+### Check API Configuration
+
+Open browser console and look for:
+```
+[AuthAPI] Configuration: {
+  API_BASE_URL: 'http://localhost:8000/api/v1',
+  environment: 'development',
+  mode: 'development'
+}
+```
+
+**If you see `http://backend-dev:8000`:**
+- Frontend container needs to be rebuilt
+- Run: `docker compose -f docker-compose.dev.yml up --build`
+
+---
+
+### Check CORS
+
+If you see CORS errors in browser console:
+
+1. **Verify backend CORS settings:**
+   ```bash
+   cd ../backend
+   docker logs privexbot-backend-dev | grep CORS
+   ```
+
+2. **Check backend config:**
+   ```python
+   # backend/src/app/core/config.py
+   BACKEND_CORS_ORIGINS = "http://localhost:5173,http://localhost:3000"
+   ```
+
+3. **Restart backend:**
+   ```bash
+   cd ../backend
+   ./scripts/docker/dev.sh restart
+   ```
+
+---
+
+### Check Backend Health
 
 ```bash
-#!/bin/sh
-. "$(dirname "$0")/_/husky.sh"
+# Simple test
+curl http://localhost:8000/api/v1/auth/email/login
 
-npm run lint
-npm run type-check
-npm test -- --run
+# Should return 422 (validation error) not connection refused
 ```
 
 ---
 
-## Performance Testing
+## 🎯 Success Criteria
 
-### Lighthouse Testing
+All tests pass when:
 
-```bash
-# Install Lighthouse
-npm install -g lighthouse
-
-# Run Lighthouse audit
-lighthouse https://silver-hedgehog.vm.scrtlabs.com --output html --output-path ./lighthouse-report.html
-
-# Open report
-open lighthouse-report.html
-```
-
-**Target Scores**:
-- Performance: > 90
-- Accessibility: > 95
-- Best Practices: > 95
-- SEO: > 90
-
-### Bundle Size Analysis
-
-```bash
-# Build with analysis
-npm run build
-
-# Check output for bundle sizes
-# Look for warnings about large chunks
-
-# Use bundle analyzer (if configured)
-npm run analyze
-```
-
-**Guidelines**:
-- Main bundle: < 200KB (gzipped)
-- Vendor bundle: < 500KB (gzipped)
-- Total initial load: < 1MB (gzipped)
-
-### Load Testing
-
-```bash
-# Install Apache Bench
-# macOS: brew install httpd
-# Linux: sudo apt-get install apache2-utils
-
-# Run load test (100 requests, 10 concurrent)
-ab -n 100 -c 10 https://silver-hedgehog.vm.scrtlabs.com/
-
-# Review results:
-# - Time per request
-# - Requests per second
-# - Failed requests (should be 0)
-```
-
-### Network Performance
-
-```bash
-# Test asset loading speed
-curl -w "@curl-format.txt" -o /dev/null -s https://silver-hedgehog.vm.scrtlabs.com/assets/index-*.js
-
-# Create curl-format.txt:
-cat > curl-format.txt << 'EOF'
-    time_namelookup:  %{time_namelookup}\n
-       time_connect:  %{time_connect}\n
-    time_appconnect:  %{time_appconnect}\n
-   time_pretransfer:  %{time_pretransfer}\n
-      time_redirect:  %{time_redirect}\n
- time_starttransfer:  %{time_starttransfer}\n
-                    ----------\n
-         time_total:  %{time_total}\n
-EOF
-```
+- ✅ No `ERR_NAME_NOT_RESOLVED` errors
+- ✅ No `ERR_NETWORK` errors (when backend is running)
+- ✅ Error messages are user-friendly
+- ✅ Validation errors display correctly
+- ✅ Successful login redirects to dashboard
+- ✅ Wallet authentication flows work (if wallets installed)
+- ✅ Browser console shows correct API URL
 
 ---
 
-## Testing Best Practices
+## 📝 Environment Variables
 
-### 1. Test in All Environments
+**Current configuration (development):**
 
-- ✅ Always test locally before building Docker image
-- ✅ Test production build locally before deploying
-- ✅ Test on SecretVM after deployment
+| File | Variable | Value |
+|------|----------|-------|
+| `docker-compose.dev.yml` | `VITE_API_BASE_URL` | `http://localhost:8000/api/v1` |
+| `.env.dev` (for npm) | `VITE_API_BASE_URL` | `http://localhost:8000/api/v1` |
 
-### 2. Automated Testing
-
-- ✅ Set up CI/CD pipeline
-- ✅ Run tests on every PR
-- ✅ Require passing tests before merge
-
-### 3. Manual Testing
-
-- ✅ Test all user flows manually
-- ✅ Test on different browsers
-- ✅ Test on different devices (desktop, mobile)
-
-### 4. Performance Monitoring
-
-- ✅ Run Lighthouse audits regularly
-- ✅ Monitor bundle sizes
-- ✅ Track load times
-
-### 5. Security Testing
-
-- ✅ Scan Docker images for vulnerabilities
-- ✅ Test TLS configuration
-- ✅ Validate security headers
+**Why localhost in both?**
+- React is client-side - runs in your browser
+- Browser cannot resolve Docker service names like `backend-dev`
+- Browser uses localhost to reach ports mapped from Docker
+- This is true whether Vite runs in Docker or via npm
 
 ---
 
-## Troubleshooting Tests
+## 🚀 Quick Test
 
-### Tests Failing Locally
-
+**One-command test:**
 ```bash
-# Clear cache and reinstall
-rm -rf node_modules package-lock.json
-npm install
+# Test backend is accessible
+curl -X POST http://localhost:8000/api/v1/auth/email/signup \
+  -H "Content-Type: application/json" \
+  -d '{"username":"testuser","email":"test@example.com","password":"TestPass123!"}'
 
-# Rebuild
-npm run build
+# Expected: {"detail": "..."} (validation error is OK - means it's working)
+# Bad: Connection refused or timeout
 ```
 
-### Docker Build Fails
-
-```bash
-# Build with no cache
-docker build --no-cache -t test .
-
-# Check logs
-docker logs <container>
-```
-
-### Container Tests Fail
-
-```bash
-# Check container is running
-docker ps
-
-# Check container logs
-docker logs <container>
-
-# Access container shell
-docker exec -it <container> sh
-
-# Test from inside container
-wget -qO- http://localhost
-```
-
----
-
-## Additional Resources
-
-- [Docker Guide](./DOCKER.md)
-- [Troubleshooting Guide](./TROUBLESHOOTING.md)
-- [Quick Start Guide](./QUICK-START.md)
-- [Main README](../README.md)
+**Open browser test:**
+1. Go to: http://localhost:5173/login
+2. Open browser DevTools (F12)
+3. Go to Console tab
+4. Enter any email/password and click "Sign in"
+5. Check console for `[AuthAPI] Configuration:` log
+6. Verify API URL is `http://localhost:8000/api/v1`

@@ -1,57 +1,121 @@
 """
-EVM wallet authentication strategy (MetaMask, Coinbase Wallet, etc.).
+EVM wallet authentication strategy.
 
-WHY:
-- Support Web3 users with Ethereum wallets
-- No passwords needed - use cryptographic signatures
-- Follows EIP-4361 (Sign-In with Ethereum) standard
+See implementation guide in /backend/docs/auth/ for full documentation.
+"""
 
-HOW:
-- Challenge-response pattern with nonce
-- Verify signature using eth_account library
-- Create/link to user account
-
-PSEUDOCODE:
------------
+# ACTUAL IMPLEMENTATION
+from sqlalchemy.orm import Session
+from fastapi import HTTPException
 from eth_account.messages import encode_defunct
 from eth_account import Account
-from app.utils.redis import store_nonce, get_nonce
+from web3 import Web3
+from datetime import datetime
+from typing import Dict
+
+from app.utils.redis import store_nonce, get_nonce, generate_nonce
 from app.models.user import User
 from app.models.auth_identity import AuthIdentity
-import secrets
 
-async def request_challenge(address: str) -> dict:
-    \"\"\"
-    WHY: Generate nonce for wallet signing
-    HOW: Store in Redis with expiration
+
+def validate_evm_address(address: str) -> str:
+    """
+    Validate and normalize an EVM address.
+
+    WHY: Ensure address format is valid before processing
+    HOW: Check format and convert to checksummed address
 
     Args:
-        address: Ethereum address (0x...)
+        address: Ethereum address to validate
 
-    Returns: Message to sign and nonce
-    \"\"\"
+    Returns:
+        Checksummed address
 
-    # Step 1: Validate address format
-    if not address.startswith("0x") or len(address) != 42:
-        raise HTTPException(400, "Invalid Ethereum address")
-            WHY: Ensure it's a valid format
+    Raises:
+        HTTPException(400): If address format is invalid
 
-    # Step 2: Normalize address (checksummed)
-    address = Account.to_checksum_address(address)
-        WHY: Ethereum addresses are case-insensitive but checksummed for validation
+    Example:
+        >>> validate_evm_address("0x742d35cc6634c0532925a3b844bc9e7595f0beb")
+        '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb'
+    """
+    # Step 1: Basic format validation
+    if not address or not isinstance(address, str):
+        raise HTTPException(
+            status_code=400,
+            detail="Address is required and must be a string"
+        )
 
-    # Step 3: Generate random nonce
-    nonce = secrets.token_urlsafe(32)
-        WHY: Cryptographically secure random string
-        HOW: Prevents replay attacks
+    if not address.startswith("0x"):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid Ethereum address: must start with '0x'"
+        )
 
-    # Step 4: Store nonce in Redis
-    store_nonce(address, nonce, "evm")
-        WHY: Need to verify same nonce in next step
-        HOW: Expires in 5 minutes (configurable)
+    if len(address) != 42:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid Ethereum address: must be 42 characters (0x + 40 hex chars)"
+        )
 
-    # Step 5: Create EIP-4361 compliant message
-    message = f\"\"\"privexbot.com wants you to sign in with your Ethereum account:
+    # Step 2: Normalize to checksummed address
+    # WHY: Ethereum addresses are case-insensitive but have checksum encoding
+    # HOW: Web3.to_checksum_address validates hex and applies EIP-55 checksum
+    try:
+        checksummed_address = Web3.to_checksum_address(address)
+        return checksummed_address
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid Ethereum address: {str(e)}"
+        )
+
+
+async def request_challenge(address: str) -> Dict[str, str]:
+    """
+    Generate a challenge message for EVM wallet authentication.
+
+    WHY: Implement challenge-response pattern for secure wallet auth
+    HOW: Generate nonce, store in Redis, create EIP-4361 compliant message
+
+    Args:
+        address: Ethereum address requesting challenge
+
+    Returns:
+        Dictionary with "message" (to sign) and "nonce"
+
+    Raises:
+        HTTPException(400): If address format is invalid
+
+    Security Notes:
+        - Nonce expires in 5 minutes (NONCE_EXPIRE_SECONDS)
+        - Single-use nonce prevents replay attacks
+        - EIP-4361 format prevents phishing
+
+    Example:
+        >>> challenge = await request_challenge("0x742d35Cc...")
+        >>> challenge.keys()
+        dict_keys(['message', 'nonce'])
+        >>> "privexbot.com" in challenge["message"]
+        True
+    """
+    # Step 1: Validate and normalize address
+    address = validate_evm_address(address)
+
+    # Step 2: Generate cryptographically secure nonce
+    nonce = generate_nonce()
+    # WHY: Unique challenge prevents replay attacks
+    # HOW: secrets.token_hex(16) generates 32 hex chars
+
+    # Step 3: Store nonce in Redis with expiration
+    store_nonce(address.lower(), nonce, "evm")
+    # WHY store lowercase: Consistent lookup (addresses are case-insensitive)
+    # WHY Redis: Fast lookup and automatic expiration (5 min)
+
+    # Step 4: Create EIP-4361 (Sign-In with Ethereum) compliant message
+    # WHY EIP-4361: Standard format users recognize, prevents phishing
+    issued_at = datetime.utcnow().isoformat() + "Z"
+
+    message = f"""privexbot.com wants you to sign in with your Ethereum account:
 {address}
 
 Please sign this message to authenticate with PrivexBot.
@@ -60,11 +124,11 @@ URI: https://privexbot.com
 Version: 1
 Chain ID: 1
 Nonce: {nonce}
-Issued At: {datetime.utcnow().isoformat()}Z\"\"\"
-
-    WHY EIP-4361: Standard format prevents phishing
-    WHY include domain: User sees what they're signing into
-    WHY nonce: Prevents replay attacks
+Issued At: {issued_at}
+"""
+    # WHY include domain: User sees what site they're signing into
+    # WHY include nonce: Unique per request, prevents replay
+    # WHY include timestamp: Additional uniqueness and audit trail
 
     return {
         "message": message,
@@ -76,113 +140,258 @@ async def verify_signature(
     address: str,
     signed_message: str,
     signature: str,
-    db: Session
+    db: Session,
+    username: str = None
 ) -> User:
-    \"\"\"
-    WHY: Verify wallet signature and authenticate user
-    HOW: Use eth_account to verify cryptographic signature
+    """
+    Verify EVM wallet signature and authenticate/create user.
+
+    WHY: Cryptographically prove wallet ownership without passwords
+    HOW: Recover signer from signature, verify matches claimed address
 
     Args:
-        address: Ethereum address (0x...)
+        address: Ethereum address that allegedly signed
         signed_message: The exact message that was signed
-        signature: Hex signature from wallet
+        signature: Hex signature from wallet (0x...)
+        db: Database session
+        username: Optional custom username for new users
 
-    Returns: User object
-    Raises: HTTPException if signature invalid
-    \"\"\"
+    Returns:
+        User object (existing or newly created)
 
-    # Step 1: Normalize address
-    address = Account.to_checksum_address(address)
+    Raises:
+        HTTPException(400): If nonce expired/invalid or message mismatch
+        HTTPException(401): If signature verification fails
+        HTTPException(401): If account is inactive
 
-    # Step 2: Get nonce from Redis (also deletes it)
-    nonce = get_nonce(address, "evm")
-        WHY getdel: Single-use nonce prevents replay
+    Security Notes:
+        - Nonce is single-use (deleted after retrieval)
+        - Signature recovery proves private key ownership
+        - No password needed - cryptographic proof
+
+    Example:
+        >>> user = await verify_signature(
+        ...     "0x742d35Cc...",
+        ...     "privexbot.com wants you to...",
+        ...     "0xabc123...",
+        ...     db
+        ... )
+        >>> user.username
+        'user_0x742d35'
+    """
+    # Step 1: Validate and normalize address
+    address = validate_evm_address(address)
+
+    # Step 2: Retrieve nonce from Redis (single-use)
+    # WHY getdel: Atomic get-and-delete prevents reuse
+    nonce = get_nonce(address.lower(), "evm")
 
     if not nonce:
-        raise HTTPException(400, "Nonce expired or invalid. Request new challenge.")
-            WHY: Nonce may have expired (5 min) or already used
+        raise HTTPException(
+            status_code=400,
+            detail="Nonce expired or invalid. Please request a new challenge."
+        )
+    # WHY: Nonce may have expired (5 min) or already been used
 
-    # Step 3: Verify nonce matches message
+    # Step 3: Verify nonce is in the signed message
     if nonce not in signed_message:
-        raise HTTPException(400, "Message does not match challenge")
-            WHY: Ensure they signed OUR message, not some other message
+        raise HTTPException(
+            status_code=400,
+            detail="Message does not contain the expected nonce"
+        )
+    # WHY: Ensure they signed OUR challenge, not some other message
 
     # Step 4: Encode message for signature verification
+    # WHY: Ethereum wallets prepend "\x19Ethereum Signed Message:\n{len}"
+    # HOW: encode_defunct adds this prefix automatically
     message_hash = encode_defunct(text=signed_message)
-        WHY: Ethereum prepends "\x19Ethereum Signed Message:\n{len(message)}"
-        HOW: encode_defunct handles this formatting
 
     # Step 5: Recover signer address from signature
-    recovered_address = Account.recover_message(message_hash, signature=signature)
-        WHY: Cryptographically prove who signed the message
-        HOW: Uses ECDSA signature recovery
+    try:
+        recovered_address = Account.recover_message(
+            message_hash,
+            signature=signature
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=401,
+            detail=f"Signature verification failed: {str(e)}"
+        )
+    # WHY: ECDSA signature recovery proves who signed
+    # HOW: Uses public key cryptography (no private key needed)
 
     # Step 6: Verify recovered address matches claimed address
     if recovered_address.lower() != address.lower():
-        raise HTTPException(401, "Signature verification failed")
-            WHY: Someone tried to use signature from different wallet
+        raise HTTPException(
+            status_code=401,
+            detail="Signature verification failed: address mismatch"
+        )
+    # WHY: Prevents someone from using another wallet's signature
 
-    # Step 7: Find or create user
+    # Step 7: Find existing auth identity or create new user
     auth_identity = db.query(AuthIdentity).filter(
         AuthIdentity.provider == "evm",
         AuthIdentity.provider_id == address.lower()
     ).first()
 
     if auth_identity:
-        # Existing user - log them in
-        user = db.query(User).filter(User.id == auth_identity.user_id).first()
+        # Existing user - authenticate them
+        user = db.query(User).filter(
+            User.id == auth_identity.user_id
+        ).first()
 
-        if not user.is_active:
-            raise HTTPException(401, "Account is inactive")
+        if not user or not user.is_active:
+            raise HTTPException(
+                status_code=401,
+                detail="Account is inactive"
+            )
+            # WHY: Soft delete - allow disabling accounts
+
+        return user
 
     else:
         # New user - create account
-        username = f"user_{address[:8]}"  # Default username
-            WHY: Need some username, user can change later
+        # Generate default username if not provided
+        if not username:
+            username = f"user_{address[:8].lower()}"
+            # WHY: Need some username, user can change later
+            # Format: "user_0x742d35"
 
-        user = User(username=username, is_active=True)
+        # Check if username already taken
+        existing_user = db.query(User).filter(
+            User.username == username
+        ).first()
+
+        if existing_user:
+            # If default username taken, add random suffix
+            import secrets
+            username = f"{username}_{secrets.token_hex(4)}"
+
+        # Create user
+        user = User(
+            username=username,
+            is_active=True
+        )
         db.add(user)
-        db.flush()
+        db.flush()  # Get user.id without committing
 
+        # Create auth identity linking wallet to user
         auth_identity = AuthIdentity(
             user_id=user.id,
             provider="evm",
             provider_id=address.lower(),  # Store lowercase for consistency
             data={
-                "address": address,  # Store checksummed version for display
+                "address": address,  # Store checksummed for display
                 "first_login": datetime.utcnow().isoformat()
             }
         )
         db.add(auth_identity)
         db.commit()
+        db.refresh(user)
 
-    return user
+        return user
 
 
-SECURITY NOTES:
----------------
-WHY nonce:
-    - Prevents replay attacks
-    - Single-use ensures old signatures can't be reused
-    - Time-limited (5 min expiration)
+async def link_evm_to_user(
+    user_id: str,
+    address: str,
+    signed_message: str,
+    signature: str,
+    db: Session
+) -> AuthIdentity:
+    """
+    Link an EVM wallet to an existing user account.
 
-WHY verify recovered address:
-    - Cryptographic proof of ownership
-    - Can't fake without private key
-    - User proves they own the wallet
+    WHY: Allow users to add wallet auth to email-only accounts
+    HOW: Verify signature, create new AuthIdentity for existing user
 
-WHY EIP-4361:
-    - Standard format users recognize
-    - Prevents phishing (users see domain)
-    - Industry best practice
+    Args:
+        user_id: UUID of existing user
+        address: Ethereum address to link
+        signed_message: Signed challenge message
+        signature: Signature from wallet
+        db: Database session
 
-EXAMPLE FLOW:
--------------
-1. Frontend: "Connect Wallet" -> MetaMask returns address
-2. Frontend -> Backend: GET /auth/evm/challenge?address=0x123...
-3. Backend: Generate nonce, store in Redis, return message
-4. Frontend: Prompt MetaMask to sign message
-5. User: Approves signature in MetaMask
-6. Frontend -> Backend: POST /auth/evm/verify {address, message, signature}
-7. Backend: Verify signature, get/create user, return JWT
-"""
+    Returns:
+        Created AuthIdentity object
+
+    Raises:
+        HTTPException(400): If wallet already linked to another account
+        HTTPException(404): If user not found
+        HTTPException(401): If signature verification fails
+
+    Example:
+        >>> # User signed up with email, now wants to add MetaMask
+        >>> auth_id = await link_evm_to_user(
+        ...     user.id,
+        ...     "0x742d35Cc...",
+        ...     "privexbot.com wants...",
+        ...     "0xabc123...",
+        ...     db
+        ... )
+    """
+    # Step 1: Validate address and verify signature (reuse verification logic)
+    address = validate_evm_address(address)
+
+    # Step 2: Verify signature (without creating new user)
+    nonce = get_nonce(address.lower(), "evm")
+    if not nonce:
+        raise HTTPException(
+            status_code=400,
+            detail="Nonce expired or invalid. Please request a new challenge."
+        )
+
+    if nonce not in signed_message:
+        raise HTTPException(
+            status_code=400,
+            detail="Message does not contain the expected nonce"
+        )
+
+    message_hash = encode_defunct(text=signed_message)
+    try:
+        recovered_address = Account.recover_message(message_hash, signature=signature)
+    except Exception as e:
+        raise HTTPException(
+            status_code=401,
+            detail=f"Signature verification failed: {str(e)}"
+        )
+
+    if recovered_address.lower() != address.lower():
+        raise HTTPException(
+            status_code=401,
+            detail="Signature verification failed: address mismatch"
+        )
+
+    # Step 3: Check if user exists
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Step 4: Check if wallet already linked (to anyone)
+    existing_wallet = db.query(AuthIdentity).filter(
+        AuthIdentity.provider == "evm",
+        AuthIdentity.provider_id == address.lower()
+    ).first()
+
+    if existing_wallet:
+        raise HTTPException(
+            status_code=400,
+            detail="This wallet is already linked to an account"
+        )
+
+    # Step 5: Create auth identity linking wallet to user
+    auth_identity = AuthIdentity(
+        user_id=user_id,
+        provider="evm",
+        provider_id=address.lower(),
+        data={
+            "address": address,
+            "linked_at": datetime.utcnow().isoformat()
+        }
+    )
+
+    db.add(auth_identity)
+    db.commit()
+    db.refresh(auth_identity)
+
+    return auth_identity

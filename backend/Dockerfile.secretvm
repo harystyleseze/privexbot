@@ -32,6 +32,10 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 # Install production web server
 RUN pip install --no-cache-dir gunicorn uvicorn[standard]
 
+# Copy entrypoint script
+COPY scripts/docker/entrypoint-prod.sh /app/scripts/
+RUN chmod +x /app/scripts/entrypoint-prod.sh
+
 # Copy application code
 COPY src/ ./src/
 
@@ -50,10 +54,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
 
-# Run with gunicorn + uvicorn workers
-CMD ["gunicorn", "src.app.main:app", \
-     "--workers", "4", \
-     "--worker-class", "uvicorn.workers.UvicornWorker", \
-     "--bind", "0.0.0.0:8000", \
-     "--access-logfile", "-", \
-     "--error-logfile", "-"]
+# Run entrypoint script (handles migrations and starts gunicorn)
+CMD ["/app/scripts/entrypoint-prod.sh"]
