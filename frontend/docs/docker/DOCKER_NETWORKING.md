@@ -137,7 +137,7 @@ VITE_API_BASE_URL=http://localhost:8000/api/v1
 ```bash
 VITE_API_BASE_URL=https://api.privexbot.com/api/v1
 # or
-VITE_API_BASE_URL=https://api.harystyles.shop/api/v1
+VITE_API_BASE_URL=https://api.harystyles.store/api/v1
 ```
 
 **How it works:**

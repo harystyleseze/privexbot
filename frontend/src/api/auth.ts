@@ -12,6 +12,7 @@
  */
 
 import axios, { AxiosInstance } from "axios";
+import { config } from "@/config/env";
 import type {
   Token,
   EmailSignupRequest,
@@ -24,13 +25,14 @@ import type {
   UserProfile,
 } from "@/types/auth";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
+// Use centralized config for consistent environment variable access
+const API_BASE_URL = config.API_BASE_URL;
 
 // Log API configuration for debugging
 console.log("[AuthAPI] Configuration:", {
   API_BASE_URL,
-  environment: import.meta.env.VITE_ENV || "unknown",
-  mode: import.meta.env.MODE,
+  environment: config.ENVIRONMENT,
+  isProduction: config.IS_PRODUCTION,
 });
 
 class AuthApiClient {

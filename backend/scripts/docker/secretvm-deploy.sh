@@ -87,7 +87,7 @@ case $COMMAND in
         echo "     PGADMIN_PASSWORD=\$(openssl rand -base64 24)"
         echo ""
         echo "  2. Update CORS origins with your frontend domain:"
-        echo "     BACKEND_CORS_ORIGINS=https://harystyles.shop,https://api.harystyles.shop,https://pgadmin.harystyles.shop,https://redis-ui.harystyles.shop,https://traefik.harystyles.shop,https://sapphire-finch.vm.scrtlabs.com,https://api.sapphire-finch.vm.scrtlabs.com,https://silver-hedgehog.vm.scrtlabs.com"
+        echo "     BACKEND_CORS_ORIGINS=https://harystyles.store,https://api.harystyles.store,https://pgadmin.harystyles.store,https://redis-ui.harystyles.store,https://traefik.harystyles.store,https://sapphire-finch.vm.scrtlabs.com,https://api.sapphire-finch.vm.scrtlabs.com,https://silver-hedgehog.vm.scrtlabs.com"
         echo ""
         echo -e "${GREEN}Next step: Upload deploy/secretvm/.env to SecretVM Dev Portal${NC}"
         ;;

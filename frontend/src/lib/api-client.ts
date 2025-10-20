@@ -14,8 +14,10 @@
  */
 
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { config } from '@/config/env';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+// Use centralized config for consistent environment variable access
+const API_BASE_URL = config.API_BASE_URL;
 
 // Create axios instance
 export const apiClient = axios.create({
