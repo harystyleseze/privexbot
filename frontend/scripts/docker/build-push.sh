@@ -227,9 +227,9 @@ main() {
 
     log_success "All steps completed successfully!"
     log_info "Next steps:"
-    log_info "  1. Update docker-compose.prod.yml with the digest above"
-    log_info "  2. Commit and push the updated docker-compose.prod.yml"
-    log_info "  3. Deploy to production: docker compose -f docker-compose.prod.yml up -d"
+    log_info "  1. Update docker-compose.secretvm.yml with the digest above"
+    log_info "  2. Commit and push the updated docker-compose.secretvm.yml"
+    log_info "  3. Deploy to production: docker compose -f docker-compose.secretvm.yml up -d"
 }
 
 # Run main function

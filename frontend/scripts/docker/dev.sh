@@ -58,9 +58,28 @@ EOF
 # Start development environment
 dev_up() {
     log_info "Starting development environment..."
+
+    # Note: Backend must be running for API calls to work
+    # Check if backend is accessible
+    if ! curl -s http://localhost:8000/api/v1/auth/email/login > /dev/null 2>&1; then
+        log_warning "Backend not accessible at http://localhost:8000"
+        log_warning "Please start backend first:"
+        log_warning "  cd ../backend && ./scripts/docker/dev.sh up"
+        echo ""
+        read -p "Continue anyway? (y/N): " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            log_info "Cancelled"
+            exit 1
+        fi
+    else
+        log_success "Backend is running and accessible"
+    fi
+
     docker compose -f "$COMPOSE_FILE" up --build -d
     log_success "Development environment started"
     log_info "Frontend available at: http://localhost:5173"
+    log_info "Browser makes API calls to: http://localhost:8000/api/v1"
     log_info "View logs: ./scripts/docker/dev.sh logs"
 }
 

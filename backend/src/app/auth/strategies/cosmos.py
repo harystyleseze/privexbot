@@ -1,67 +1,128 @@
 """
-Cosmos wallet authentication strategy (Keplr, Cosmostation, etc.).
+Cosmos wallet authentication strategy.
 
-WHY:
-- Support Cosmos ecosystem (Secret Network runs on Cosmos)
-- Use secp256k1 signatures (same curve as Bitcoin/Ethereum)
-- Different address format (bech32: cosmos1..., secret1...)
+See implementation guide in /backend/docs/auth/ for full documentation.
+"""
 
-HOW:
-- Challenge-response with nonce
-- Verify secp256k1 signatures
-- Use cosmpy or cosmos SDK tools
-
-PSEUDOCODE:
------------
-from cosmpy.aerial.wallet import LocalWallet
-from cosmpy.crypto.address import Address
+# ACTUAL IMPLEMENTATION
+from sqlalchemy.orm import Session
+from fastapi import HTTPException
+from ecdsa import VerifyingKey, SECP256k1, BadSignatureError
+from datetime import datetime
+from typing import Dict
 import hashlib
 import base64
-from app.utils.redis import store_nonce, get_nonce
+import json
+from bech32 import bech32_decode, bech32_encode, convertbits
+
+from app.utils.redis import store_nonce, get_nonce, generate_nonce
 from app.models.user import User
 from app.models.auth_identity import AuthIdentity
-import secrets
 
-async def request_challenge(address: str) -> dict:
-    \"\"\"
-    WHY: Generate nonce for Cosmos wallet signing
-    HOW: Similar pattern to EVM and Solana
+
+def validate_cosmos_address(address: str) -> str:
+    """
+    Validate a Cosmos bech32 address format.
+
+    WHY: Ensure address is valid before processing
+    HOW: Decode bech32 and check prefix
 
     Args:
-        address: Cosmos address (bech32 format: cosmos1..., secret1...)
+        address: Cosmos address (bech32 format)
 
-    Returns: Message to sign and nonce
-    \"\"\"
+    Returns:
+        The validated address (unchanged)
 
-    # Step 1: Validate address format
-    if not (address.startswith("cosmos1") or address.startswith("secret1")):
-        raise HTTPException(400, "Invalid Cosmos address format")
-            WHY: Support mainnet addresses
-            NOTE: Can extend to support other Cosmos chains
+    Raises:
+        HTTPException(400): If address format is invalid
 
-    # Validate bech32 format
+    Example:
+        >>> validate_cosmos_address("cosmos1...")
+        'cosmos1...'
+        >>> validate_cosmos_address("secret1...")
+        'secret1...'
+    """
+    if not address or not isinstance(address, str):
+        raise HTTPException(
+            status_code=400,
+            detail="Address is required and must be a string"
+        )
+
+    # Check if address starts with supported prefix
+    # WHY: Support cosmos and secret networks (can extend)
+    supported_prefixes = ["cosmos1", "secret1"]
+    if not any(address.startswith(prefix) for prefix in supported_prefixes):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Address must start with one of: {', '.join(supported_prefixes)}"
+        )
+
+    # Validate bech32 encoding
     try:
-        Address(address)
-            WHY: cosmpy validates bech32 encoding
-    except:
-        raise HTTPException(400, "Invalid Cosmos address")
+        hrp, data = bech32_decode(address)
+        # WHY: bech32_decode validates checksum and format
 
-    # Step 2: Generate nonce
-    nonce = secrets.token_urlsafe(32)
+        if not hrp or not data:
+            raise ValueError("Invalid bech32 encoding")
 
-    # Step 3: Store in Redis
+        return address
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid Cosmos address: {str(e)}"
+        )
+
+
+async def request_challenge(address: str) -> Dict[str, str]:
+    """
+    Generate a challenge message for Cosmos wallet authentication.
+
+    WHY: Implement challenge-response pattern for secure wallet auth
+    HOW: Generate nonce, store in Redis, create message to sign
+
+    Args:
+        address: Cosmos address requesting challenge
+
+    Returns:
+        Dictionary with "message" (to sign) and "nonce"
+
+    Raises:
+        HTTPException(400): If address format is invalid
+
+    Security Notes:
+        - Nonce expires in 5 minutes (NONCE_EXPIRE_SECONDS)
+        - Single-use nonce prevents replay attacks
+
+    Example:
+        >>> challenge = await request_challenge("cosmos1...")
+        >>> challenge.keys()
+        dict_keys(['message', 'nonce'])
+    """
+    # Step 1: Validate address format
+    address = validate_cosmos_address(address)
+
+    # Step 2: Generate cryptographically secure nonce
+    nonce = generate_nonce()
+    # WHY: Unique challenge prevents replay attacks
+
+    # Step 3: Store nonce in Redis with expiration
     store_nonce(address, nonce, "cosmos")
+    # WHY Redis: Fast lookup and automatic expiration (5 min)
 
     # Step 4: Create message to sign
-    message = f\"\"\"Sign this message to authenticate with PrivexBot.
+    issued_at = datetime.utcnow().isoformat() + "Z"
+
+    message = f"""Sign this message to authenticate with PrivexBot.
 
 Address: {address}
 Nonce: {nonce}
-Timestamp: {datetime.utcnow().isoformat()}Z
+Timestamp: {issued_at}
 
-This will not trigger any transaction or cost any fees.\"\"\"
-
-    WHY clear message: Make intent obvious to user
+This will not trigger any transaction or cost any fees.
+"""
+    # WHY clear message: Make authentication intent obvious
+    # WHY "no fees": Reassure users this is just auth, not a transaction
 
     return {
         "message": message,
@@ -69,102 +130,318 @@ This will not trigger any transaction or cost any fees.\"\"\"
     }
 
 
+def derive_cosmos_address(pubkey_bytes: bytes, prefix: str) -> str:
+    """
+    Derive Cosmos address from public key.
+
+    WHY: Verify that provided public key matches claimed address
+    HOW: Follow Cosmos SDK address derivation (SHA256 -> RIPEMD160 -> bech32)
+
+    Args:
+        pubkey_bytes: Raw public key bytes (33 bytes compressed secp256k1)
+        prefix: Bech32 prefix (e.g., "cosmos", "secret")
+
+    Returns:
+        Bech32-encoded address
+
+    Raises:
+        Exception: If derivation fails
+
+    Address Derivation Steps:
+        1. SHA256 hash of public key
+        2. RIPEMD160 hash of SHA256 result
+        3. Convert bits for bech32 (8-bit to 5-bit)
+        4. Encode as bech32 with prefix
+
+    Example:
+        >>> pubkey = bytes.fromhex("02...")  # 33 bytes compressed pubkey
+        >>> derive_cosmos_address(pubkey, "cosmos")
+        'cosmos1...'
+    """
+    # Step 1: SHA256 hash of public key
+    sha256_hash = hashlib.sha256(pubkey_bytes).digest()
+
+    # Step 2: RIPEMD160 hash of SHA256 result
+    # WHY: Standard Bitcoin/Cosmos address derivation
+    ripemd160_hash = hashlib.new('ripemd160', sha256_hash).digest()
+
+    # Step 3: Convert from 8-bit bytes to 5-bit groups for bech32
+    # WHY: Bech32 encoding requires 5-bit groups
+    converted_bits = convertbits(ripemd160_hash, 8, 5)
+
+    if not converted_bits:
+        raise ValueError("Failed to convert bits for bech32 encoding")
+
+    # Step 4: Encode as bech32 with prefix
+    address = bech32_encode(prefix, converted_bits)
+
+    if not address:
+        raise ValueError("Failed to encode address as bech32")
+
+    return address
+
+
+def create_adr36_sign_doc(signer: str, data: str) -> bytes:
+    """
+    Create ADR-36 compliant sign doc for Keplr wallet signatures.
+
+    WHY: Keplr's signArbitrary wraps messages in ADR-36 format
+    HOW: Construct sign doc with specific structure, canonically encode, hash
+
+    Args:
+        signer: Bech32 address of the signer
+        data: The original message (will be base64-encoded)
+
+    Returns:
+        SHA256 hash of the canonical JSON encoding
+
+    ADR-36 Format:
+        The sign doc has all metadata fields set to empty/zero:
+        - chain_id: ""
+        - account_number: "0"
+        - sequence: "0"
+        - fee: {gas: "0", amount: []}
+        - memo: ""
+        - msgs: Contains the MsgSignData with signer and base64-encoded data
+
+    Example:
+        >>> sign_doc_hash = create_adr36_sign_doc("cosmos1...", "Hello World")
+        >>> len(sign_doc_hash)
+        32  # SHA256 hash is 32 bytes
+    """
+    # Step 1: Base64-encode the message data
+    # WHY: ADR-36 spec requires data to be base64-encoded
+    data_base64 = base64.b64encode(data.encode('utf-8')).decode('ascii')
+
+    # Step 2: Construct ADR-36 sign doc structure
+    sign_doc = {
+        "chain_id": "",
+        "account_number": "0",
+        "sequence": "0",
+        "fee": {
+            "gas": "0",
+            "amount": []
+        },
+        "msgs": [
+            {
+                "type": "sign/MsgSignData",
+                "value": {
+                    "signer": signer,
+                    "data": data_base64
+                }
+            }
+        ],
+        "memo": ""
+    }
+
+    # Step 3: Canonically encode as JSON
+    # WHY: Canonical encoding ensures consistent hashing (sorted keys, no whitespace)
+    canonical_json = json.dumps(
+        sign_doc,
+        separators=(',', ':'),  # No whitespace
+        sort_keys=True,  # Sorted keys for consistency
+        ensure_ascii=True
+    )
+
+    # Step 4: SHA256 hash the canonical JSON
+    # WHY: Cosmos signatures sign the hash of the sign doc
+    sign_doc_hash = hashlib.sha256(canonical_json.encode('utf-8')).digest()
+
+    return sign_doc_hash
+
+
 async def verify_signature(
     address: str,
     signed_message: str,
     signature: str,
-    public_key: str,  # NOTE: Cosmos wallets provide public key with signature
-    db: Session
+    public_key: str,
+    db: Session,
+    username: str = None
 ) -> User:
-    \"\"\"
-    WHY: Verify Cosmos wallet signature
-    HOW: Use secp256k1 signature verification
+    """
+    Verify Cosmos wallet signature and authenticate/create user.
+
+    WHY: Cryptographically prove wallet ownership using secp256k1
+    HOW: Verify pubkey matches address, then verify signature
 
     Args:
-        address: Cosmos address (bech32)
-        signed_message: Message that was signed
-        signature: Base64-encoded signature
-        public_key: Base64-encoded public key (provided by Keplr)
+        address: Cosmos address that allegedly signed
+        signed_message: The exact message that was signed
+        signature: Base64-encoded signature from wallet
+        public_key: Base64-encoded public key (Cosmos wallets provide this)
+        db: Database session
+        username: Optional custom username for new users
 
-    Returns: User object
+    Returns:
+        User object (existing or newly created)
 
-    NOTE: Unlike EVM, Cosmos wallets typically provide public key separately
-    \"\"\"
+    Raises:
+        HTTPException(400): If nonce expired/invalid, message mismatch, or pubkey mismatch
+        HTTPException(401): If signature verification fails
+        HTTPException(401): If account is inactive
 
-    # Step 1: Get and delete nonce
+    Security Notes:
+        - Nonce is single-use (deleted after retrieval)
+        - Public key must derive to claimed address
+        - secp256k1 signature verification proves ownership
+
+    Important: Unlike EVM (which recovers pubkey from signature), Cosmos
+    wallets provide the public key separately and we must verify it matches.
+
+    Example:
+        >>> user = await verify_signature(
+        ...     "cosmos1...",
+        ...     "Sign this message...",
+        ...     "bW9ja19zaWduYXR1cmU=",  # base64 signature
+        ...     "Ay1hY2tfcHVibGljX2tleQ==",  # base64 pubkey
+        ...     db
+        ... )
+    """
+    # Step 1: Validate address format
+    address = validate_cosmos_address(address)
+
+    # Step 2: Retrieve nonce from Redis (single-use)
     nonce = get_nonce(address, "cosmos")
 
     if not nonce:
-        raise HTTPException(400, "Nonce expired or invalid")
+        raise HTTPException(
+            status_code=400,
+            detail="Nonce expired or invalid. Please request a new challenge."
+        )
 
-    # Step 2: Verify nonce in message
+    # Step 3: Verify nonce is in the signed message
     if nonce not in signed_message:
-        raise HTTPException(400, "Message does not match challenge")
+        raise HTTPException(
+            status_code=400,
+            detail="Message does not contain the expected nonce"
+        )
 
-    # Step 3: Decode signature and public key
+    # Step 4: Decode signature and public key from base64
     try:
         signature_bytes = base64.b64decode(signature)
         pubkey_bytes = base64.b64decode(public_key)
-            WHY: Cosmos uses base64 encoding
-    except:
-        raise HTTPException(400, "Invalid signature or public key format")
+        # WHY base64: Standard encoding in Cosmos ecosystem
 
-    # Step 4: Verify public key matches address
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid signature or public key encoding: {str(e)}"
+        )
+
+    # Step 5: Verify public key derives to claimed address
+    # WHY: Prevents attacker from using different public key
     try:
-        # Derive address from public key
-        derived_address = derive_cosmos_address(pubkey_bytes, address[:6])
-            WHY: Verify they provided correct public key for claimed address
-            HOW: Hash pubkey, encode as bech32 with correct prefix
-            NOTE: address[:6] gets prefix like "cosmos" or "secret"
+        # Extract prefix from address (e.g., "cosmos" from "cosmos1...")
+        prefix = address.split('1')[0]
+
+        # Derive address from provided public key
+        derived_address = derive_cosmos_address(pubkey_bytes, prefix)
 
         if derived_address != address:
-            raise HTTPException(400, "Public key does not match address")
+            raise HTTPException(
+                status_code=400,
+                detail="Public key does not match address"
+            )
 
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(400, f"Address verification failed: {str(e)}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Address derivation failed: {str(e)}"
+        )
 
-    # Step 5: Verify signature using secp256k1
+    # Step 6: Verify signature using secp256k1 with ADR-36 format
     try:
-        from ecdsa import VerifyingKey, SECP256k1
-        from ecdsa.util import sigdecode_der
+        # Create verifying key from public key bytes
+        # WHY: secp256k1 is the curve used by Cosmos (same as Bitcoin/Ethereum)
+        verifying_key = VerifyingKey.from_string(
+            pubkey_bytes,
+            curve=SECP256k1
+        )
 
-        # Create verifying key from public key
-        vk = VerifyingKey.from_string(pubkey_bytes, curve=SECP256k1)
-            WHY: secp256k1 is the curve used by Cosmos (same as Bitcoin)
+        # Create ADR-36 sign doc hash
+        # WHY: Keplr's signArbitrary wraps the message in ADR-36 format before signing
+        sign_doc_hash = create_adr36_sign_doc(address, signed_message)
 
-        # Hash the message (SHA256)
-        message_hash = hashlib.sha256(signed_message.encode()).digest()
-            WHY: Cosmos signs hash of message, not message itself
+        # Debug logging
+        print(f"[DEBUG] Address: {address}")
+        print(f"[DEBUG] Message length: {len(signed_message)}")
+        print(f"[DEBUG] Signature length: {len(signature_bytes)}")
+        print(f"[DEBUG] Pubkey length: {len(pubkey_bytes)}")
+        print(f"[DEBUG] Sign doc hash: {sign_doc_hash.hex()[:32]}...")
 
-        # Verify signature
-        vk.verify(signature_bytes, message_hash, hashfunc=hashlib.sha256)
-            WHY: Cryptographically verify signature
-            THROWS: Exception if signature invalid
+        # Verify signature against the ADR-36 sign doc hash
+        # THROWS: BadSignatureError if signature doesn't match
+        # NOTE: sign_doc_hash is already SHA256 hashed, so we don't pass hashfunc
+        verifying_key.verify_digest(
+            signature_bytes,
+            sign_doc_hash
+        )
 
+        print(f"[DEBUG] Signature verification SUCCESS")
+
+    except BadSignatureError as e:
+        print(f"[DEBUG] BadSignatureError: {str(e)}")
+        raise HTTPException(
+            status_code=401,
+            detail="Signature verification failed: invalid signature"
+        )
     except Exception as e:
-        raise HTTPException(401, f"Signature verification failed: {str(e)}")
+        print(f"[DEBUG] Exception during verification: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=401,
+            detail=f"Signature verification failed: {str(e)}"
+        )
 
-    # Step 6: Find or create user (same pattern)
+    # Step 7: Find existing auth identity or create new user
     auth_identity = db.query(AuthIdentity).filter(
         AuthIdentity.provider == "cosmos",
         AuthIdentity.provider_id == address
     ).first()
 
     if auth_identity:
-        user = db.query(User).filter(User.id == auth_identity.user_id).first()
+        # Existing user - authenticate them
+        user = db.query(User).filter(
+            User.id == auth_identity.user_id
+        ).first()
 
-        if not user.is_active:
-            raise HTTPException(401, "Account is inactive")
+        if not user or not user.is_active:
+            raise HTTPException(
+                status_code=401,
+                detail="Account is inactive"
+            )
+
+        return user
 
     else:
-        # Create new user
-        username = f"user_{address[:12]}"
-            WHY: Cosmos addresses are longer, take more chars
+        # New user - create account
+        # Generate default username if not provided
+        if not username:
+            # WHY longer prefix: Cosmos addresses are longer, more readable
+            username = f"user_{address[:12].lower()}"
 
-        user = User(username=username, is_active=True)
+        # Check if username already taken
+        existing_user = db.query(User).filter(
+            User.username == username
+        ).first()
+
+        if existing_user:
+            # If default username taken, add random suffix
+            import secrets
+            username = f"{username}_{secrets.token_hex(4)}"
+
+        # Create user
+        user = User(
+            username=username,
+            is_active=True
+        )
         db.add(user)
-        db.flush()
+        db.flush()  # Get user.id without committing
 
+        # Create auth identity linking wallet to user
         auth_identity = AuthIdentity(
             user_id=user.id,
             provider="cosmos",
@@ -177,68 +454,132 @@ async def verify_signature(
         )
         db.add(auth_identity)
         db.commit()
+        db.refresh(user)
 
-    return user
-
-
-def derive_cosmos_address(pubkey_bytes: bytes, prefix: str) -> str:
-    \"\"\"
-    WHY: Derive Cosmos address from public key to verify ownership
-    HOW: Follows Cosmos SDK address derivation
-
-    Steps:
-    1. SHA256 hash of public key
-    2. RIPEMD160 hash of result
-    3. Encode as bech32 with prefix
-    \"\"\"
-    import hashlib
-    from bech32 import bech32_encode, convertbits
-
-    # SHA256 then RIPEMD160
-    sha = hashlib.sha256(pubkey_bytes).digest()
-    ripe = hashlib.new('ripemd160', sha).digest()
-
-    # Convert to bech32
-    converted = convertbits(ripe, 8, 5)
-    address = bech32_encode(prefix, converted)
-
-    return address
+        return user
 
 
-COSMOS SPECIFICS:
------------------
-WHY secp256k1:
-    - Same curve as Bitcoin and Ethereum (but different address format)
-    - Industry standard for crypto signatures
+async def link_cosmos_to_user(
+    user_id: str,
+    address: str,
+    signed_message: str,
+    signature: str,
+    public_key: str,
+    db: Session
+) -> AuthIdentity:
+    """
+    Link a Cosmos wallet to an existing user account.
 
-WHY bech32:
-    - Human-readable prefix (cosmos1, secret1, etc.)
-    - Error detection via checksum
-    - Used by Bitcoin SegWit and Cosmos
+    WHY: Allow users to add Cosmos wallet auth to email-only accounts
+    HOW: Verify signature and pubkey, create new AuthIdentity for existing user
 
-WHY public key required:
-    - Can't recover public key from signature alone (unlike EVM)
-    - Wallets provide it separately
-    - Need to verify it matches the address
+    Args:
+        user_id: UUID of existing user
+        address: Cosmos address to link
+        signed_message: Signed challenge message
+        signature: Base64-encoded signature from wallet
+        public_key: Base64-encoded public key from wallet
+        db: Database session
 
-SECURITY NOTES:
----------------
-WHY verify pubkey->address:
-    - Prevents someone using different public key
-    - Ensures cryptographic link between address and signature
+    Returns:
+        Created AuthIdentity object
 
-WHY SHA256 + RIPEMD160:
-    - Standard Cosmos SDK address derivation
-    - Same as Bitcoin address derivation
-    - Provides 160-bit security
+    Raises:
+        HTTPException(400): If wallet already linked to another account
+        HTTPException(404): If user not found
+        HTTPException(401): If signature verification fails
 
-EXAMPLE FLOW:
--------------
-1. Frontend: Connect Keplr wallet
-2. GET /auth/cosmos/challenge?address=cosmos1...
-3. Backend: Generate nonce, return message
-4. Frontend: Request Keplr to sign
-5. Keplr: Returns signature AND public key
-6. POST /auth/cosmos/verify {address, message, signature, public_key}
-7. Backend: Verify pubkey matches address, verify signature, return JWT
-"""
+    Example:
+        >>> # User signed up with email, now wants to add Keplr
+        >>> auth_id = await link_cosmos_to_user(
+        ...     user.id,
+        ...     "cosmos1...",
+        ...     "Sign this message...",
+        ...     "bW9ja19zaWduYXR1cmU=",
+        ...     "Ay1hY2tfcHVibGljX2tleQ==",
+        ...     db
+        ... )
+    """
+    # Step 1: Validate address and verify signature
+    address = validate_cosmos_address(address)
+
+    # Step 2: Verify signature (without creating new user)
+    nonce = get_nonce(address, "cosmos")
+    if not nonce:
+        raise HTTPException(
+            status_code=400,
+            detail="Nonce expired or invalid. Please request a new challenge."
+        )
+
+    if nonce not in signed_message:
+        raise HTTPException(
+            status_code=400,
+            detail="Message does not contain the expected nonce"
+        )
+
+    try:
+        signature_bytes = base64.b64decode(signature)
+        pubkey_bytes = base64.b64decode(public_key)
+
+        # Verify pubkey matches address
+        prefix = address.split('1')[0]
+        derived_address = derive_cosmos_address(pubkey_bytes, prefix)
+        if derived_address != address:
+            raise HTTPException(
+                status_code=400,
+                detail="Public key does not match address"
+            )
+
+        # Verify signature with ADR-36 format
+        verifying_key = VerifyingKey.from_string(pubkey_bytes, curve=SECP256k1)
+        sign_doc_hash = create_adr36_sign_doc(address, signed_message)
+        # NOTE: sign_doc_hash is already SHA256 hashed, use verify_digest
+        verifying_key.verify_digest(signature_bytes, sign_doc_hash)
+
+    except BadSignatureError:
+        raise HTTPException(
+            status_code=401,
+            detail="Signature verification failed"
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=401,
+            detail=f"Signature verification failed: {str(e)}"
+        )
+
+    # Step 3: Check if user exists
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Step 4: Check if wallet already linked (to anyone)
+    existing_wallet = db.query(AuthIdentity).filter(
+        AuthIdentity.provider == "cosmos",
+        AuthIdentity.provider_id == address
+    ).first()
+
+    if existing_wallet:
+        raise HTTPException(
+            status_code=400,
+            detail="This wallet is already linked to an account"
+        )
+
+    # Step 5: Create auth identity linking wallet to user
+    auth_identity = AuthIdentity(
+        user_id=user_id,
+        provider="cosmos",
+        provider_id=address,
+        data={
+            "address": address,
+            "public_key": public_key,
+            "linked_at": datetime.utcnow().isoformat()
+        }
+    )
+
+    db.add(auth_identity)
+    db.commit()
+    db.refresh(auth_identity)
+
+    return auth_identity
