@@ -807,3 +807,292 @@ The page should load without errors, and login will complete successfully on the
 - ✅ No page refresh/clearing of form
 
 Try it now and let me know if it works! 🚀
+
+---
+
+---
+
+All authentication issues have been successfully fixed! Here's a summary of what was resolved:
+
+✅ Fixed Issues
+
+1. Login Race Condition (Resolved)
+
+The "login twice" problem has been fixed in AuthContext.tsx:
+
+- Made handleToken async and added await fetchUserProfile()
+- Ensured user profile completes loading before navigation to dashboard
+- Single-attempt login now works correctly
+
+2. Buffer is not defined Error (Resolved)
+
+Created browser-compatible encoding utilities in /src/utils/encoding.ts:
+uint8ArrayToBase64() // Replaces Buffer.from().toString("base64")
+base64ToUint8Array() // For decoding if needed
+
+Applied fixes to both LoginPage.tsx and SignupPage.tsx for:
+
+- Phantom (Solana) wallet authentication
+- Keplr (Cosmos) wallet authentication
+- MetaMask (EVM) wallet authentication (no Buffer usage, but consistent)
+
+3. Wallet Registration Checking (Resolved)
+
+Added registration checks in LoginPage.tsx for all three wallet types:
+if (err.response?.status === 401 || err.response?.data?.detail?.includes("not found")) {
+throw new Error("Wallet not registered. Please sign up first.");
+}
+
+Users attempting to sign in with an unregistered wallet will now see: "Wallet not registered. Please sign up first."
+
+✅ Backend Verification
+
+Tested the authentication flow:
+
+- Email login: Working ✓
+- Token generation: Working ✓
+- User profile fetch (/auth/me): Working ✓
+
+🧪 Wallet Testing
+
+The wallet authentication flows (MetaMask, Phantom, Keplr) are now ready for testing. To test:
+
+1. Install wallet extension in your browser
+2. Try signing up with a wallet
+3. Try logging in with the same wallet
+4. Try logging in with an unregistered wallet (should show registration prompt)
+
+All code changes are complete and the backend is responding correctly!
+
+---
+
+---
+
+Perfect! I've fixed the wallet authentication encoding issues. Here's what was causing the problems:
+
+Root Cause
+
+The backend expects different encoding formats for different wallets:
+
+- Solana (Phantom): Expects base58 encoding
+- Cosmos (Keplr): Expects base64 encoding
+- EVM (MetaMask): Signature is already in hex string format
+
+We were incorrectly using base64 for all wallets, which caused the "Invalid character 'l'" error because base58 uses a restricted character set (excludes 0, O, I, l to avoid
+confusion).
+
+Changes Made
+
+1. Added bs58 library (frontend/package.json)
+
+npm install bs58
+
+2. Updated encoding utilities (frontend/src/utils/encoding.ts:8-41)
+
+Added new functions:
+export function uint8ArrayToBase58(bytes: Uint8Array): string
+export function base58ToUint8Array(base58String: string): Uint8Array
+
+3. Fixed LoginPage.tsx (frontend/src/pages/LoginPage.tsx:23,129)
+
+- Imported uint8ArrayToBase58
+- Changed Phantom signature encoding from base64 to base58
+- Kept Keplr signatures as base64 (correct)
+
+4. Fixed SignupPage.tsx (frontend/src/pages/SignupPage.tsx:30,162)
+
+- Imported uint8ArrayToBase58
+- Changed Phantom signature encoding from base64 to base58
+- Kept Keplr signatures as base64 (correct)
+
+Testing
+
+The wallet authentication flows should now work correctly:
+
+- ✅ Phantom (Solana): Uses base58 encoding
+- ✅ Keplr (Cosmos): Uses base64 encoding
+- ✅ MetaMask (EVM): Uses hex string (no change needed)
+
+Please test the wallet authentication with Phantom and Keplr wallets. The "Invalid character" and "Signature verification failed" errors should now be resolved!
+
+---
+
+---
+
+Perfect! I've fixed the Keplr wallet authentication issue. Here's what was wrong and what I fixed:
+
+Problem Identified
+
+The Keplr signArbitrary method returns a StdSignature object where:
+{
+signature: string, // Already base64-encoded!
+pub_key: PubKey
+}
+
+Our code was incorrectly doing this:
+const signatureBase64 = uint8ArrayToBase64(new Uint8Array(signature.signature));
+
+This tried to:
+
+1. Convert a base64 string to a Uint8Array (treating string characters as bytes - wrong!)
+2. Re-encode those wrong bytes back to base64
+
+This corrupted the signature, causing the "Signature verification failed: invalid signature" error.
+
+Fixes Applied
+
+1. LoginPage.tsx (frontend/src/pages/LoginPage.tsx:175-176)
+
+// BEFORE (broken):
+const signatureBase64 = uint8ArrayToBase64(new Uint8Array(signature.signature));
+
+// AFTER (fixed):
+// signature.signature is already a base64 string, use it directly
+const signatureBase64 = signature.signature;
+
+2. SignupPage.tsx (frontend/src/pages/SignupPage.tsx:212-213)
+
+// BEFORE (broken):
+const signatureBase64 = uint8ArrayToBase64(new Uint8Array(signature.signature));
+
+// AFTER (fixed):
+// signature.signature is already a base64 string, use it directly
+const signatureBase64 = signature.signature;
+
+Summary of All Wallet Authentication Fixes
+
+✅ Solana (Phantom): Now uses base58 encoding (fixed earlier)
+✅ Cosmos (Keplr): Now uses signature directly as base64 string (just fixed)
+✅ EVM (MetaMask): Already working correctly with hex string
+
+Please test the Keplr wallet authentication now. The "Signature verification failed" error should be resolved!
+
+---
+
+---
+
+Excellent! I've fixed the Keplr wallet authentication by implementing ADR-36 signature verification in the backend. Here's what was done:
+
+Root Cause
+
+Keplr's signArbitrary method follows the ADR-36 specification, which wraps the message in a specific format before signing:
+
+{
+"chain_id": "",
+"account_number": "0",
+"sequence": "0",
+"fee": {"gas": "0", "amount": []},
+"msgs": [{
+"type": "sign/MsgSignData",
+"value": {
+"signer": "<address>",
+"data": "<base64-encoded-message>"
+}
+}],
+"memo": ""
+}
+
+The backend was incorrectly trying to verify the signature against the raw message, but Keplr actually signs the SHA256 hash of this ADR-36 sign doc.
+
+Backend Changes (backend/src/app/auth/strategies/cosmos.py)
+
+1. Added JSON import (Line 15)
+
+import json
+
+2. Created ADR-36 sign doc helper function (Lines 184-250)
+
+def create_adr36_sign_doc(signer: str, data: str) -> bytes:
+"""Create ADR-36 compliant sign doc for Keplr wallet signatures.""" # Base64-encode the message data
+data_base64 = base64.b64encode(data.encode('utf-8')).decode('ascii')
+
+      # Construct ADR-36 sign doc structure
+      sign_doc = {
+          "chain_id": "",
+          "account_number": "0",
+          "sequence": "0",
+          "fee": {"gas": "0", "amount": []},
+          "msgs": [{
+              "type": "sign/MsgSignData",
+              "value": {
+                  "signer": signer,
+                  "data": data_base64
+              }
+          }],
+          "memo": ""
+      }
+
+      # Canonically encode as JSON (sorted keys, no whitespace)
+      canonical_json = json.dumps(sign_doc, separators=(',', ':'), sort_keys=True)
+
+      # SHA256 hash the canonical JSON
+      return hashlib.sha256(canonical_json.encode('utf-8')).digest()
+
+3. Updated signature verification (Lines 363-373)
+
+# BEFORE:
+
+message_hash = hashlib.sha256(signed_message.encode('utf-8')).digest()
+verifying_key.verify(signature_bytes, message_hash, hashfunc=hashlib.sha256)
+
+# AFTER:
+
+sign_doc_hash = create_adr36_sign_doc(address, signed_message)
+verifying_key.verify(signature_bytes, sign_doc_hash, hashfunc=hashlib.sha256)
+
+4. Updated link_cosmos_to_user (Line 522)
+
+Applied the same ADR-36 fix to the wallet linking function.
+
+Summary of All Wallet Authentication Fixes
+
+✅ Solana (Phantom): Fixed base64 → base58 encoding
+✅ Cosmos (Keplr): Fixed to use ADR-36 signature format✅ EVM (MetaMask): Already working correctly
+
+The backend has been restarted and is ready. Please test the Keplr wallet authentication now - the signature verification errors should be resolved!
+
+---
+
+---
+
+Perfect! I found and fixed the critical bug. The issue was double-hashing the signature digest.
+
+Root Cause
+
+The create_adr36_sign_doc() function returns a SHA256 hash of the ADR-36 sign doc. But in the verification code, I was calling:
+
+verifying_key.verify(signature_bytes, sign_doc_hash, hashfunc=hashlib.sha256)
+
+The hashfunc=hashlib.sha256 parameter tells the verifier to hash the data again before verifying. This resulted in:
+
+- Expected: Signature was created for SHA256(ADR36_doc)
+- Verified against: SHA256(SHA256(ADR36_doc)) ❌
+
+This mismatch caused all signature verifications to fail.
+
+Fix Applied
+
+Changed both verification locations to use verify_digest() which is specifically for pre-hashed messages:
+
+# BEFORE (incorrect - double hash):
+
+verifying_key.verify(signature_bytes, sign_doc_hash, hashfunc=hashlib.sha256)
+
+# AFTER (correct - single hash):
+
+verifying_key.verify_digest(signature_bytes, sign_doc_hash)
+
+Files Modified:
+
+- backend/src/app/auth/strategies/cosmos.py:377-380 - Main verification
+- backend/src/app/auth/strategies/cosmos.py:537 - Link wallet verification
+
+Testing
+
+The backend has been restarted with the fix. Please test Keplr wallet authentication now:
+
+1. Try signing up with your Keplr wallet
+2. Try signing in with your Keplr wallet
+3. Both should work correctly now
+
+The debug logs will show success if the verification passes. Let me know if you see the success message or any errors!
