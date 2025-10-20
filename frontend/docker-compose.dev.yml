@@ -1,6 +1,9 @@
 # Docker Compose for PrivexBot Frontend - Development Environment
 # Purpose: Local development with hot reload and live code changes
 # Usage: docker compose -f docker-compose.dev.yml up --build
+#
+# IMPORTANT: Backend must be running first to create the shared network
+# Run: cd ../backend && ./scripts/docker/dev.sh up
 
 services:
   frontend-dev:
@@ -20,14 +23,13 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
-      # Vite environment variables (optional, can be set in .env.local)
+      # Vite environment variables
+      # IMPORTANT: Use localhost because React is CLIENT-SIDE
+      # Browser cannot resolve Docker service names like "backend-dev"
+      # API calls come from your browser, not from the container
       - VITE_API_BASE_URL=http://localhost:8000/api/v1
       - VITE_WIDGET_CDN_URL=http://localhost:8080
       - VITE_ENV=development
     restart: unless-stopped
-    networks:
-      - privexbot-dev
-
-networks:
-  privexbot-dev:
-    driver: bridge
+    # Network removed - not needed for client-side React apps
+    # Browser makes API calls via localhost, not container-to-container

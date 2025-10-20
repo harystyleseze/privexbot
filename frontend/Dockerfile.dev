@@ -12,7 +12,8 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 
 # Install all dependencies (including devDependencies for development)
-RUN npm ci
+# Use --legacy-peer-deps to handle React 19 compatibility with react-leaflet
+RUN npm ci --legacy-peer-deps
 
 # Copy all source code
 # Note: In dev, we'll override this with volume mount for live reload

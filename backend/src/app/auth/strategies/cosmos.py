@@ -12,6 +12,7 @@ from datetime import datetime
 from typing import Dict
 import hashlib
 import base64
+import json
 from bech32 import bech32_decode, bech32_encode, convertbits
 
 from app.utils.redis import store_nonce, get_nonce, generate_nonce
@@ -180,6 +181,75 @@ def derive_cosmos_address(pubkey_bytes: bytes, prefix: str) -> str:
     return address
 
 
+def create_adr36_sign_doc(signer: str, data: str) -> bytes:
+    """
+    Create ADR-36 compliant sign doc for Keplr wallet signatures.
+
+    WHY: Keplr's signArbitrary wraps messages in ADR-36 format
+    HOW: Construct sign doc with specific structure, canonically encode, hash
+
+    Args:
+        signer: Bech32 address of the signer
+        data: The original message (will be base64-encoded)
+
+    Returns:
+        SHA256 hash of the canonical JSON encoding
+
+    ADR-36 Format:
+        The sign doc has all metadata fields set to empty/zero:
+        - chain_id: ""
+        - account_number: "0"
+        - sequence: "0"
+        - fee: {gas: "0", amount: []}
+        - memo: ""
+        - msgs: Contains the MsgSignData with signer and base64-encoded data
+
+    Example:
+        >>> sign_doc_hash = create_adr36_sign_doc("cosmos1...", "Hello World")
+        >>> len(sign_doc_hash)
+        32  # SHA256 hash is 32 bytes
+    """
+    # Step 1: Base64-encode the message data
+    # WHY: ADR-36 spec requires data to be base64-encoded
+    data_base64 = base64.b64encode(data.encode('utf-8')).decode('ascii')
+
+    # Step 2: Construct ADR-36 sign doc structure
+    sign_doc = {
+        "chain_id": "",
+        "account_number": "0",
+        "sequence": "0",
+        "fee": {
+            "gas": "0",
+            "amount": []
+        },
+        "msgs": [
+            {
+                "type": "sign/MsgSignData",
+                "value": {
+                    "signer": signer,
+                    "data": data_base64
+                }
+            }
+        ],
+        "memo": ""
+    }
+
+    # Step 3: Canonically encode as JSON
+    # WHY: Canonical encoding ensures consistent hashing (sorted keys, no whitespace)
+    canonical_json = json.dumps(
+        sign_doc,
+        separators=(',', ':'),  # No whitespace
+        sort_keys=True,  # Sorted keys for consistency
+        ensure_ascii=True
+    )
+
+    # Step 4: SHA256 hash the canonical JSON
+    # WHY: Cosmos signatures sign the hash of the sign doc
+    sign_doc_hash = hashlib.sha256(canonical_json.encode('utf-8')).digest()
+
+    return sign_doc_hash
+
+
 async def verify_signature(
     address: str,
     signed_message: str,
@@ -281,7 +351,7 @@ async def verify_signature(
             detail=f"Address derivation failed: {str(e)}"
         )
 
-    # Step 6: Verify signature using secp256k1
+    # Step 6: Verify signature using secp256k1 with ADR-36 format
     try:
         # Create verifying key from public key bytes
         # WHY: secp256k1 is the curve used by Cosmos (same as Bitcoin/Ethereum)
@@ -290,24 +360,37 @@ async def verify_signature(
             curve=SECP256k1
         )
 
-        # Hash the message with SHA256
-        # WHY: Cosmos signs the hash, not the raw message
-        message_hash = hashlib.sha256(signed_message.encode('utf-8')).digest()
+        # Create ADR-36 sign doc hash
+        # WHY: Keplr's signArbitrary wraps the message in ADR-36 format before signing
+        sign_doc_hash = create_adr36_sign_doc(address, signed_message)
 
-        # Verify signature
+        # Debug logging
+        print(f"[DEBUG] Address: {address}")
+        print(f"[DEBUG] Message length: {len(signed_message)}")
+        print(f"[DEBUG] Signature length: {len(signature_bytes)}")
+        print(f"[DEBUG] Pubkey length: {len(pubkey_bytes)}")
+        print(f"[DEBUG] Sign doc hash: {sign_doc_hash.hex()[:32]}...")
+
+        # Verify signature against the ADR-36 sign doc hash
         # THROWS: BadSignatureError if signature doesn't match
-        verifying_key.verify(
+        # NOTE: sign_doc_hash is already SHA256 hashed, so we don't pass hashfunc
+        verifying_key.verify_digest(
             signature_bytes,
-            message_hash,
-            hashfunc=hashlib.sha256
+            sign_doc_hash
         )
 
-    except BadSignatureError:
+        print(f"[DEBUG] Signature verification SUCCESS")
+
+    except BadSignatureError as e:
+        print(f"[DEBUG] BadSignatureError: {str(e)}")
         raise HTTPException(
             status_code=401,
             detail="Signature verification failed: invalid signature"
         )
     except Exception as e:
+        print(f"[DEBUG] Exception during verification: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(
             status_code=401,
             detail=f"Signature verification failed: {str(e)}"
@@ -447,10 +530,11 @@ async def link_cosmos_to_user(
                 detail="Public key does not match address"
             )
 
-        # Verify signature
+        # Verify signature with ADR-36 format
         verifying_key = VerifyingKey.from_string(pubkey_bytes, curve=SECP256k1)
-        message_hash = hashlib.sha256(signed_message.encode('utf-8')).digest()
-        verifying_key.verify(signature_bytes, message_hash, hashfunc=hashlib.sha256)
+        sign_doc_hash = create_adr36_sign_doc(address, signed_message)
+        # NOTE: sign_doc_hash is already SHA256 hashed, use verify_digest
+        verifying_key.verify_digest(signature_bytes, sign_doc_hash)
 
     except BadSignatureError:
         raise HTTPException(
