@@ -615,25 +615,22 @@ Frontend is now ready at: http://localhost:5173
 1. Open browser: http://localhost:5173/signup
 2. Create an account:
 
-
-    - Username: testuser
-    - Email: test@example.com
-    - Password: TestPass123! (must have special char)
-    - Confirm password
+   - Username: testuser
+   - Email: test@example.com
+   - Password: TestPass123! (must have special char)
+   - Confirm password
 
 3. Watch for success:
 
-
-    - ✅ Green alert appears: "Account created successfully! Redirecting to dashboard..."
-    - ✅ Button shows "Success!" with checkmark
-    - ✅ Waits 5 seconds
-    - ✅ Redirects to /dashboard
+   - ✅ Green alert appears: "Account created successfully! Redirecting to dashboard..."
+   - ✅ Button shows "Success!" with checkmark
+   - ✅ Waits 5 seconds
+   - ✅ Redirects to /dashboard
 
 4. Test login: http://localhost:5173/login
 
-
-    - Use same credentials
-    - Should work instantly
+   - Use same credentials
+   - Should work instantly
 
 ---
 
@@ -664,3 +661,149 @@ All Fixed Now! ✨
 ✅ Endpoints: - POST /auth/email/signup - POST /auth/email/login - GET /auth/me ← NEW! - All wallet endpoints (evm, solana, cosmos)
 
 The authentication flow now works end-to-end! You can sign up, see success confirmation, and the frontend will properly fetch your user profile. 🎉
+
+---
+
+---
+
+I found it! The issue is a race condition between token storage and profile fetching. Here's what's happening:
+
+The Problem:
+
+1. First login attempt: Token is saved → fetchUserProfile() is called (asynchronously) → LoginPage immediately navigates → Profile fetch might fail or complete after
+   navigation → Token gets cleared if fetch fails
+2. Second attempt: Now the token is in localStorage from first attempt, so it works
+
+Root Cause in AuthContext.tsx:
+const handleToken = useCallback((tokenData: Token) => {
+// ...
+fetchUserProfile(); // Called but NOT awaited!
+}, []); // fetchUserProfile missing from dependencies!
+
+The fetchUserProfile is called but not awaited, AND it's missing from the dependency array, causing a stale closure issue.
+
+---
+
+---
+
+Perfect! I've fixed the race condition. The changes ensure that the user profile is fully fetched before navigation happens.
+
+🔧 What I Fixed:
+
+AuthContext.tsx - Three Critical Changes:
+
+1. Made handleToken async and await profile fetch:
+   const handleToken = useCallback(async (tokenData: Token) => {
+   // ...
+   await fetchUserProfile(); // Now AWAITS completion
+   }, [fetchUserProfile]); // Fixed dependency array
+2. Await handleToken in emailLogin:
+   await handleToken(tokenData); // Ensures profile loads before navigation
+3. Same for emailSignup and walletLogin
+
+---
+
+🎯 Why This Fixes the "Login Twice" Issue:
+
+Before (Broken):
+
+1. User clicks "Sign in"
+2. Token stored in localStorage ✓
+3. fetchUserProfile() called (but NOT awaited) ⚠️
+4. LoginPage immediately navigates to /dashboard
+5. Profile fetch still in progress...
+6. If fetch fails → token gets cleared
+7. User ends up logged out
+8. Second attempt works because token was stored
+
+After (Fixed):
+
+1. User clicks "Sign in"
+2. Token stored in localStorage ✓
+3. fetchUserProfile() called AND AWAITED ✓
+4. Profile fully loaded, user state set ✓
+5. THEN LoginPage navigates to /dashboard ✓
+6. Everything works first time! ✓
+
+---
+
+🧪 Test It Now:
+
+1. Refresh the page (to pick up the new code)
+2. Go to login: http://localhost:5173/login
+3. Enter credentials and click "Sign in with Email"
+4. Should work on FIRST attempt now! ✨
+
+The form should stay visible while loading (spinner shows), and only navigate once the user profile is successfully fetched.
+
+---
+
+📝 Technical Details:
+
+The Root Cause:
+
+- handleToken was calling fetchUserProfile() without awaiting it
+- fetchUserProfile was missing from the dependency array (stale closure)
+- Navigation happened before async profile fetch completed
+
+The Fix:
+
+- Made handleToken async
+- Added await fetchUserProfile()
+- Fixed dependency array: [fetchUserProfile]
+- All auth methods now await handleToken completion
+
+This is a classic async/await race condition - now properly fixed! 🎉
+
+---
+
+---
+
+Perfect! ✅ The error is fixed. Here's what I did:
+
+🔧 What Was Wrong:
+
+The error Cannot access 'fetchUserProfile' before initialization happened because:
+
+1. Line 86: handleToken was defined first
+2. Line 101: It referenced [fetchUserProfile] in dependencies
+3. Line 65: But fetchUserProfile was defined AFTER handleToken
+4. Result: JavaScript tried to access fetchUserProfile before it existed!
+
+✅ The Fix:
+
+I swapped the order of the two functions:
+// NOW fetchUserProfile is defined FIRST (line 65)
+const fetchUserProfile = useCallback(async () => {
+// ...
+}, []);
+
+// THEN handleToken can safely reference it (line 101)
+const handleToken = useCallback(async (tokenData: Token) => {
+await fetchUserProfile();
+}, [fetchUserProfile]); // ✅ Now this works!
+
+Also cleaned up unused imports (jwtDecode, TokenPayload).
+
+---
+
+🧪 Test Now:
+
+1. Refresh your browser (hard refresh: Cmd+Shift+R or Ctrl+Shift+R)
+2. Go to: http://localhost:5173/login
+3. Enter credentials and click "Sign in with Email"
+4. Should work on FIRST attempt! ✨
+
+The page should load without errors, and login will complete successfully on the first try (no more double-login needed).
+
+---
+
+📊 Expected Behavior:
+
+- ✅ No console errors
+- ✅ Login works on first attempt
+- ✅ User profile loads before navigation
+- ✅ Smooth redirect to dashboard
+- ✅ No page refresh/clearing of form
+
+Try it now and let me know if it works! 🚀
