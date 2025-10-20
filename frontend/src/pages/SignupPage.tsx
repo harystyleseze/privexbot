@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Wallet, Mail, AlertCircle, Loader2, CheckCircle2, Check } from "lucide-react";
+import { uint8ArrayToBase58 } from "@/utils/encoding";
 
 export function SignupPage() {
   const navigate = useNavigate();
@@ -158,7 +159,7 @@ export function SignupPage() {
         encodedMessage,
         "utf8"
       );
-      const signature = Buffer.from(signedMessage.signature).toString("base64");
+      const signature = uint8ArrayToBase58(signedMessage.signature);
 
       // Verify signature with backend (creates account if new)
       await walletLogin("solana", {
@@ -194,7 +195,6 @@ export function SignupPage() {
       // Get account
       const key = await window.keplr.getKey(chainId);
       const address = key.bech32Address;
-      const publicKey = Buffer.from(key.pubKey).toString("base64");
 
       // Request challenge from backend
       const { authApi } = await import("@/api/auth");
@@ -203,14 +203,23 @@ export function SignupPage() {
       });
 
       // Sign message with Keplr
-      const signature = await window.keplr.signArbitrary(
+      const signatureResponse = await window.keplr.signArbitrary(
         chainId,
         address,
         challenge.message
       );
-      const signatureBase64 = Buffer.from(signature.signature).toString(
-        "base64"
-      );
+
+      // Use the public key from the signature response
+      // signatureResponse.pub_key.value is the base64-encoded public key
+      const publicKey = signatureResponse.pub_key.value;
+      const signatureBase64 = signatureResponse.signature;
+
+      console.log("[DEBUG] Keplr Signup:", {
+        address,
+        publicKeyLength: publicKey.length,
+        signatureLength: signatureBase64.length,
+        messageLength: challenge.message.length
+      });
 
       // Verify signature with backend (creates account if new)
       await walletLogin("cosmos", {

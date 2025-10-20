@@ -13,13 +13,10 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { jwtDecode } from "jwt-decode";
 import { authApi } from "@/api/auth";
 import type {
-  User,
   UserProfile,
   Token,
-  TokenPayload,
   EmailSignupRequest,
   EmailLoginRequest,
   WalletProvider,
@@ -60,26 +57,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isAuthenticated = !!user;
 
   /**
-   * Store token and decode user info
-   */
-  const handleToken = useCallback((tokenData: Token) => {
-    const { access_token, expires_in } = tokenData;
-
-    // Store token
-    localStorage.setItem("access_token", access_token);
-
-    // Calculate expiration time
-    const expiresAt = Date.now() + expires_in * 1000;
-    localStorage.setItem("token_expires_at", expiresAt.toString());
-
-    // Decode token to get user ID
-    const decoded = jwtDecode<TokenPayload>(access_token);
-
-    // Fetch full user profile
-    fetchUserProfile();
-  }, []);
-
-  /**
    * Fetch current user profile
    */
   const fetchUserProfile = useCallback(async () => {
@@ -101,6 +78,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   /**
+   * Store token and decode user info
+   */
+  const handleToken = useCallback(async (tokenData: Token) => {
+    const { access_token, expires_in } = tokenData;
+
+    // Store token
+    localStorage.setItem("access_token", access_token);
+
+    // Calculate expiration time
+    const expiresAt = Date.now() + expires_in * 1000;
+    localStorage.setItem("token_expires_at", expiresAt.toString());
+
+    // Fetch full user profile - AWAIT to ensure it completes
+    // (No need to decode token since we fetch full profile from API)
+    await fetchUserProfile();
+  }, [fetchUserProfile]); // Add fetchUserProfile to dependencies
+
+  /**
    * Email signup
    */
   const emailSignup = useCallback(
@@ -109,7 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(true);
         setError(null);
         const tokenData = await authApi.emailSignup(data);
-        handleToken(tokenData);
+        await handleToken(tokenData); // AWAIT to ensure profile is fetched
       } catch (err: any) {
         console.error("Signup error:", err);
 
@@ -146,7 +141,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(true);
         setError(null);
         const tokenData = await authApi.emailLogin(data);
-        handleToken(tokenData);
+        await handleToken(tokenData); // AWAIT to ensure profile is fetched before navigation
       } catch (err: any) {
         console.error("Login error:", err);
 
@@ -186,7 +181,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(true);
         setError(null);
         const tokenData = await authApi.verifyWalletSignature(provider, data);
-        handleToken(tokenData);
+        await handleToken(tokenData); // AWAIT to ensure profile is fetched
       } catch (err: any) {
         console.error("Wallet login error:", err);
 

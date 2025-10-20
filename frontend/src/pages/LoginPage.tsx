@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Wallet, Mail, AlertCircle, Loader2 } from "lucide-react";
+import { uint8ArrayToBase58 } from "@/utils/encoding";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -97,6 +98,10 @@ export function LoginPage() {
       if (err.code === 4001) {
         throw new Error("MetaMask signature request was rejected");
       }
+      // Check if wallet not registered
+      if (err.response?.status === 401 || err.response?.data?.detail?.includes("not found")) {
+        throw new Error("Wallet not registered. Please sign up first.");
+      }
       throw err;
     }
   };
@@ -121,7 +126,7 @@ export function LoginPage() {
       // Sign message with Phantom
       const encodedMessage = new TextEncoder().encode(challenge.message);
       const signedMessage = await window.solana.signMessage(encodedMessage, "utf8");
-      const signature = Buffer.from(signedMessage.signature).toString("base64");
+      const signature = uint8ArrayToBase58(signedMessage.signature);
 
       // Verify signature with backend
       await walletLogin("solana", {
@@ -134,6 +139,10 @@ export function LoginPage() {
     } catch (err: any) {
       if (err.code === 4001) {
         throw new Error("Phantom signature request was rejected");
+      }
+      // Check if wallet not registered
+      if (err.response?.status === 401 || err.response?.data?.detail?.includes("not found")) {
+        throw new Error("Wallet not registered. Please sign up first.");
       }
       throw err;
     }
@@ -155,15 +164,25 @@ export function LoginPage() {
       // Get account
       const key = await window.keplr.getKey(chainId);
       const address = key.bech32Address;
-      const publicKey = Buffer.from(key.pubKey).toString("base64");
 
       // Request challenge from backend
       const { authApi } = await import("@/api/auth");
       const challenge = await authApi.requestWalletChallenge("cosmos", { address });
 
       // Sign message with Keplr
-      const signature = await window.keplr.signArbitrary(chainId, address, challenge.message);
-      const signatureBase64 = Buffer.from(signature.signature).toString("base64");
+      const signatureResponse = await window.keplr.signArbitrary(chainId, address, challenge.message);
+
+      // Use the public key from the signature response
+      // signatureResponse.pub_key.value is the base64-encoded public key
+      const publicKey = signatureResponse.pub_key.value;
+      const signatureBase64 = signatureResponse.signature;
+
+      console.log("[DEBUG] Keplr Login:", {
+        address,
+        publicKeyLength: publicKey.length,
+        signatureLength: signatureBase64.length,
+        messageLength: challenge.message.length
+      });
 
       // Verify signature with backend
       await walletLogin("cosmos", {
@@ -177,6 +196,10 @@ export function LoginPage() {
     } catch (err: any) {
       if (err.message.includes("Request rejected")) {
         throw new Error("Keplr signature request was rejected");
+      }
+      // Check if wallet not registered
+      if (err.response?.status === 401 || err.response?.data?.detail?.includes("not found")) {
+        throw new Error("Wallet not registered. Please sign up first.");
       }
       throw err;
     }
