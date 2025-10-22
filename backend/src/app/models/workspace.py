@@ -111,3 +111,104 @@ EXAMPLE:
         ]
     }
 """
+
+# ACTUAL IMPLEMENTATION
+from sqlalchemy import Column, String, Text, DateTime, Boolean, ForeignKey, UniqueConstraint, Index
+from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.orm import relationship
+from app.db.base_class import Base
+import uuid
+from datetime import datetime
+
+
+class Workspace(Base):
+    """
+    Workspace model - Subdivision within an organization.
+
+    Workspaces organize resources (chatbots, chatflows, knowledge bases) within an organization.
+    Each workspace has its own members with specific roles (admin, editor, viewer).
+
+    Examples: "Customer Support", "Marketing", "Sales", "Engineering"
+    """
+    __tablename__ = "workspaces"
+
+    # Primary key
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Parent organization (CRITICAL for tenancy)
+    organization_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    # Workspace info
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+
+    # Workspace settings (JSONB for flexibility)
+    settings = Column(JSONB, nullable=False, default=dict, server_default='{}')
+    # settings structure:
+    # {
+    #     "theme": {"color": "#3B82F6", "icon": "briefcase"},
+    #     "defaults": {"chatbot_model": "secret-ai-v1", "enable_analytics": true},
+    #     "integrations": {"slack_channel": "#support", "webhook_url": "https://..."}
+    # }
+
+    # Default workspace flag (each org has one default workspace)
+    is_default = Column(Boolean, nullable=False, default=False)
+
+    # Creator tracking
+    created_by = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    # Constraints
+    __table_args__ = (
+        UniqueConstraint('organization_id', 'name', name='uq_workspace_org_name'),
+        Index('idx_workspace_org', 'organization_id'),
+        Index('idx_workspace_created_by', 'created_by'),
+    )
+
+    # Relationships
+    organization = relationship("Organization", back_populates="workspaces")
+    creator = relationship("User", foreign_keys=[created_by])
+
+    members = relationship(
+        "WorkspaceMember",
+        back_populates="workspace",
+        cascade="all, delete-orphan",
+        lazy="dynamic"
+    )
+
+    # Resources in this workspace
+    # NOTE: These relationships will be defined when the models exist
+    # chatbots = relationship("Chatbot", back_populates="workspace", cascade="all, delete-orphan")
+    # chatflows = relationship("Chatflow", back_populates="workspace", cascade="all, delete-orphan")
+    # knowledge_bases = relationship("KnowledgeBase", back_populates="workspace", cascade="all, delete-orphan")
+    # leads = relationship("Lead", back_populates="workspace", cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return f"<Workspace(id={self.id}, name={self.name}, org_id={self.organization_id})>"
+
+    @property
+    def member_count(self) -> int:
+        """Get count of workspace members"""
+        return self.members.count()
+
+    @property
+    def resource_count(self) -> dict:
+        """Get count of resources in workspace (when relationships defined)"""
+        return {
+            "chatbots": 0,  # Will be len(self.chatbots) when defined
+            "chatflows": 0,  # Will be len(self.chatflows) when defined
+            "knowledge_bases": 0,  # Will be len(self.knowledge_bases) when defined
+            "leads": 0  # Will be len(self.leads) when defined
+        }
