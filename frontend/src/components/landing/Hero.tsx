@@ -14,7 +14,7 @@ export function Hero() {
   const { actualTheme } = useTheme();
 
   // Different gradient backgrounds for light and dark mode
-  // Using PrivexBot brand colors: Primary #4361EE, Secondary #C0ECFB
+  // Using PrivexBot brand colors: Primary #3b82f6, Secondary #8b5cf6
   const getBackgroundStyle = () => {
     if (actualTheme === "dark") {
       return {
@@ -37,7 +37,7 @@ export function Hero() {
           className="px-6 py-10 text-foreground"
         >
           <ContainerAnimated className="space-y-4 text-center">
-            <h1 className="text-5xl font-bold tracking-tight md:text-6xl">
+            <h1 className="text-5xl font-semibold tracking-tight md:text-6xl">
               Build Privacy-First AI Chatbots
             </h1>
             <p className="mx-auto max-w-[54ch] text-lg text-muted-foreground">
@@ -77,7 +77,7 @@ export function Hero() {
           >
             <div className="flex items-center gap-2">
               <svg
-                className="h-5 w-5 text-green-500"
+                className="h-5 w-5 text-success-500"
                 fill="currentColor"
                 viewBox="0 0 20 20"
               >
@@ -91,7 +91,7 @@ export function Hero() {
             </div>
             <div className="flex items-center gap-2">
               <svg
-                className="h-5 w-5 text-green-500"
+                className="h-5 w-5 text-success-500"
                 fill="currentColor"
                 viewBox="0 0 20 20"
               >
@@ -105,7 +105,7 @@ export function Hero() {
             </div>
             <div className="flex items-center gap-2">
               <svg
-                className="h-5 w-5 text-green-500"
+                className="h-5 w-5 text-success-500"
                 fill="currentColor"
                 viewBox="0 0 20 20"
               >

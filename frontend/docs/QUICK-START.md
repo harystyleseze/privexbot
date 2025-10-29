@@ -99,63 +99,8 @@ For secure production deployment with TLS.
 
 ### Quick Deploy
 
-#### 1. SSH into SecretVM
+````
 
-```bash
-ssh user@silver-hedgehog.vm.scrtlabs.com
-```
-
-#### 2. Navigate to Docker Directory
-
-```bash
-cd /mnt/secure/docker_wd/
-```
-
-#### 3. Upload docker-compose.yml
-
-From your local machine:
-
-```bash
-scp docker-compose.secretvm.yml user@silver-hedgehog.vm.scrtlabs.com:/mnt/secure/docker_wd/docker-compose.yml
-```
-
-#### 4. Deploy
-
-On SecretVM:
-
-```bash
-# Stop any existing deployment
-docker compose down --remove-orphans
-
-# Pull the image (digest-pinned)
-docker pull harystyles/privexbot-frontend@sha256:ae948e76c518f6c9e55e75056284cbab835d68f036c637f70554b2a4d1d69fb5
-
-# Start services
-docker compose up -d
-
-# Verify
-docker compose ps
-```
-
-#### 5. Verify
-
-```bash
-# Check Traefik discovered the container
-docker logs docker_wd-traefik-1 | grep "Creating router"
-# Expected: "Creating router app@docker"
-
-# Test direct access
-curl http://localhost:8080/
-# Expected: HTML content
-
-# Test via browser
-# Visit: https://silver-hedgehog.vm.scrtlabs.com
-```
-
-### Access
-
-- **HTTPS**: https://silver-hedgehog.vm.scrtlabs.com
-- **Direct**: http://localhost:8080 (from SecretVM)
 
 ### Troubleshooting
 
@@ -175,7 +120,7 @@ docker compose restart traefik
 # 3. If still not working, restart all services
 docker compose down
 docker compose up -d
-```
+````
 
 See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for more issues.
 
