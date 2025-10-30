@@ -439,7 +439,7 @@ def get_organization(
     db: Session,
     organization_id: UUID,
     user_id: UUID
-) -> Organization:
+) -> Tuple[Organization, str]:
     """
     Get organization by ID with access verification.
 
@@ -452,7 +452,7 @@ def get_organization(
         user_id: User requesting access
 
     Returns:
-        Organization: Organization object if user has access
+        Tuple[Organization, str]: (Organization object, user's role) if user has access
 
     Raises:
         HTTPException: If organization not found or no access
@@ -478,7 +478,7 @@ def get_organization(
             detail="Organization not found"
         )
 
-    return org
+    return org, org_member.role
 
 
 def list_user_organizations(

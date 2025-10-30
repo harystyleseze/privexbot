@@ -411,6 +411,24 @@ class ContextSwitchRequest(BaseModel):
     )
 
 
+class WorkspaceSwitchRequest(BaseModel):
+    """
+    Schema for switching workspace context only (keeps same organization).
+
+    WHY: Allow users to switch workspaces within current organization
+    HOW: Issues new JWT with updated workspace_id, maintains org_id
+
+    Example:
+        {
+            "workspace_id": "workspace-id"
+        }
+    """
+    workspace_id: UUID = Field(
+        ...,
+        description="Workspace ID to switch to (must be member and in current org)"
+    )
+
+
 class ContextSwitchResponse(BaseModel):
     """
     Schema for context switch response.

@@ -108,6 +108,7 @@ async def list_organizations(
 
         org_data.member_count = member_count
         org_data.workspace_count = workspace_count
+        org_data.user_role = role  # Set current user's role in this organization
         organizations.append(org_data)
 
     # Calculate pagination metadata
@@ -144,7 +145,9 @@ async def create_new_organization(
         creator_id=current_user.id
     )
 
-    return OrganizationResponse.model_validate(org)
+    org_response = OrganizationResponse.model_validate(org)
+    org_response.user_role = "owner"  # Creator is automatically owner
+    return org_response
 
 
 @router.get("/{org_id}", response_model=OrganizationDetailed)
@@ -158,7 +161,7 @@ async def get_organization_details(
 
     Includes members and workspaces if user has access.
     """
-    org = get_organization(
+    org, user_role = get_organization(
         db=db,
         organization_id=org_id,
         user_id=current_user.id
@@ -207,6 +210,7 @@ async def get_organization_details(
 
     # Create detailed response using base organization data
     base_org = OrganizationResponse.model_validate(org)
+    base_org.user_role = user_role  # Set current user's role
 
     return OrganizationDetailed(
         **base_org.model_dump(),
@@ -238,7 +242,16 @@ async def update_organization_details(
         **update_data
     )
 
-    return OrganizationResponse.model_validate(updated_org)
+    # Get user's role in the organization
+    _, user_role = get_organization(
+        db=db,
+        organization_id=org_id,
+        user_id=current_user.id
+    )
+
+    org_response = OrganizationResponse.model_validate(updated_org)
+    org_response.user_role = user_role
+    return org_response
 
 
 @router.delete("/{org_id}", status_code=status.HTTP_204_NO_CONTENT)

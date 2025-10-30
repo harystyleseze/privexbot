@@ -141,7 +141,7 @@ class TestOrganizationOperations:
         )
 
         # Get organization
-        retrieved_org = get_organization(
+        retrieved_org, user_role = get_organization(
             db=db_session,
             organization_id=org.id,
             user_id=user.id
@@ -149,6 +149,7 @@ class TestOrganizationOperations:
 
         assert retrieved_org.id == org.id
         assert retrieved_org.name == "Get Test Org"
+        assert user_role == "owner"  # Creator is owner
 
     def test_get_organization_no_access(self, db_session):
         """

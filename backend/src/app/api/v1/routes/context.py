@@ -28,6 +28,7 @@ from app.api.v1.dependencies import get_db, get_current_user
 from app.models.user import User
 from app.schemas.workspace import (
     ContextSwitchRequest,
+    WorkspaceSwitchRequest,
     ContextSwitchResponse,
     CurrentContextResponse
 )
@@ -64,7 +65,7 @@ async def switch_organization_context(
 
     # Verify user has access to the organization
     try:
-        organization = get_organization(
+        organization, _ = get_organization(
             db=db,
             organization_id=org_id,
             user_id=current_user.id
@@ -136,7 +137,7 @@ async def switch_organization_context(
 
 @router.post("/workspace", response_model=ContextSwitchResponse)
 async def switch_workspace_context(
-    workspace_id: UUID,
+    workspace_request: WorkspaceSwitchRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -145,9 +146,7 @@ async def switch_workspace_context(
 
     Maintains current organization context, updates workspace context.
     """
-    # Get current user's organization context from JWT
-    # Note: In a real implementation, this would come from JWT claims
-    # For now, we'll get the workspace and use its organization
+    workspace_id = workspace_request.workspace_id
 
     # Verify user has access to the workspace
     try:
@@ -166,7 +165,7 @@ async def switch_workspace_context(
 
     # Verify user has access to the organization
     try:
-        organization = get_organization(
+        organization, _ = get_organization(
             db=db,
             organization_id=org_id,
             user_id=current_user.id

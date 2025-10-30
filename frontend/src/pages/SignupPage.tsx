@@ -91,15 +91,29 @@ export function SignupPage() {
    * MetaMask (EVM) Signup
    */
   const handleMetaMaskSignup = async () => {
-    if (!window.ethereum) {
+    // Detect MetaMask specifically (not Phantom or other wallets)
+    let provider = null;
+
+    if (window.ethereum) {
+      // If multiple wallets installed, find MetaMask in providers array
+      if (window.ethereum.providers) {
+        provider = window.ethereum.providers.find((p: any) => p.isMetaMask);
+      }
+      // Single wallet - check if it's MetaMask
+      else if (window.ethereum.isMetaMask) {
+        provider = window.ethereum;
+      }
+    }
+
+    if (!provider) {
       throw new Error(
         "MetaMask not installed. Please install MetaMask extension."
       );
     }
 
     try {
-      // Request account access
-      const accounts = await window.ethereum.request({
+      // Request account access from MetaMask specifically
+      const accounts = await provider.request({
         method: "eth_requestAccounts",
       });
       const address = accounts[0];
@@ -110,8 +124,8 @@ export function SignupPage() {
         address,
       });
 
-      // Sign message with MetaMask
-      const signature = await window.ethereum.request({
+      // Sign message with MetaMask (use specific provider, not window.ethereum)
+      const signature = await provider.request({
         method: "personal_sign",
         params: [challenge.message, address],
       });

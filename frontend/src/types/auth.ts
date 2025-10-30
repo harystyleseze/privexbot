@@ -20,6 +20,7 @@ export interface AuthMethod {
 }
 
 export interface UserProfile extends User {
+  email?: string;
   auth_methods: AuthMethod[];
 }
 

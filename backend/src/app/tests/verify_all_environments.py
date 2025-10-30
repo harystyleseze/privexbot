@@ -300,13 +300,13 @@ class EnvironmentVerifier:
                     return False
 
                 # Test retrieving organization
-                retrieved_org = get_organization(
+                retrieved_org, user_role = get_organization(
                     db=db,
                     organization_id=org.id,
                     user_id=test_user_id
                 )
                 if retrieved_org.id == org.id:
-                    self.log_success("Retrieved organization successfully")
+                    self.log_success(f"Retrieved organization successfully (role: {user_role})")
                 else:
                     self.log_error("Organization retrieval failed")
                     return False
