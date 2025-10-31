@@ -98,52 +98,52 @@ export const DeleteWorkspaceDialog = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/50"
+        className="absolute inset-0 bg-black/60 dark:bg-black/80"
         onClick={onClose}
       />
 
       {/* Dialog */}
-      <div className="relative bg-[#313338] rounded-lg shadow-xl w-full max-w-md mx-4 overflow-hidden">
+      <div className="relative bg-white dark:bg-[#374151] rounded-lg shadow-2xl w-full max-w-md overflow-hidden border border-gray-200 dark:border-gray-600">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-[#26272B]">
+        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-200 dark:border-gray-600">
           <div className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-red-400" />
-            <h2 className="text-xl font-bold text-white">
+            <AlertTriangle className="h-5 w-5 text-red-700 dark:text-red-400" />
+            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-50">
               Delete Workspace
             </h2>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit(onSubmit)} className="p-4 space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="p-4 sm:p-5 space-y-4">
           {/* Root Error Message */}
           {errors.root && (
-            <div className="bg-red-500/10 border border-red-500/50 rounded p-3">
-              <p className="text-sm text-red-400">{errors.root.message}</p>
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 rounded-md p-3">
+              <p className="text-sm text-red-800 dark:text-red-300 font-medium">{errors.root.message}</p>
             </div>
           )}
 
           {/* Warning */}
-          <div className="bg-red-500/10 border border-red-500/50 rounded p-4">
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 rounded-md p-4">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5" />
+              <AlertTriangle className="h-5 w-5 text-red-700 dark:text-red-400 flex-shrink-0 mt-0.5" />
               <div className="space-y-2">
-                <p className="text-sm font-semibold text-red-400">
+                <p className="text-sm font-semibold text-red-900 dark:text-red-300">
                   This action cannot be undone
                 </p>
-                <p className="text-xs text-gray-300">
-                  Deleting <span className="font-semibold text-white">"{workspace.name}"</span> will permanently delete:
+                <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
+                  Deleting <span className="font-semibold text-gray-900 dark:text-gray-50">"{workspace.name}"</span> will permanently delete:
                 </p>
-                <ul className="text-xs text-gray-300 list-disc list-inside space-y-1 ml-2">
+                <ul className="text-xs text-gray-700 dark:text-gray-300 list-disc list-inside space-y-1 ml-2">
                   <li>All chatbots and chatflows</li>
                   <li>All knowledge bases and documents</li>
                   <li>All members and their permissions</li>
@@ -155,8 +155,8 @@ export const DeleteWorkspaceDialog = ({
 
           {/* Default Workspace Warning */}
           {workspace.is_default && (
-            <div className="bg-yellow-500/10 border border-yellow-500/50 rounded p-3">
-              <p className="text-sm text-yellow-400">
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-800 rounded-md p-3">
+              <p className="text-sm text-yellow-800 dark:text-yellow-300 font-medium">
                 This is the default workspace and cannot be deleted.
               </p>
             </div>
@@ -164,8 +164,8 @@ export const DeleteWorkspaceDialog = ({
 
           {/* Confirmation Input */}
           <div>
-            <label htmlFor="confirm-delete" className="block text-xs font-bold text-gray-300 uppercase mb-2">
-              Type "{workspace.name}" to confirm <span className="text-red-400">*</span>
+            <label htmlFor="confirm-delete" className="block text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase tracking-wide mb-2">
+              Type "{workspace.name}" to confirm <span className="text-red-600 dark:text-red-400">*</span>
             </label>
             <input
               id="confirm-delete"
@@ -174,27 +174,27 @@ export const DeleteWorkspaceDialog = ({
               placeholder={workspace.name}
               autoComplete="off"
               disabled={workspace.is_default}
-              className="w-full px-3 py-2 bg-[#1E1F22] border border-[#26272B] rounded text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full px-3 py-2.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-gray-50 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-600 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             />
             {errors.confirmation_name && (
-              <p className="mt-1 text-xs text-red-400">{errors.confirmation_name.message}</p>
+              <p className="mt-1.5 text-xs text-red-700 dark:text-red-400 font-medium">{errors.confirmation_name.message}</p>
             )}
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-3 pt-4">
+          <div className="flex items-center justify-end gap-3 pt-3">
             <button
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="px-4 py-2 text-sm font-medium text-white hover:underline disabled:opacity-50"
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-gray-50 disabled:opacity-50 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting || workspace.is_default}
-              className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-5 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
             >
               {isSubmitting ? "Deleting..." : "Delete Workspace"}
             </button>

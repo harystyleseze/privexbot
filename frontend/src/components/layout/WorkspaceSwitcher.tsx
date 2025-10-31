@@ -185,11 +185,11 @@ export function WorkspaceSwitcher({
             className="group flex flex-col items-center w-full"
             title="Add Workspace"
           >
-            {/* Dashed border circle that transforms */}
-            <div className="h-11 w-11 rounded-full border-2 border-dashed border-gray-600 dark:border-gray-700 flex items-center justify-center group-hover:border-green-500 group-hover:rounded-[14px] transition-all duration-200 mb-1">
-              <Plus className="h-5 w-5 text-gray-500 dark:text-gray-600 group-hover:text-green-400 transition-colors" />
+            {/* Dashed border circle that transforms - Enhanced visibility */}
+            <div className="h-11 w-11 rounded-full border-2 border-dashed border-gray-400 dark:border-gray-500 flex items-center justify-center group-hover:border-green-500 group-hover:bg-green-500/10 group-hover:rounded-[14px] transition-all duration-200 mb-1">
+              <Plus className="h-5 w-5 text-gray-300 dark:text-gray-400 group-hover:text-green-400 transition-colors" />
             </div>
-            <span className="text-[9px] font-medium text-gray-500 dark:text-gray-600 group-hover:text-green-400 transition-colors">
+            <span className="text-[9px] font-medium text-gray-300 dark:text-gray-400 group-hover:text-green-400 transition-colors">
               Add
             </span>
           </button>

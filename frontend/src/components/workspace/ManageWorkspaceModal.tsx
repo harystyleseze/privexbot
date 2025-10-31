@@ -119,28 +119,28 @@ export const ManageWorkspaceModal = ({
   const canEditSettings = workspace.user_role === "admin" || workspace.user_role === "editor";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/50"
+        className="absolute inset-0 bg-black/60 dark:bg-black/80"
         onClick={onClose}
       />
 
       {/* Modal */}
-      <div className="relative bg-[#313338] rounded-lg shadow-xl w-full max-w-2xl mx-4 overflow-hidden max-h-[90vh] flex flex-col">
+      <div className="relative bg-white dark:bg-[#374151] rounded-lg shadow-2xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col border border-gray-200 dark:border-gray-600">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-[#26272B] flex-shrink-0">
+        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-200 dark:border-gray-600 flex-shrink-0">
           <div>
-            <h2 className="text-xl font-bold text-white">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-50">
               Manage Workspace
             </h2>
-            <p className="text-sm text-gray-400 mt-1">
+            <p className="text-sm text-gray-700 dark:text-gray-200 mt-1">
               {workspace.name}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
@@ -148,31 +148,31 @@ export const ManageWorkspaceModal = ({
 
         {/* Content with Tabs */}
         <Tabs defaultValue="settings" className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="mx-4 mt-4 grid w-auto grid-cols-2 bg-[#1E1F22]">
-            <TabsTrigger value="settings" className="data-[state=active]:bg-blue-600">
+          <TabsList className="mx-4 mt-4 grid w-auto grid-cols-2 bg-gray-100 dark:bg-gray-700">
+            <TabsTrigger value="settings" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white text-gray-900 dark:text-gray-50">
               <Settings className="h-4 w-4 mr-2" />
               Settings
             </TabsTrigger>
-            <TabsTrigger value="members" className="data-[state=active]:bg-blue-600">
+            <TabsTrigger value="members" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white text-gray-900 dark:text-gray-50">
               <Users className="h-4 w-4 mr-2" />
               Members
             </TabsTrigger>
           </TabsList>
 
           {/* Settings Tab */}
-          <TabsContent value="settings" className="flex-1 overflow-y-auto p-4 mt-0">
-            <form onSubmit={handleSubmit(handleSaveSettings)} className="space-y-4">
+          <TabsContent value="settings" className="flex-1 overflow-y-auto p-4 sm:p-5 mt-0">
+            <form onSubmit={handleSubmit(handleSaveSettings)} className="space-y-5">
               {/* Root Error Message */}
               {formErrors.root && (
-                <div className="bg-red-500/10 border border-red-500/50 rounded p-3">
-                  <p className="text-sm text-red-400">{formErrors.root.message}</p>
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 rounded-md p-3">
+                  <p className="text-sm text-red-800 dark:text-red-300 font-medium">{formErrors.root.message}</p>
                 </div>
               )}
 
               {/* Workspace Name */}
               <div>
-                <label htmlFor="workspace-name" className="block text-xs font-bold text-gray-300 uppercase mb-2">
-                  Workspace Name <span className="text-red-400">*</span>
+                <label htmlFor="workspace-name" className="block text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase tracking-wide mb-2">
+                  Workspace Name <span className="text-red-600 dark:text-red-400">*</span>
                 </label>
                 <input
                   id="workspace-name"
@@ -180,16 +180,16 @@ export const ManageWorkspaceModal = ({
                   {...register("name")}
                   disabled={!canEditSettings}
                   placeholder="Enter workspace name"
-                  className="w-full px-3 py-2 bg-[#1E1F22] border border-[#26272B] rounded text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-3 py-2.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-gray-50 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 />
                 {formErrors.name && (
-                  <p className="mt-1 text-xs text-red-400">{formErrors.name.message}</p>
+                  <p className="mt-1.5 text-xs text-red-700 dark:text-red-400 font-medium">{formErrors.name.message}</p>
                 )}
               </div>
 
               {/* Workspace Description */}
               <div>
-                <label htmlFor="workspace-description" className="block text-xs font-bold text-gray-300 uppercase mb-2">
+                <label htmlFor="workspace-description" className="block text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase tracking-wide mb-2">
                   Description (Optional)
                 </label>
                 <textarea
@@ -198,40 +198,40 @@ export const ManageWorkspaceModal = ({
                   disabled={!canEditSettings}
                   placeholder="Enter workspace description"
                   rows={3}
-                  className="w-full px-3 py-2 bg-[#1E1F22] border border-[#26272B] rounded text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:opacity-50 disabled:cursor-not-allowed resize-none"
+                  className="w-full px-3 py-2.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-gray-50 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed resize-none transition-colors"
                 />
                 {formErrors.description && (
-                  <p className="mt-1 text-xs text-red-400">{formErrors.description.message}</p>
+                  <p className="mt-1.5 text-xs text-red-700 dark:text-red-400 font-medium">{formErrors.description.message}</p>
                 )}
               </div>
 
               {/* Workspace Info */}
-              <div className="bg-[#2B2D31] rounded-lg p-4 space-y-2">
+              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 space-y-2 border border-gray-200 dark:border-gray-600">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">Your Role</span>
-                  <span className="text-white capitalize">{workspace.user_role}</span>
+                  <span className="text-gray-600 dark:text-gray-300">Your Role</span>
+                  <span className="text-gray-900 dark:text-gray-50 capitalize font-medium">{workspace.user_role}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">Created</span>
-                  <span className="text-white">
+                  <span className="text-gray-600 dark:text-gray-300">Created</span>
+                  <span className="text-gray-900 dark:text-gray-50 font-medium">
                     {new Date(workspace.created_at).toLocaleDateString()}
                   </span>
                 </div>
                 {workspace.is_default && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-400">Type</span>
-                    <span className="text-blue-400">Default Workspace</span>
+                    <span className="text-gray-600 dark:text-gray-300">Type</span>
+                    <span className="text-blue-700 dark:text-blue-400 font-medium">Default Workspace</span>
                   </div>
                 )}
               </div>
 
               {/* Save Button */}
               {canEditSettings && (
-                <div className="flex gap-3">
+                <div className="flex gap-3 pt-2">
                   <Button
                     type="submit"
                     disabled={!isDirty || isSaving}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm disabled:opacity-50"
                   >
                     {isSaving ? (
                       <>
@@ -247,7 +247,7 @@ export const ManageWorkspaceModal = ({
                     variant="outline"
                     onClick={() => reset()}
                     disabled={!isDirty || isSaving}
-                    className="flex-1"
+                    className="flex-1 border-gray-300 dark:border-gray-500 text-gray-900 dark:text-gray-50 hover:bg-gray-100 dark:hover:bg-gray-600 font-medium"
                   >
                     Reset
                   </Button>
@@ -255,8 +255,8 @@ export const ManageWorkspaceModal = ({
               )}
 
               {!canEditSettings && (
-                <div className="bg-yellow-500/10 border border-yellow-500/50 rounded p-3">
-                  <p className="text-sm text-yellow-400">
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-800 rounded-md p-3">
+                  <p className="text-sm text-yellow-800 dark:text-yellow-300 font-medium">
                     You need admin or editor role to edit workspace settings
                   </p>
                 </div>
@@ -265,7 +265,7 @@ export const ManageWorkspaceModal = ({
           </TabsContent>
 
           {/* Members Tab */}
-          <TabsContent value="members" className="flex-1 overflow-y-auto p-4 mt-0">
+          <TabsContent value="members" className="flex-1 overflow-y-auto p-4 sm:p-5 mt-0">
             <WorkspaceMembersTab
               workspace={workspace}
               organizationId={organizationId}
@@ -275,11 +275,11 @@ export const ManageWorkspaceModal = ({
         </Tabs>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-4 border-t border-[#26272B] flex-shrink-0">
+        <div className="flex items-center justify-end gap-3 p-4 sm:p-5 border-t border-gray-200 dark:border-gray-600 flex-shrink-0">
           <Button
             variant="outline"
             onClick={onClose}
-            className="text-white hover:bg-[#2B2D31]"
+            className="border-gray-300 dark:border-gray-500 text-gray-900 dark:text-gray-50 hover:bg-gray-100 dark:hover:bg-gray-600 font-medium"
           >
             Close
           </Button>
