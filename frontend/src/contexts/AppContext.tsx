@@ -308,7 +308,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const data: CreateWorkspaceRequest = {
           name,
           description,
-          organization_id: currentOrganization.id,
+          // organization_id removed - now comes from URL path parameter
         };
         const newWorkspace = await workspaceApi.create(currentOrganization.id, data);
 

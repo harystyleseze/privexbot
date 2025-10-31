@@ -27,13 +27,12 @@ export type WorkspaceRole = z.infer<typeof workspaceRoleSchema>;
  * Create Workspace Schema
  *
  * WHY: Validate workspace creation
- * FIELDS: name, description (optional), organization_id
- * NOTE: organization_id must match URL parameter (backend validation)
+ * FIELDS: name, description (optional)
+ * NOTE: organization_id comes from URL path (not in request body)
  */
 export const createWorkspaceSchema = z.object({
   name: nameSchema("Workspace name"),
   description: descriptionSchema,
-  organization_id: uuidSchema,
 });
 
 export type CreateWorkspaceFormData = z.infer<typeof createWorkspaceSchema>;

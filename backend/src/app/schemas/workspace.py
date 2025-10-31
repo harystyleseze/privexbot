@@ -23,12 +23,10 @@ WorkspaceRole = Literal["admin", "editor", "viewer"]
 class WorkspaceCreate(BaseModel):
     \"\"\"
     WHY: Create workspace within organization
-    HOW: Must have org context in JWT
+    HOW: Organization ID from URL path parameter
     \"\"\"
     name: str (min_length=1, max_length=100)
-    organization_id: UUID4
-        WHY: REQUIRED - link to parent organization
-        VALIDATION: User must be member of this org
+    description: str | None (optional)
 
 # Update Workspace
 class WorkspaceUpdate(BaseModel):
@@ -115,12 +113,12 @@ When user accesses workspace:
 
 USAGE:
 ------
-POST /api/v1/workspaces
+POST /api/v1/orgs/{org_id}/workspaces
 {
     "name": "Engineering Team",
-    "organization_id": "uuid"
+    "description": "Optional description"
 }
--> Creates workspace in org
+-> Creates workspace in org (org_id from URL)
 
 POST /api/v1/workspaces/{ws_id}/members
 {
@@ -149,13 +147,13 @@ class WorkspaceCreate(BaseModel):
     Schema for creating a new workspace within an organization.
 
     WHY: Validate workspace creation data
-    HOW: Must have organization context, user must be org member
+    HOW: Organization ID comes from URL path parameter
 
     Example:
+        POST /api/v1/orgs/{org_id}/workspaces
         {
             "name": "Engineering Team",
-            "description": "Workspace for engineering chatbots",
-            "organization_id": "123e4567-e89b-12d3-a456-426614174000"
+            "description": "Workspace for engineering chatbots"
         }
     """
     name: str = Field(
@@ -169,10 +167,6 @@ class WorkspaceCreate(BaseModel):
         None,
         max_length=1000,
         description="Optional workspace description"
-    )
-    organization_id: UUID = Field(
-        ...,
-        description="Parent organization ID (must be member of this org)"
     )
     is_default: bool = Field(
         default=False,

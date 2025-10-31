@@ -44,7 +44,6 @@ export const CreateWorkspaceModal = ({
     defaultValues: {
       name: "",
       description: "",
-      organization_id: organizationId,
     },
   });
 

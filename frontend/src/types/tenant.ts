@@ -146,11 +146,11 @@ export interface ListOrganizationsResponse {
 
 /**
  * Create workspace request
+ * NOTE: organization_id comes from URL path parameter
  */
 export interface CreateWorkspaceRequest {
   name: string;
   description?: string;
-  organization_id: string;
 }
 
 /**

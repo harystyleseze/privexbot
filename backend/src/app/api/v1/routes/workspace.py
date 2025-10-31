@@ -155,18 +155,12 @@ async def create_new_workspace(
     """
     Create a new workspace in the organization.
 
+    Organization ID is derived from the URL path parameter.
     Requires admin or owner role in the organization.
     """
-    # Verify the organization_id in the request matches the URL
-    if workspace_data.organization_id != org_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Organization ID in URL must match organization ID in request body"
-        )
-
     workspace = create_workspace(
         db=db,
-        organization_id=org_id,
+        organization_id=org_id,  # From URL path parameter
         name=workspace_data.name,
         description=workspace_data.description,
         creator_id=current_user.id,
