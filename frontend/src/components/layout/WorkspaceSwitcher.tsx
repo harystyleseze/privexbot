@@ -20,7 +20,7 @@
 
 import React, { useState } from "react";
 import { Plus } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useApp } from "@/contexts/AppContext";
 
@@ -34,6 +34,7 @@ export function WorkspaceSwitcher({
   const {
     workspaces,
     currentWorkspace,
+    currentOrganization,
     switchWorkspace,
     hasPermission,
     isLoading,
@@ -138,6 +139,19 @@ export function WorkspaceSwitcher({
                         : "border-transparent rounded-full group-hover:rounded-[14px] group-hover:border-[#6B7280]" // Design Guide: #6B7280 on hover
                     )}
                   >
+                    {/* Priority: workspace avatar → organization avatar → initials */}
+                    {(workspace.avatar_url || currentOrganization?.avatar_url) && (
+                      <AvatarImage
+                        src={workspace.avatar_url || currentOrganization?.avatar_url}
+                        alt={workspace.name}
+                        className={cn(
+                          "object-cover transition-all duration-200",
+                          isActive
+                            ? "rounded-[14px]"
+                            : "rounded-full group-hover:rounded-[14px]"
+                        )}
+                      />
+                    )}
                     <AvatarFallback
                       className={cn(
                         "text-xs font-bold transition-all duration-200",

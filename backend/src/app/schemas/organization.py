@@ -211,6 +211,7 @@ class OrganizationResponse(BaseModel):
     id: UUID = Field(..., description="Organization unique identifier")
     name: str = Field(..., description="Organization name")
     billing_email: str = Field(..., description="Billing email address")
+    avatar_url: Optional[str] = Field(None, description="Organization avatar/logo URL")
     subscription_tier: SubscriptionTier = Field(..., description="Current subscription tier")
     subscription_status: SubscriptionStatus = Field(..., description="Current subscription status")
     trial_ends_at: Optional[datetime] = Field(None, description="When trial period ends (if in trial)")

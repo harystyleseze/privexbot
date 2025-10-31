@@ -28,7 +28,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronDown, ChevronRight, Settings, LogOut, Building2 } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useApp } from "@/contexts/AppContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -243,6 +243,13 @@ export function OrganizationSwitcher() {
                 >
                   {/* Organization Avatar */}
                   <Avatar className="h-5 sm:h-6 w-5 sm:w-6 flex-shrink-0">
+                    {org.avatar_url && (
+                      <AvatarImage
+                        src={org.avatar_url}
+                        alt={org.name}
+                        className="object-cover"
+                      />
+                    )}
                     <AvatarFallback
                       className={cn(
                         "text-[10px] sm:text-xs font-semibold",

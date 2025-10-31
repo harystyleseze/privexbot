@@ -146,6 +146,7 @@ class Workspace(Base):
     # Workspace info
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
+    avatar_url = Column(String(512), nullable=True)  # Optional workspace avatar/logo URL
 
     # Workspace settings (JSONB for flexibility)
     settings = Column(JSONB, nullable=False, default=dict, server_default='{}')

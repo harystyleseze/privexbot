@@ -24,6 +24,7 @@ export interface Organization {
   id: string;
   name: string;
   billing_email: string;
+  avatar_url?: string;
   subscription_tier: SubscriptionTier;
   user_role: OrganizationRole;
   member_count: number;
@@ -54,6 +55,7 @@ export interface Workspace {
   id: string;
   name: string;
   description?: string;
+  avatar_url?: string;
   organization_id: string;
   user_role: WorkspaceRole;
   is_default: boolean;

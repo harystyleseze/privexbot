@@ -83,6 +83,7 @@ class Organization(Base):
     # Organization info
     name = Column(String(255), nullable=False)
     billing_email = Column(String(255), nullable=False, index=True)
+    avatar_url = Column(String(512), nullable=True)  # Optional organization avatar/logo URL
 
     # Subscription management
     subscription_tier = Column(

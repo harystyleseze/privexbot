@@ -232,6 +232,7 @@ class WorkspaceResponse(BaseModel):
     organization_id: UUID = Field(..., description="Parent organization ID")
     name: str = Field(..., description="Workspace name")
     description: Optional[str] = Field(None, description="Workspace description")
+    avatar_url: Optional[str] = Field(None, description="Workspace avatar/logo URL")
     is_default: bool = Field(..., description="Whether this is the default workspace")
     created_by: Optional[UUID] = Field(None, description="User who created this workspace")
     created_at: datetime = Field(..., description="Workspace creation timestamp")
