@@ -28,8 +28,17 @@ interface WorkspaceSwitcherProps {
   onCreateWorkspace?: () => void;
 }
 
-export function WorkspaceSwitcher({ onCreateWorkspace }: WorkspaceSwitcherProps) {
-  const { workspaces, currentWorkspace, switchWorkspace, hasPermission, isLoading, error } = useApp();
+export function WorkspaceSwitcher({
+  onCreateWorkspace,
+}: WorkspaceSwitcherProps) {
+  const {
+    workspaces,
+    currentWorkspace,
+    switchWorkspace,
+    hasPermission,
+    isLoading,
+    error,
+  } = useApp();
 
   const canCreateWorkspace = hasPermission("workspace:create");
 
@@ -104,53 +113,56 @@ export function WorkspaceSwitcher({ onCreateWorkspace }: WorkspaceSwitcherProps)
               onClick={() => handleSwitch(workspace.id)}
               className={cn(
                 "relative group flex flex-col items-center w-full",
-                // Active indicator - blue bar on right side (4px × 32px)
+                // Active indicator - blue bar on right side (4px × 32px) - Design Guide: #2563EB
                 isActive &&
-                  "after:absolute after:-right-2 after:top-3 after:w-1 after:h-8 after:bg-blue-600 after:rounded-full"
+                  "after:absolute after:-right-2 after:top-2 after:w-1 after:h-12 after:bg-[#2563EB] after:rounded-full"
               )}
               title={workspace.name}
             >
-              {/* Avatar with transition effects */}
+              {/* Container for avatar + text with blue background when active */}
               <div
                 className={cn(
-                  "relative mb-1 transition-all duration-200",
+                  "flex flex-col items-center transition-all duration-200 w-full max-w-[52px]",
                   isActive
-                    ? "rounded-[14px]" // Active: Rounded square
-                    : "rounded-full group-hover:rounded-[14px]" // Inactive: Circle → Rounded square on hover
+                    ? "bg-[#2563EB] rounded-[14px] p-1.5" // Active: Blue background with rounded square and padding
+                    : "bg-transparent" // Inactive: Transparent
                 )}
               >
-                <Avatar
-                  className={cn(
-                    "h-11 w-11 transition-all duration-200 border-2",
-                    isActive
-                      ? "border-white rounded-[14px]"
-                      : "border-transparent rounded-full group-hover:rounded-[14px] group-hover:border-gray-500"
-                  )}
-                >
-                  <AvatarFallback
+                {/* Avatar with transition effects */}
+                <div className="relative mb-1 transition-all duration-200">
+                  <Avatar
                     className={cn(
-                      "text-xs font-bold transition-colors",
+                      "h-11 w-11 transition-all duration-200 border-2",
                       isActive
-                        ? "bg-blue-600 text-white"
-                        : "bg-[#36373D] dark:bg-[#2B2D31] text-gray-300 dark:text-gray-400 group-hover:bg-blue-500 group-hover:text-white"
+                        ? "border-white rounded-[14px]" // Design Guide: #FFFFFF border
+                        : "border-transparent rounded-full group-hover:rounded-[14px] group-hover:border-[#6B7280]" // Design Guide: #6B7280 on hover
                     )}
                   >
-                    {getInitials(workspace.name)}
-                  </AvatarFallback>
-                </Avatar>
-              </div>
+                    <AvatarFallback
+                      className={cn(
+                        "text-xs font-bold transition-all duration-200",
+                        isActive
+                          ? "bg-[#2563EB] text-white rounded-[14px]" // Design Guide: Active = #2563EB background, rounded square shape
+                          : "bg-[#36373D] dark:bg-[#2B2D31] text-[#D1D5DB] dark:text-[#9CA3AF] rounded-full group-hover:bg-[#3B82F6] group-hover:text-white group-hover:rounded-[14px]" // Design Guide: Circle → Rounded square on hover
+                      )}
+                    >
+                      {getInitials(workspace.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
 
-              {/* Workspace name below avatar */}
-              <span
-                className={cn(
-                  "text-[9px] font-medium text-center truncate w-full px-0.5 transition-colors",
-                  isActive
-                    ? "text-white"
-                    : "text-gray-400 dark:text-gray-500 group-hover:text-gray-200"
-                )}
-              >
-                {workspace.name}
-              </span>
+                {/* Workspace name below avatar - constrained width with truncation */}
+                <span
+                  className={cn(
+                    "text-[9px] font-medium text-center truncate w-full max-w-[48px] block transition-colors",
+                    isActive
+                      ? "text-white"
+                      : "text-gray-400 dark:text-gray-500 group-hover:text-gray-200"
+                  )}
+                >
+                  {workspace.name}
+                </span>
+              </div>
             </button>
           );
         })}

@@ -3262,3 +3262,159 @@ The sidebar implementation follows best practices:
 - All modals render at root level for proper positioning
 
 Test it out - the Settings menu item should now open the ManageWorkspaceModal properly centered and responsive on all screen sizes!
+
+---
+
+---
+
+Perfect! Now let me update the todo list to track this fix:
+
+⏺ Excellent! I've successfully updated the WorkspaceSwitcher to match the design guide specifications exactly. Here's what was fixed:
+
+✅ Workspace Avatar Color Fixes:
+
+1. Active State Blue Bar Indicator
+
+- Before: bg-blue-600 (Tailwind default)
+- After: bg-[#2563EB] (Design Guide exact color)
+- Position: Right side of avatar, 4px wide, 32px tall
+
+2. Active Workspace Avatar
+
+- Background: Changed from bg-blue-600 to bg-[#2563EB]
+- Border: #FFFFFF (2px solid white) ✅ Already correct
+- Text: #FFFFFF (white) ✅ Already correct
+- Shape: rounded-[14px] (rounded square) ✅ Already correct
+
+3. Inactive Workspace Avatar
+
+- Background: #36373D (light) / #2B2D31 (dark) ✅ Already correct
+- Text Initials: Updated to use exact hex values:
+  - Light mode: #D1D5DB (instead of text-gray-300)
+  - Dark mode: #9CA3AF (instead of dark:text-gray-400)
+- Border: transparent ✅ Already correct
+- Shape: rounded-full (perfect circle) ✅ Already correct
+
+4. Hover State (Inactive → Active transition)
+
+- Background: Changed from bg-blue-500 to bg-[#3B82F6] (Design Guide hover color)
+- Border: Changed from border-gray-500 to border-[#6B7280] (Design Guide exact color)
+- Text: #FFFFFF (white) ✅ Already correct
+- Shape Transition: Circle → Rounded square ✅ Already correct
+- Animation: 200ms ease-in-out ✅ Already correct
+
+5. Workspace Name Text ✅ Already correct
+
+- Active: #FFFFFF (white)
+- Inactive: #9CA3AF / #6B7280
+- Hover: #E5E7EB (gray-200)
+
+All workspace avatar colors now match the design guide 100% with exact hex values instead of Tailwind's approximations. The Discord-style morphing animation (circle → rounded square)
+with proper color transitions is fully implemented according to specifications!
+
+---
+
+---
+
+✅ Active Workspace Design Update:
+
+1. Blue Background Container
+
+Now both the avatar AND the text below it are wrapped in a container with:
+
+- Background: bg-[#2563EB] (the design guide blue)
+- Shape: rounded-[14px] (proper rounded square)
+- Padding: py-1.5 px-2 for nice spacing around both elements
+
+2. Blue Indicator Bar
+
+Adjusted the position and height to match the new container:
+
+- Position: after:top-1.5 (aligned with container top)
+- Height: after:h-14 (56px - covers the full height of avatar + text container)
+- Color: bg-[#2563EB] ✅
+
+3. Visual Result:
+
+- Active State: Avatar + text together in a blue rounded square pill shape with white border around avatar
+- Inactive State: Transparent background, elements visible normally
+- Hover State: Smooth transition as the container morphs from circle to rounded square
+
+The active workspace now has a cohesive blue rounded-square background that encompasses both the avatar and the workspace name text, creating a unified visual indicator!
+
+---
+
+---
+
+✅ Workspace Avatar Design Improvements:
+
+1. Fixed Background Gaps
+
+- Before: Large padding caused gaps between the blue background and avatar
+- After:
+  - Container has constrained width: max-w-[52px]
+  - Proper padding: p-1.5 only when active
+  - Text constrained to: max-w-[48px] to prevent overflow
+
+2. Scrollbar Hidden ✅
+
+- Already implemented with scrollbar-hide class on:
+  - Main container (line 78)
+  - Workspace list (line 87)
+- Cross-browser support via custom CSS utility
+
+3. Long Text Handling
+
+- Text constraints:
+  - truncate - Adds ellipsis (...) for overflow
+  - max-w-[48px] - Constrains width to fit within blue container
+  - block - Ensures proper text rendering
+  - text-center - Centers text within container
+- Result: Long workspace names are properly truncated and never extend the blue background
+
+4. Uniform & Consistent Design
+
+- Active State:
+  - Blue container: bg-[#2563EB] with rounded-[14px]
+  - Avatar fits perfectly inside with white border
+  - Text constrained and centered
+  - Blue indicator bar: 4px × 48px aligned properly
+- Container Dimensions:
+  - Max width: 52px (fits within 60-72px column)
+  - Avatar: 44px (11 × 4px) + 4px border = 48px
+  - Text: Max 48px wide with truncation
+  - Everything fits uniformly
+
+The design is now polished, consistent, and follows Discord-style patterns with proper constraints to handle all text lengths!
+
+---
+
+---
+
+Perfect! I've fixed the shape issue. Here's what changed:
+
+✅ Avatar Shape Fix:
+
+1. AvatarFallback Shape Matching
+
+- Active State: Added rounded-[14px] to the AvatarFallback itself
+  - Now both the container AND the avatar/initials have the same rounded square shape
+  - No gaps showing blue background at the corners
+
+2. Inactive State: Added rounded-full explicitly
+
+- Circle shape for inactive avatars
+- Smooth transition to rounded-[14px] on hover with group-hover:rounded-[14px]
+
+3. Smooth Transitions
+
+- Changed from transition-colors to transition-all duration-200
+- Animates both color AND shape changes smoothly
+
+4. Visual Result:
+
+- Active: Avatar/initials are rounded-[14px] matching the container - no blue gaps
+- Inactive: Avatar/initials are rounded-full (perfect circle)
+- Hover: Smooth morph from circle → rounded square
+
+Now the avatar shape perfectly matches the container shape, eliminating any blue background showing through in the corners!
