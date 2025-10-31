@@ -1,36 +1,36 @@
 /**
- * Create Workspace Modal Component
+ * Edit Organization Modal Component
  *
- * Discord-style modal for creating new workspaces within an organization
+ * Discord-style modal for editing existing organizations
+ * Only accessible by organization admins/owners
  * Uses react-hook-form + Zod validation for proper form handling
  */
 
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { X } from "lucide-react";
-import { workspaceApi } from "@/api/workspace";
+import { organizationApi } from "@/api/organization";
 import { useToast } from "@/hooks/use-toast";
 import {
-  createWorkspaceSchema,
-  type CreateWorkspaceFormData,
-} from "@/api/schemas/workspace.schema";
-import type { Workspace } from "@/types/tenant";
+  editOrganizationSchema,
+  type EditOrganizationFormData,
+} from "@/api/schemas/organization.schema";
+import type { Organization } from "@/types/tenant";
 
-interface CreateWorkspaceModalProps {
+interface EditOrganizationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  organizationId: string;
+  organization: Organization;
   onSuccess?: () => void;
-  onWorkspaceCreated?: (workspace: Workspace) => void;
 }
 
-export const CreateWorkspaceModal = ({
+export const EditOrganizationModal = ({
   isOpen,
   onClose,
-  organizationId,
-  onSuccess,
-  onWorkspaceCreated,
-}: CreateWorkspaceModalProps) => {
+  organization,
+  onSuccess
+}: EditOrganizationModalProps) => {
   const { toast } = useToast();
 
   const {
@@ -39,52 +39,49 @@ export const CreateWorkspaceModal = ({
     formState: { errors, isSubmitting },
     reset,
     setError: setFormError,
-  } = useForm<CreateWorkspaceFormData>({
-    resolver: zodResolver(createWorkspaceSchema),
+  } = useForm<EditOrganizationFormData>({
+    resolver: zodResolver(editOrganizationSchema),
     defaultValues: {
-      name: "",
-      description: "",
-      organization_id: organizationId,
+      name: organization.name,
+      billing_email: organization.billing_email,
     },
   });
 
-  const onSubmit = async (data: CreateWorkspaceFormData) => {
+  // Update form when organization changes
+  useEffect(() => {
+    reset({
+      name: organization.name,
+      billing_email: organization.billing_email,
+    });
+  }, [organization, reset]);
+
+  const onSubmit = async (data: EditOrganizationFormData) => {
     try {
-      const newWorkspace = await workspaceApi.create(organizationId, data);
+      await organizationApi.update(organization.id, data);
 
       toast({
         variant: "success",
-        title: "Workspace created successfully",
-        description: `"${newWorkspace.name}" is now active and ready to use.`,
+        title: "Organization updated successfully",
+        description: `"${data.name || organization.name}" has been updated.`,
       });
 
-      reset(); // Reset form
-
-      // Call workspace created callback (for auto-switching)
-      if (onWorkspaceCreated) {
-        onWorkspaceCreated(newWorkspace);
-      }
-
-      // Call success callback (for refreshing data)
       if (onSuccess) {
         onSuccess();
       }
 
       onClose();
     } catch (err: any) {
-      console.error("[CreateWorkspaceModal] Error creating workspace:", err);
+      console.error("[EditOrganizationModal] Error updating organization:", err);
 
       // Extract error message properly
-      let errorMessage = "Failed to create workspace";
+      let errorMessage = "Failed to update organization";
       if (err.response?.data?.detail) {
         const detail = err.response.data.detail;
-        if (typeof detail === "string") {
+        if (typeof detail === 'string') {
           errorMessage = detail;
         } else if (Array.isArray(detail)) {
-          errorMessage = detail
-            .map((e: any) => e.msg || e.message || String(e))
-            .join(", ");
-        } else if (typeof detail === "object") {
+          errorMessage = detail.map((e: any) => e.msg || e.message || String(e)).join(', ');
+        } else if (typeof detail === 'object') {
           errorMessage = detail.msg || detail.message || JSON.stringify(detail);
         }
       }
@@ -97,7 +94,7 @@ export const CreateWorkspaceModal = ({
 
       toast({
         variant: "destructive",
-        title: "Failed to create workspace",
+        title: "Failed to update organization",
         description: errorMessage,
       });
     }
@@ -108,13 +105,18 @@ export const CreateWorkspaceModal = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-black/50"
+        onClick={onClose}
+      />
 
       {/* Modal */}
       <div className="relative bg-[#313338] rounded-lg shadow-xl w-full max-w-md mx-4 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-[#26272B]">
-          <h2 className="text-xl font-bold text-white">Create Workspace</h2>
+          <h2 className="text-xl font-bold text-white">
+            Edit Organization
+          </h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-white transition-colors"
@@ -132,49 +134,41 @@ export const CreateWorkspaceModal = ({
             </div>
           )}
 
-          {/* Workspace Name */}
+          {/* Organization Name */}
           <div>
-            <label
-              htmlFor="workspace-name"
-              className="block text-xs font-bold text-gray-300 uppercase mb-2"
-            >
-              Workspace Name <span className="text-red-400">*</span>
+            <label htmlFor="edit-organization-name" className="block text-xs font-bold text-gray-300 uppercase mb-2">
+              Organization Name
             </label>
             <input
-              id="workspace-name"
+              id="edit-organization-name"
               type="text"
               {...register("name")}
-              placeholder="e.g., Marketing Team"
+              placeholder="e.g., Acme Corp"
               className="w-full px-3 py-2 bg-[#1E1F22] border border-[#26272B] rounded text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
             />
             {errors.name && (
               <p className="mt-1 text-xs text-red-400">{errors.name.message}</p>
             )}
-            {!errors.name && (
-              <p className="mt-1 text-xs text-gray-400">
-                This is the name that will appear in your workspace switcher
-              </p>
-            )}
           </div>
 
-          {/* Description */}
+          {/* Billing Email */}
           <div>
-            <label
-              htmlFor="workspace-description"
-              className="block text-xs font-bold text-gray-300 uppercase mb-2"
-            >
-              Description
+            <label htmlFor="edit-organization-billing-email" className="block text-xs font-bold text-gray-300 uppercase mb-2">
+              Billing Email
             </label>
-            <textarea
-              id="workspace-description"
-              {...register("description")}
-              placeholder="What's this workspace for?"
-              rows={3}
-              className="w-full px-3 py-2 bg-[#1E1F22] border border-[#26272B] rounded text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent resize-none"
+            <input
+              id="edit-organization-billing-email"
+              type="email"
+              {...register("billing_email")}
+              placeholder="billing@example.com"
+              className="w-full px-3 py-2 bg-[#1E1F22] border border-[#26272B] rounded text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
             />
-            {errors.description && (
-              <p className="mt-1 text-xs text-red-400">
-                {errors.description.message}
+            {errors.billing_email && (
+              <p className="mt-1 text-xs text-red-400">{errors.billing_email.message}</p>
+            )}
+            {!errors.billing_email && (
+              <p className="mt-1 text-xs text-gray-400">
+                Email address for billing and subscription notifications
               </p>
             )}
           </div>
@@ -194,7 +188,7 @@ export const CreateWorkspaceModal = ({
               disabled={isSubmitting}
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {isSubmitting ? "Creating..." : "Create Workspace"}
+              {isSubmitting ? "Saving..." : "Save Changes"}
             </button>
           </div>
         </form>

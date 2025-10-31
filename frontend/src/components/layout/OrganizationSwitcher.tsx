@@ -10,10 +10,12 @@
  * - User avatar with gradient (blue→purple)
  * - Username + email display
  * - Dropup menu (opens upward, not downward)
- * - Organization list with avatars, tier, and role
+ * - Shows recent/last active organizations (max 5)
+ * - "View All Organizations" button to see all orgs
  * - Active indicator (blue bg-blue-600 + ChevronRight)
  * - Chevron rotates 180° when open
  * - Auto-closes on selection
+ * - Tracks recent orgs in localStorage
  *
  * DESIGN:
  * - Spans full sidebar width (not nested in columns)
@@ -23,13 +25,43 @@
  * - Colors: Blue-600 (active), gradient blue-500→purple-600 (avatar)
  */
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronDown, ChevronRight, Settings, LogOut, Plus } from "lucide-react";
+import { ChevronDown, ChevronRight, Settings, LogOut, Building2 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useApp } from "@/contexts/AppContext";
 import { useAuth } from "@/contexts/AuthContext";
+import type { Organization } from "@/types/tenant";
+
+const RECENT_ORGS_KEY = "recent_organizations";
+const MAX_RECENT_ORGS = 5;
+
+/**
+ * Get recent organization IDs from localStorage
+ */
+const getRecentOrgIds = (): string[] => {
+  try {
+    const stored = localStorage.getItem(RECENT_ORGS_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+};
+
+/**
+ * Add organization to recent list (most recent first)
+ */
+const addRecentOrg = (orgId: string) => {
+  try {
+    const recent = getRecentOrgIds().filter(id => id !== orgId);
+    recent.unshift(orgId); // Add to front
+    const trimmed = recent.slice(0, MAX_RECENT_ORGS);
+    localStorage.setItem(RECENT_ORGS_KEY, JSON.stringify(trimmed));
+  } catch (error) {
+    console.error("Failed to save recent org:", error);
+  }
+};
 
 export function OrganizationSwitcher() {
   const navigate = useNavigate();
@@ -38,12 +70,41 @@ export function OrganizationSwitcher() {
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Debug logging
+  // Track current org as recent when it changes
   useEffect(() => {
-    console.log("[OrganizationSwitcher] Organizations:", organizations);
-    console.log("[OrganizationSwitcher] Current Org:", currentOrganization);
-    console.log("[OrganizationSwitcher] User:", user);
-  }, [organizations, currentOrganization, user]);
+    if (currentOrganization?.id) {
+      addRecentOrg(currentOrganization.id);
+    }
+  }, [currentOrganization?.id]);
+
+  /**
+   * Calculate recent organizations (max 5, ordered by recency)
+   */
+  const recentOrganizations = useMemo(() => {
+    const recentIds = getRecentOrgIds();
+    const orgMap = new Map(organizations.map(org => [org.id, org]));
+
+    // Get orgs that exist in recent list and current orgs
+    const recent: Organization[] = [];
+    for (const id of recentIds) {
+      const org = orgMap.get(id);
+      if (org) {
+        recent.push(org);
+      }
+    }
+
+    // If less than MAX_RECENT_ORGS, add remaining orgs
+    if (recent.length < MAX_RECENT_ORGS) {
+      for (const org of organizations) {
+        if (!recent.find(r => r.id === org.id)) {
+          recent.push(org);
+          if (recent.length >= MAX_RECENT_ORGS) break;
+        }
+      }
+    }
+
+    return recent;
+  }, [organizations]);
 
   /**
    * Get initials from name
@@ -68,6 +129,7 @@ export function OrganizationSwitcher() {
 
     try {
       await switchOrganization(orgId);
+      addRecentOrg(orgId); // Track as recent
       setShowDropdown(false);
     } catch (error) {
       console.error("Failed to switch organization:", error);
@@ -155,8 +217,17 @@ export function OrganizationSwitcher() {
               </div>
             )}
 
-            {/* Organizations List */}
-            {organizations.map((org) => {
+            {/* Recent Organizations Header */}
+            {!isLoading && recentOrganizations.length > 0 && (
+              <div className="px-2 pb-1">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                  Recent Organizations
+                </p>
+              </div>
+            )}
+
+            {/* Recent Organizations List */}
+            {recentOrganizations.map((org) => {
               const isActive = org.id === currentOrganization?.id;
 
               return (
@@ -206,6 +277,22 @@ export function OrganizationSwitcher() {
 
           {/* Actions */}
           <div className="p-2 space-y-1">
+            {/* View All Organizations (if more than MAX_RECENT_ORGS) */}
+            {organizations.length > MAX_RECENT_ORGS && (
+              <button
+                onClick={() => {
+                  navigate("/organizations");
+                  setShowDropdown(false);
+                }}
+                className="w-full flex items-center space-x-2 p-2 rounded-md text-blue-400 hover:bg-blue-500/10 transition-colors text-left"
+              >
+                <Building2 className="h-4 w-4 flex-shrink-0" />
+                <span className="text-xs sm:text-sm font-medium">
+                  View All Organizations ({organizations.length})
+                </span>
+              </button>
+            )}
+
             {/* Manage Organizations */}
             <button
               onClick={() => {

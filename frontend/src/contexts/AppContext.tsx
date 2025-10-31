@@ -166,10 +166,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(true);
         setError(null);
 
-        // Find organization
-        const org = organizations.find((o) => o.id === orgId);
+        // Find organization in current state
+        let org = organizations.find((o) => o.id === orgId);
+
+        // If not found, refresh organizations list (might be newly created)
         if (!org) {
-          throw new Error("Organization not found");
+          console.log("[AppContext] Organization not in state, refreshing list...");
+          const orgsResponse = await organizationApi.list();
+          setOrganizations(orgsResponse.organizations);
+          org = orgsResponse.organizations.find((o) => o.id === orgId);
+
+          if (!org) {
+            throw new Error("Organization not found");
+          }
         }
 
         setCurrentOrganization(org);
@@ -234,10 +243,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(true);
         setError(null);
 
-        // Find workspace
-        const workspace = workspaces.find((w) => w.id === workspaceId);
+        // Find workspace in current state
+        let workspace = workspaces.find((w) => w.id === workspaceId);
+
+        // If not found, refresh workspaces list (might be newly created)
         if (!workspace) {
-          throw new Error("Workspace not found");
+          console.log("[AppContext] Workspace not in state, refreshing list...");
+          const workspacesData = await organizationApi.getWorkspaces(currentOrganization.id);
+          setWorkspaces(workspacesData);
+          workspace = workspacesData.find((w) => w.id === workspaceId);
+
+          if (!workspace) {
+            throw new Error("Workspace not found");
+          }
         }
 
         setCurrentWorkspace(workspace);
@@ -287,7 +305,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(true);
         setError(null);
 
-        const data: CreateWorkspaceRequest = { name, description };
+        const data: CreateWorkspaceRequest = {
+          name,
+          description,
+          organization_id: currentOrganization.id,
+        };
         const newWorkspace = await workspaceApi.create(currentOrganization.id, data);
 
         // Add to workspaces list

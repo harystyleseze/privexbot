@@ -195,16 +195,39 @@ async def get_organization_details(
         user_id=current_user.id
     )
 
-    # Convert workspaces to response format
+    # Convert workspaces to response format with user roles
     from app.schemas.organization import WorkspaceSummary
+    from app.models.workspace_member import WorkspaceMember
+    from app.models.organization_member import OrganizationMember
+
     workspaces = []
     for workspace in workspaces_data:
+        # Get user's role in this workspace
+        ws_member = db.query(WorkspaceMember).filter(
+            WorkspaceMember.workspace_id == workspace.id,
+            WorkspaceMember.user_id == current_user.id
+        ).first()
+
+        # If not a workspace member, check if org admin/owner (they get admin access)
+        user_workspace_role = None
+        if ws_member:
+            user_workspace_role = ws_member.role
+        else:
+            # Check if user is org admin/owner
+            org_member = db.query(OrganizationMember).filter(
+                OrganizationMember.organization_id == org_id,
+                OrganizationMember.user_id == current_user.id
+            ).first()
+            if org_member and org_member.role in ["owner", "admin"]:
+                user_workspace_role = "admin"  # Org admins/owners get admin access to all workspaces
+
         workspace_summary = WorkspaceSummary(
             id=workspace.id,
             name=workspace.name,
             description=workspace.description,
             is_default=workspace.is_default,
-            created_at=workspace.created_at
+            created_at=workspace.created_at,
+            user_role=user_workspace_role
         )
         workspaces.append(workspace_summary)
 

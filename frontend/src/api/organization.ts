@@ -21,6 +21,7 @@ import type {
   CreateOrganizationRequest,
   CreateOrganizationResponse,
   ListOrganizationsResponse,
+  OrganizationMember,
 } from "@/types/tenant";
 
 const API_BASE_URL = config.API_BASE_URL;
@@ -108,6 +109,42 @@ class OrganizationApiClient {
   async getWorkspaces(orgId: string): Promise<Workspace[]> {
     const response = await this.client.get<{ workspaces: Workspace[], total: number }>(`/orgs/${orgId}/workspaces`);
     return response.data.workspaces; // Extract workspaces array from paginated response
+  }
+
+  /**
+   * Add member to organization
+   */
+  async addMember(
+    orgId: string,
+    data: { user_id: string; role: string }
+  ): Promise<OrganizationMember> {
+    const response = await this.client.post<OrganizationMember>(
+      `/orgs/${orgId}/members`,
+      data
+    );
+    return response.data;
+  }
+
+  /**
+   * Update organization member role
+   */
+  async updateMemberRole(
+    orgId: string,
+    memberId: string,
+    role: string
+  ): Promise<OrganizationMember> {
+    const response = await this.client.put<OrganizationMember>(
+      `/orgs/${orgId}/members/${memberId}`,
+      { role }
+    );
+    return response.data;
+  }
+
+  /**
+   * Remove member from organization
+   */
+  async removeMember(orgId: string, memberId: string): Promise<void> {
+    await this.client.delete(`/orgs/${orgId}/members/${memberId}`);
   }
 }
 

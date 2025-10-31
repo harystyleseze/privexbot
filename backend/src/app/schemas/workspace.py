@@ -224,7 +224,8 @@ class WorkspaceResponse(BaseModel):
             "organization_id": "org-id",
             "is_default": false,
             "created_at": "2024-01-15T10:30:00Z",
-            "member_count": 5
+            "member_count": 5,
+            "user_role": "admin"
         }
     """
     id: UUID = Field(..., description="Workspace unique identifier")
@@ -236,6 +237,7 @@ class WorkspaceResponse(BaseModel):
     created_at: datetime = Field(..., description="Workspace creation timestamp")
     updated_at: datetime = Field(..., description="Last update timestamp")
     member_count: Optional[int] = Field(None, description="Number of members in workspace")
+    user_role: Optional[WorkspaceRole] = Field(None, description="Current user's role in this workspace")
 
     model_config = ConfigDict(from_attributes=True)
 

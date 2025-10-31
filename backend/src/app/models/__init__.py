@@ -17,6 +17,7 @@ from app.models.organization import Organization
 from app.models.organization_member import OrganizationMember
 from app.models.workspace import Workspace
 from app.models.workspace_member import WorkspaceMember
+from app.models.invitation import Invitation
 
 # NOTE: The following models are still pseudocode and not imported yet:
 # - Chatbot
@@ -39,4 +40,5 @@ __all__ = [
     "OrganizationMember",
     "Workspace",
     "WorkspaceMember",
+    "Invitation",
 ]

@@ -86,6 +86,38 @@ class Settings(BaseSettings):
         description="Celery result backend URL"
     )
 
+    # Email Settings (SMTP)
+    SMTP_HOST: str = Field(
+        default="smtp.gmail.com",
+        description="SMTP server host"
+    )
+    SMTP_PORT: int = Field(
+        default=587,
+        description="SMTP server port"
+    )
+    SMTP_USER: str = Field(
+        default="",
+        description="SMTP username (email address)"
+    )
+    SMTP_PASSWORD: str = Field(
+        default="",
+        description="SMTP password or app password"
+    )
+    SMTP_FROM_EMAIL: str = Field(
+        default="noreply@privexbot.com",
+        description="Default FROM email address"
+    )
+    SMTP_FROM_NAME: str = Field(
+        default="PrivexBot",
+        description="Default FROM name"
+    )
+
+    # Frontend URL (for invitation links)
+    FRONTEND_URL: str = Field(
+        default="http://localhost:5173",
+        description="Frontend application URL for generating invitation links"
+    )
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

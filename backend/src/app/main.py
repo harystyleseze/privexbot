@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.db.init_db import init_db
-from app.api.v1.routes import auth, org, workspace, context
+from app.api.v1.routes import auth, org, workspace, context, invitation
 
 
 @asynccontextmanager
@@ -81,6 +81,12 @@ app.include_router(
     context.router,
     prefix=f"{settings.API_V1_PREFIX}/switch",
     tags=["context"]
+)
+
+app.include_router(
+    invitation.router,
+    prefix=settings.API_V1_PREFIX,
+    tags=["invitations"]
 )
 
 

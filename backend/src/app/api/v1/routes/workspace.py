@@ -94,17 +94,39 @@ async def list_workspaces(
     paginated_workspaces = workspaces[start_idx:end_idx]
 
     # Format response
+    from app.models.workspace_member import WorkspaceMember
+    from app.models.organization_member import OrganizationMember
+
     workspace_responses = []
     for workspace in paginated_workspaces:
         ws_data = WorkspaceResponse.model_validate(workspace)
 
         # Get member count using database query (avoid lazy loading issues)
-        from app.models.workspace_member import WorkspaceMember
         member_count = db.query(WorkspaceMember).filter(
             WorkspaceMember.workspace_id == workspace.id
         ).count()
-
         ws_data.member_count = member_count
+
+        # Get user's role in this workspace
+        ws_member = db.query(WorkspaceMember).filter(
+            WorkspaceMember.workspace_id == workspace.id,
+            WorkspaceMember.user_id == current_user.id
+        ).first()
+
+        # If not a workspace member, check if org admin/owner (they get admin access)
+        user_workspace_role = None
+        if ws_member:
+            user_workspace_role = ws_member.role
+        else:
+            # Check if user is org admin/owner
+            org_member = db.query(OrganizationMember).filter(
+                OrganizationMember.organization_id == org_id,
+                OrganizationMember.user_id == current_user.id
+            ).first()
+            if org_member and org_member.role in ["owner", "admin"]:
+                user_workspace_role = "admin"  # Org admins/owners get admin access to all workspaces
+
+        ws_data.user_role = user_workspace_role
         workspace_responses.append(ws_data)
 
     # Calculate pagination metadata
@@ -151,7 +173,11 @@ async def create_new_workspace(
         is_default=workspace_data.is_default
     )
 
-    return WorkspaceResponse.model_validate(workspace)
+    # Creator is automatically assigned admin role
+    workspace_response = WorkspaceResponse.model_validate(workspace)
+    workspace_response.user_role = "admin"
+
+    return workspace_response
 
 
 @router.get("/{org_id}/workspaces/{workspace_id}", response_model=WorkspaceDetailed)
@@ -200,8 +226,31 @@ async def get_workspace_details(
         )
         members.append(member_response)
 
+    # Get user's role in this workspace
+    from app.models.workspace_member import WorkspaceMember
+    from app.models.organization_member import OrganizationMember
+
+    ws_member = db.query(WorkspaceMember).filter(
+        WorkspaceMember.workspace_id == workspace_id,
+        WorkspaceMember.user_id == current_user.id
+    ).first()
+
+    # If not a workspace member, check if org admin/owner (they get admin access)
+    user_workspace_role = None
+    if ws_member:
+        user_workspace_role = ws_member.role
+    else:
+        # Check if user is org admin/owner
+        org_member = db.query(OrganizationMember).filter(
+            OrganizationMember.organization_id == org_id,
+            OrganizationMember.user_id == current_user.id
+        ).first()
+        if org_member and org_member.role in ["owner", "admin"]:
+            user_workspace_role = "admin"  # Org admins/owners get admin access to all workspaces
+
     # Create detailed response using base workspace data
     base_workspace = WorkspaceResponse.model_validate(workspace)
+    base_workspace.user_role = user_workspace_role
 
     return WorkspaceDetailed(
         **base_workspace.model_dump(),
@@ -240,7 +289,32 @@ async def update_workspace_details(
             detail="Workspace not found in specified organization"
         )
 
-    return WorkspaceResponse.model_validate(updated_workspace)
+    # Get user's role in this workspace
+    from app.models.workspace_member import WorkspaceMember
+    from app.models.organization_member import OrganizationMember
+
+    ws_member = db.query(WorkspaceMember).filter(
+        WorkspaceMember.workspace_id == workspace_id,
+        WorkspaceMember.user_id == current_user.id
+    ).first()
+
+    # If not a workspace member, check if org admin/owner (they get admin access)
+    user_workspace_role = None
+    if ws_member:
+        user_workspace_role = ws_member.role
+    else:
+        # Check if user is org admin/owner
+        org_member = db.query(OrganizationMember).filter(
+            OrganizationMember.organization_id == org_id,
+            OrganizationMember.user_id == current_user.id
+        ).first()
+        if org_member and org_member.role in ["owner", "admin"]:
+            user_workspace_role = "admin"  # Org admins/owners get admin access to all workspaces
+
+    workspace_response = WorkspaceResponse.model_validate(updated_workspace)
+    workspace_response.user_role = user_workspace_role
+
+    return workspace_response
 
 
 @router.delete("/{org_id}/workspaces/{workspace_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -23,6 +23,7 @@ import type {
   SwitchWorkspaceRequest,
   ContextSwitchResponse,
   CurrentContextResponse,
+  WorkspaceMember,
 } from "@/types/tenant";
 
 const API_BASE_URL = config.API_BASE_URL;
@@ -74,8 +75,10 @@ class WorkspaceApiClient {
   /**
    * Get workspace details
    */
-  async get(workspaceId: string): Promise<Workspace> {
-    const response = await this.client.get<Workspace>(`/workspaces/${workspaceId}`);
+  async get(orgId: string, workspaceId: string): Promise<Workspace> {
+    const response = await this.client.get<Workspace>(
+      `/orgs/${orgId}/workspaces/${workspaceId}`
+    );
     return response.data;
   }
 
@@ -83,11 +86,12 @@ class WorkspaceApiClient {
    * Update workspace
    */
   async update(
+    orgId: string,
     workspaceId: string,
     data: Partial<Pick<Workspace, "name" | "description">>
   ): Promise<Workspace> {
     const response = await this.client.put<Workspace>(
-      `/workspaces/${workspaceId}`,
+      `/orgs/${orgId}/workspaces/${workspaceId}`,
       data
     );
     return response.data;
@@ -96,8 +100,8 @@ class WorkspaceApiClient {
   /**
    * Delete workspace
    */
-  async delete(workspaceId: string): Promise<void> {
-    await this.client.delete(`/workspaces/${workspaceId}`);
+  async delete(orgId: string, workspaceId: string): Promise<void> {
+    await this.client.delete(`/orgs/${orgId}/workspaces/${workspaceId}`);
   }
 
   /**
@@ -128,6 +132,50 @@ class WorkspaceApiClient {
   async getCurrentContext(): Promise<CurrentContextResponse> {
     const response = await this.client.get<CurrentContextResponse>("/switch/current");
     return response.data;
+  }
+
+  /**
+   * Add member to workspace
+   */
+  async addMember(
+    orgId: string,
+    workspaceId: string,
+    data: { user_id: string; role: string }
+  ): Promise<WorkspaceMember> {
+    const response = await this.client.post<WorkspaceMember>(
+      `/orgs/${orgId}/workspaces/${workspaceId}/members`,
+      data
+    );
+    return response.data;
+  }
+
+  /**
+   * Update workspace member role
+   */
+  async updateMemberRole(
+    orgId: string,
+    workspaceId: string,
+    memberId: string,
+    role: string
+  ): Promise<WorkspaceMember> {
+    const response = await this.client.put<WorkspaceMember>(
+      `/orgs/${orgId}/workspaces/${workspaceId}/members/${memberId}`,
+      { role }
+    );
+    return response.data;
+  }
+
+  /**
+   * Remove member from workspace
+   */
+  async removeMember(
+    orgId: string,
+    workspaceId: string,
+    memberId: string
+  ): Promise<void> {
+    await this.client.delete(
+      `/orgs/${orgId}/workspaces/${workspaceId}/members/${memberId}`
+    );
   }
 }
 

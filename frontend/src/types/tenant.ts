@@ -27,9 +27,24 @@ export interface Organization {
   subscription_tier: SubscriptionTier;
   user_role: OrganizationRole;
   member_count: number;
+  workspace_count?: number;
   is_default: boolean;
   created_at: string;
   updated_at: string;
+}
+
+/**
+ * Organization Member
+ */
+export interface OrganizationMember {
+  id: string;
+  user_id: string;
+  username: string;
+  email?: string;
+  role: OrganizationRole;
+  invited_by?: string;
+  joined_at: string;
+  created_at: string;
 }
 
 /**
@@ -45,6 +60,20 @@ export interface Workspace {
   member_count: number;
   created_at: string;
   updated_at: string;
+}
+
+/**
+ * Workspace Member
+ */
+export interface WorkspaceMember {
+  id: string;
+  user_id: string;
+  username: string;
+  email?: string;
+  role: WorkspaceRole;
+  invited_by?: string;
+  joined_at: string;
+  created_at: string;
 }
 
 /**
@@ -119,6 +148,7 @@ export interface ListOrganizationsResponse {
 export interface CreateWorkspaceRequest {
   name: string;
   description?: string;
+  organization_id: string;
 }
 
 /**
@@ -152,4 +182,82 @@ export interface CurrentContextResponse {
   organization_id: string;
   workspace_id: string;
   user_id: string;
+}
+
+// Invitation types
+
+/**
+ * Invitation resource type
+ */
+export type InvitationResourceType = "organization" | "workspace";
+
+/**
+ * Invitation status
+ */
+export type InvitationStatus =
+  | "pending"
+  | "accepted"
+  | "rejected"
+  | "expired"
+  | "cancelled";
+
+/**
+ * Invitation
+ */
+export interface Invitation {
+  id: string;
+  email: string;
+  resource_type: InvitationResourceType;
+  resource_id: string;
+  invited_role: string;
+  status: InvitationStatus;
+  invited_by?: string;
+  invited_at: string;
+  expires_at: string;
+  accepted_at?: string;
+}
+
+/**
+ * Invitation details (public view)
+ */
+export interface InvitationDetails {
+  resource_type: InvitationResourceType;
+  resource_name: string;
+  invited_role: string;
+  inviter_name?: string;
+  expires_at: string;
+  is_expired: boolean;
+}
+
+/**
+ * Create invitation request
+ */
+export interface CreateInvitationRequest {
+  email: string;
+  resource_type: InvitationResourceType;
+  resource_id: string;
+  role: string;
+}
+
+/**
+ * List invitations response
+ */
+export interface ListInvitationsResponse {
+  invitations: Invitation[];
+  total: number;
+  pending_count: number;
+  accepted_count: number;
+  expired_count: number;
+}
+
+/**
+ * Invitation statistics
+ */
+export interface InvitationStatistics {
+  total_sent: number;
+  pending: number;
+  accepted: number;
+  rejected: number;
+  expired: number;
+  cancelled: number;
 }
