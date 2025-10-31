@@ -133,10 +133,10 @@ export function WorkspaceSwitcher({
                 <div className="relative mb-1 transition-all duration-200">
                   <Avatar
                     className={cn(
-                      "h-11 w-11 transition-all duration-200 border-2",
+                      "h-11 w-11 transition-all duration-200 border-2 rounded-[14px]",
                       isActive
-                        ? "border-white rounded-[14px]" // Design Guide: #FFFFFF border
-                        : "border-transparent rounded-full group-hover:rounded-[14px] group-hover:border-[#6B7280]" // Design Guide: #6B7280 on hover
+                        ? "border-white" // Design Guide: Active = #FFFFFF border
+                        : "border-white group-hover:border-[#6B7280]" // Design Guide: White border, grey on hover
                     )}
                   >
                     {/* Priority: workspace avatar → organization avatar → initials */}
@@ -144,20 +144,15 @@ export function WorkspaceSwitcher({
                       <AvatarImage
                         src={workspace.avatar_url || currentOrganization?.avatar_url}
                         alt={workspace.name}
-                        className={cn(
-                          "object-cover transition-all duration-200",
-                          isActive
-                            ? "rounded-[14px]"
-                            : "rounded-full group-hover:rounded-[14px]"
-                        )}
+                        className="object-cover transition-all duration-200 rounded-[14px]"
                       />
                     )}
                     <AvatarFallback
                       className={cn(
-                        "text-xs font-bold transition-all duration-200",
+                        "text-xs font-bold transition-all duration-200 rounded-[14px]",
                         isActive
-                          ? "bg-[#2563EB] text-white rounded-[14px]" // Design Guide: Active = #2563EB background, rounded square shape
-                          : "bg-[#36373D] dark:bg-[#2B2D31] text-[#D1D5DB] dark:text-[#9CA3AF] rounded-full group-hover:bg-[#3B82F6] group-hover:text-white group-hover:rounded-[14px]" // Design Guide: Circle → Rounded square on hover
+                          ? "bg-[#2563EB] text-white" // Design Guide: Active = #2563EB background
+                          : "bg-[#36373D] dark:bg-[#2B2D31] text-[#D1D5DB] dark:text-[#9CA3AF] group-hover:bg-[#3B82F6] group-hover:text-white" // Design Guide: Inactive, hover effect
                       )}
                     >
                       {getInitials(workspace.name)}

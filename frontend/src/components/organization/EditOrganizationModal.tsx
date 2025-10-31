@@ -103,90 +103,95 @@ export const EditOrganizationModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/50"
+        className="absolute inset-0 bg-black/60 dark:bg-black/80"
         onClick={onClose}
       />
 
       {/* Modal */}
-      <div className="relative bg-[#313338] rounded-lg shadow-xl w-full max-w-md mx-4 overflow-hidden">
+      <div className="relative bg-white dark:bg-[#374151] rounded-lg shadow-2xl w-full max-w-md overflow-hidden border border-gray-200 dark:border-gray-600">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-[#26272B]">
-          <h2 className="text-xl font-bold text-white">
+        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-200 dark:border-gray-600">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-50">
             Edit Organization
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit(onSubmit)} className="p-4 space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="p-4 sm:p-5 space-y-5">
           {/* Root Error Message */}
           {errors.root && (
-            <div className="bg-red-500/10 border border-red-500/50 rounded p-3">
-              <p className="text-sm text-red-400">{errors.root.message}</p>
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 rounded-md p-3">
+              <p className="text-sm text-red-800 dark:text-red-300 font-medium">{errors.root.message}</p>
             </div>
           )}
 
           {/* Organization Name */}
           <div>
-            <label htmlFor="edit-organization-name" className="block text-xs font-bold text-gray-300 uppercase mb-2">
-              Organization Name
+            <label htmlFor="edit-organization-name" className="block text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase tracking-wide mb-2">
+              Organization Name <span className="text-red-600 dark:text-red-400">*</span>
             </label>
             <input
               id="edit-organization-name"
               type="text"
               {...register("name")}
               placeholder="e.g., Acme Corp"
-              className="w-full px-3 py-2 bg-[#1E1F22] border border-[#26272B] rounded text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+              className="w-full px-3 py-2.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-gray-50 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-colors"
             />
             {errors.name && (
-              <p className="mt-1 text-xs text-red-400">{errors.name.message}</p>
+              <p className="mt-1.5 text-xs text-red-700 dark:text-red-400 font-medium">{errors.name.message}</p>
+            )}
+            {!errors.name && (
+              <p className="mt-1.5 text-xs text-gray-600 dark:text-gray-300">
+                This is the name that will appear in your organization switcher
+              </p>
             )}
           </div>
 
           {/* Billing Email */}
           <div>
-            <label htmlFor="edit-organization-billing-email" className="block text-xs font-bold text-gray-300 uppercase mb-2">
-              Billing Email
+            <label htmlFor="edit-organization-billing-email" className="block text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase tracking-wide mb-2">
+              Billing Email <span className="text-red-600 dark:text-red-400">*</span>
             </label>
             <input
               id="edit-organization-billing-email"
               type="email"
               {...register("billing_email")}
               placeholder="billing@example.com"
-              className="w-full px-3 py-2 bg-[#1E1F22] border border-[#26272B] rounded text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+              className="w-full px-3 py-2.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-gray-50 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-colors"
             />
             {errors.billing_email && (
-              <p className="mt-1 text-xs text-red-400">{errors.billing_email.message}</p>
+              <p className="mt-1.5 text-xs text-red-700 dark:text-red-400 font-medium">{errors.billing_email.message}</p>
             )}
             {!errors.billing_email && (
-              <p className="mt-1 text-xs text-gray-400">
+              <p className="mt-1.5 text-xs text-gray-600 dark:text-gray-300">
                 Email address for billing and subscription notifications
               </p>
             )}
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-3 pt-4">
+          <div className="flex items-center justify-end gap-3 pt-3">
             <button
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="px-4 py-2 text-sm font-medium text-white hover:underline disabled:opacity-50"
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-gray-50 disabled:opacity-50 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-5 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
             >
               {isSubmitting ? "Saving..." : "Save Changes"}
             </button>

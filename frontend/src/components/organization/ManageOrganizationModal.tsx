@@ -114,28 +114,28 @@ export const ManageOrganizationModal = ({
   const canCreateWorkspace = organization.user_role === "admin" || organization.user_role === "owner";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/50"
+        className="absolute inset-0 bg-black/60 dark:bg-black/80"
         onClick={onClose}
       />
 
       {/* Modal */}
-      <div className="relative bg-[#313338] rounded-lg shadow-xl w-full max-w-2xl mx-4 overflow-hidden max-h-[90vh] flex flex-col">
+      <div className="relative bg-white dark:bg-[#374151] rounded-lg shadow-2xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col border border-gray-200 dark:border-gray-600">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-[#26272B] flex-shrink-0">
+        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-gray-200 dark:border-gray-600 flex-shrink-0">
           <div>
-            <h2 className="text-xl font-bold text-white">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-50">
               Manage Workspaces
             </h2>
-            <p className="text-sm text-gray-400 mt-1">
+            <p className="text-sm text-gray-700 dark:text-gray-200 mt-1">
               {organization.name}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
@@ -143,23 +143,23 @@ export const ManageOrganizationModal = ({
 
         {/* Content with Tabs */}
         <Tabs defaultValue="workspaces" className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="mx-4 mt-4 grid w-auto grid-cols-2 bg-[#1E1F22]">
-            <TabsTrigger value="workspaces" className="data-[state=active]:bg-blue-600">
+          <TabsList className="mx-4 mt-4 grid w-auto grid-cols-2 bg-gray-100 dark:bg-gray-700">
+            <TabsTrigger value="workspaces" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white text-gray-900 dark:text-gray-50">
               <Folder className="h-4 w-4 mr-2" />
               Workspaces
             </TabsTrigger>
-            <TabsTrigger value="members" className="data-[state=active]:bg-blue-600">
+            <TabsTrigger value="members" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white text-gray-900 dark:text-gray-50">
               <Users className="h-4 w-4 mr-2" />
               Members
             </TabsTrigger>
           </TabsList>
 
           {/* Workspaces Tab */}
-          <TabsContent value="workspaces" className="flex-1 overflow-y-auto p-4 space-y-4 mt-0">
+          <TabsContent value="workspaces" className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 mt-0">
             {/* Error Message */}
             {error && (
-              <div className="bg-red-500/10 border border-red-500/50 rounded p-3">
-                <p className="text-sm text-red-400">{error}</p>
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 rounded-md p-3">
+                <p className="text-sm text-red-800 dark:text-red-300 font-medium">{error}</p>
               </div>
             )}
 
@@ -167,7 +167,7 @@ export const ManageOrganizationModal = ({
             {canCreateWorkspace && (
               <Button
                 onClick={() => setShowCreateWorkspace(true)}
-                className="w-full bg-blue-600 hover:bg-blue-700"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Create Workspace
@@ -184,8 +184,8 @@ export const ManageOrganizationModal = ({
             {/* Workspaces List */}
             {!isLoading && workspaces.length === 0 && (
               <div className="text-center py-8">
-                <Folder className="h-12 w-12 text-gray-500 mx-auto mb-3" />
-                <p className="text-gray-400 text-sm">No workspaces found</p>
+                <Folder className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
+                <p className="text-sm text-gray-700 dark:text-gray-200">No workspaces found</p>
               </div>
             )}
 
@@ -199,14 +199,16 @@ export const ManageOrganizationModal = ({
                   return (
                     <div
                       key={workspace.id}
-                      className={`bg-[#2B2D31] rounded-lg p-4 border transition-all ${
-                        isActive ? "border-blue-600 shadow-md" : "border-[#26272B] hover:border-[#3a3a3a]"
+                      className={`bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border transition-all ${
+                        isActive
+                          ? "border-blue-600 shadow-md ring-2 ring-blue-600"
+                          : "border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 hover:shadow-sm"
                       }`}
                     >
-                      <div className="flex items-start justify-between">
+                      <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="text-white font-medium truncate">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <h3 className="text-gray-900 dark:text-gray-50 font-medium truncate">
                               {workspace.name}
                             </h3>
                             {isActive && (
@@ -216,17 +218,17 @@ export const ManageOrganizationModal = ({
                               </Badge>
                             )}
                             {workspace.is_default && (
-                              <Badge variant="outline" className="text-xs text-gray-400 border-gray-600">
+                              <Badge variant="outline" className="text-xs text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-500">
                                 Default
                               </Badge>
                             )}
                           </div>
                           {workspace.description && (
-                            <p className="text-sm text-gray-400 mb-2">
+                            <p className="text-sm text-gray-700 dark:text-gray-200 mb-2">
                               {workspace.description}
                             </p>
                           )}
-                          <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <div className="flex items-center gap-4 text-xs text-gray-600 dark:text-gray-300">
                             <span className="flex items-center gap-1">
                               <Users className="h-3 w-3" />
                               {workspace.member_count || 0} members
@@ -235,13 +237,13 @@ export const ManageOrganizationModal = ({
                         </div>
 
                         {/* Actions */}
-                        <div className="flex items-center gap-2 ml-4 flex-shrink-0">
+                        <div className="flex items-center gap-2 flex-shrink-0">
                           {!isActive && (
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => handleSwitchWorkspace(workspace.id)}
-                              className="text-xs"
+                              className="text-xs border-gray-300 dark:border-gray-500 text-gray-900 dark:text-gray-50 hover:bg-gray-100 dark:hover:bg-gray-600 font-medium"
                             >
                               Switch to
                             </Button>
@@ -251,7 +253,7 @@ export const ManageOrganizationModal = ({
                               size="sm"
                               variant="outline"
                               onClick={() => setEditingWorkspace(workspace)}
-                              className="text-xs"
+                              className="text-xs border-gray-300 dark:border-gray-500 text-gray-900 dark:text-gray-50 hover:bg-gray-100 dark:hover:bg-gray-600"
                             >
                               <Edit className="h-3 w-3" />
                             </Button>
@@ -261,7 +263,7 @@ export const ManageOrganizationModal = ({
                               size="sm"
                               variant="outline"
                               onClick={() => setDeletingWorkspace(workspace)}
-                              className="text-xs text-red-500 hover:text-red-600 hover:border-red-500"
+                              className="text-xs text-red-700 hover:text-red-800 border-red-300 hover:border-red-400 dark:border-red-700 dark:hover:border-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 dark:text-red-400 dark:hover:text-red-300"
                             >
                               <Trash2 className="h-3 w-3" />
                             </Button>
@@ -276,7 +278,7 @@ export const ManageOrganizationModal = ({
           </TabsContent>
 
           {/* Members Tab */}
-          <TabsContent value="members" className="flex-1 overflow-y-auto p-4 mt-0">
+          <TabsContent value="members" className="flex-1 overflow-y-auto p-4 sm:p-5 mt-0">
             <OrganizationMembersTab
               organization={organization}
               onMembersChanged={onSuccess}
@@ -285,11 +287,11 @@ export const ManageOrganizationModal = ({
         </Tabs>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-4 border-t border-[#26272B] flex-shrink-0">
+        <div className="flex items-center justify-end gap-3 p-4 sm:p-5 border-t border-gray-200 dark:border-gray-600 flex-shrink-0">
           <Button
             variant="outline"
             onClick={onClose}
-            className="text-white hover:bg-[#2B2D31]"
+            className="border-gray-300 dark:border-gray-500 text-gray-900 dark:text-gray-50 hover:bg-gray-100 dark:hover:bg-gray-600 font-medium"
           >
             Close
           </Button>

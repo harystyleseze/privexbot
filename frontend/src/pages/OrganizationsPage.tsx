@@ -38,6 +38,7 @@ import {
 import { useApp } from "@/contexts/AppContext";
 import { useToast } from "@/hooks/use-toast";
 import { organizationApi } from "@/api/organization";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -137,19 +138,20 @@ export function OrganizationsPage() {
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-background p-4 sm:p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <DashboardLayout>
+      <div className="h-full overflow-y-auto bg-white dark:bg-[#1F2937] p-4 sm:p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Organizations</h1>
-            <p className="text-sm text-muted-foreground mt-1">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-50">Organizations</h1>
+            <p className="text-sm text-gray-700 dark:text-gray-200 mt-1">
               Manage your organizations and workspaces
             </p>
           </div>
           <Button
             onClick={() => setShowCreateOrganization(true)}
-            className="bg-blue-600 hover:bg-blue-700"
+            className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
           >
             <Plus className="h-4 w-4 mr-2" />
             New Organization
@@ -165,7 +167,7 @@ export function OrganizationsPage() {
         )}
 
         {/* Organizations Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {organizations.map((org) => {
             const isActive = org.id === currentOrganization?.id;
             const canEdit = org.user_role === "admin" || org.user_role === "owner";
@@ -174,28 +176,28 @@ export function OrganizationsPage() {
             return (
               <Card
                 key={org.id}
-                className={`relative transition-all ${
-                  isActive ? "ring-2 ring-blue-600 shadow-lg" : "hover:shadow-md"
+                className={`relative transition-all bg-white dark:bg-[#374151] border-gray-200 dark:border-gray-600 ${
+                  isActive ? "ring-2 ring-blue-600 shadow-lg" : "hover:shadow-md hover:border-gray-300 dark:hover:border-gray-500"
                 }`}
               >
                 {isActive && (
-                  <div className="absolute top-2 right-2">
-                    <Badge className="bg-blue-600 text-white">
+                  <div className="absolute top-2 right-2 sm:top-3 sm:right-3">
+                    <Badge className="bg-blue-600 text-white text-xs">
                       <Check className="h-3 w-3 mr-1" />
                       Active
                     </Badge>
                   </div>
                 )}
 
-                <CardHeader className="pb-3">
+                <CardHeader className="pb-3 p-4 sm:p-6">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center space-x-3">
-                      <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center flex-shrink-0">
-                        <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                      <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                        <Building2 className="h-5 w-5 sm:h-6 sm:w-6 text-blue-700 dark:text-blue-300" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <CardTitle className="text-lg truncate">{org.name}</CardTitle>
-                        <Badge className={`mt-1 ${getRoleBadgeColor(org.user_role)}`}>
+                        <CardTitle className="text-base sm:text-lg truncate text-gray-900 dark:text-gray-50">{org.name}</CardTitle>
+                        <Badge className={`mt-1 text-xs ${getRoleBadgeColor(org.user_role)}`}>
                           {org.user_role}
                         </Badge>
                       </div>
@@ -203,16 +205,16 @@ export function OrganizationsPage() {
                   </div>
                 </CardHeader>
 
-                <CardContent className="space-y-3">
+                <CardContent className="space-y-3 p-4 sm:p-6 pt-0">
                   {/* Stats */}
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center text-muted-foreground">
-                      <Users className="h-4 w-4 mr-1" />
-                      {org.member_count || 0} members
+                  <div className="flex items-center justify-between text-xs sm:text-sm">
+                    <div className="flex items-center text-gray-700 dark:text-gray-200">
+                      <Users className="h-4 w-4 mr-1 flex-shrink-0" />
+                      <span className="truncate">{org.member_count || 0} members</span>
                     </div>
-                    <div className="flex items-center text-muted-foreground">
-                      <Folder className="h-4 w-4 mr-1" />
-                      {org.workspace_count || 0} workspaces
+                    <div className="flex items-center text-gray-700 dark:text-gray-200">
+                      <Folder className="h-4 w-4 mr-1 flex-shrink-0" />
+                      <span className="truncate">{org.workspace_count || 0} workspaces</span>
                     </div>
                   </div>
 
@@ -224,7 +226,7 @@ export function OrganizationsPage() {
                         variant="default"
                         onClick={() => handleSwitchOrganization(org.id)}
                         disabled={isLoading}
-                        className="flex-1"
+                        className="flex-1 min-w-[100px] bg-blue-600 hover:bg-blue-700 text-white font-medium"
                       >
                         {isLoading ? (
                           <Loader2 className="h-3 w-3 animate-spin" />
@@ -237,20 +239,21 @@ export function OrganizationsPage() {
                       size="sm"
                       variant="outline"
                       onClick={() => setManagingOrganization(org)}
-                      className={!isActive ? "w-auto" : "flex-1"}
+                      className={`${!isActive ? "w-auto min-w-[90px]" : "flex-1"} border-gray-300 dark:border-gray-500 text-gray-900 dark:text-gray-50 hover:bg-gray-100 hover:border-gray-400 dark:hover:bg-gray-600 dark:hover:border-gray-400 font-medium transition-all duration-200`}
                     >
-                      <Settings className="h-3 w-3 mr-1" />
-                      Manage
+                      <Settings className="h-3 w-3 mr-1 flex-shrink-0" />
+                      <span className="hidden sm:inline">Manage</span>
+                      <span className="sm:hidden">Manage</span>
                     </Button>
                     {canEdit && (
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => setEditingOrganization(org)}
-                        className="w-auto"
+                        className="w-auto border-gray-300 dark:border-gray-500 text-gray-900 dark:text-gray-50 hover:bg-gray-100 hover:border-gray-400 dark:hover:bg-gray-600 dark:hover:border-gray-400 font-medium transition-all duration-200"
                       >
-                        <Edit className="h-3 w-3 mr-1" />
-                        Edit
+                        <Edit className="h-3 w-3 mr-1 flex-shrink-0" />
+                        <span className="hidden sm:inline">Edit</span>
                       </Button>
                     )}
                     {canDelete && (
@@ -258,28 +261,28 @@ export function OrganizationsPage() {
                         size="sm"
                         variant="outline"
                         onClick={() => setDeletingOrganization(org)}
-                        className="w-auto text-red-500 hover:text-red-600 hover:border-red-500"
+                        className="w-auto text-red-700 hover:text-red-800 border-red-300 hover:border-red-400 dark:border-red-700 dark:hover:border-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 dark:text-red-400 dark:hover:text-red-300 font-medium"
                       >
-                        <Trash2 className="h-3 w-3 mr-1" />
-                        Delete
+                        <Trash2 className="h-3 w-3 mr-1 flex-shrink-0" />
+                        <span className="hidden sm:inline">Delete</span>
                       </Button>
                     )}
                   </div>
 
                   {/* Workspaces Preview (if active) */}
                   {isActive && workspaces.length > 0 && (
-                    <div className="mt-3 pt-3 border-t">
-                      <div className="text-xs text-muted-foreground mb-2">Workspaces:</div>
+                    <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+                      <div className="text-xs text-gray-700 dark:text-gray-200 mb-2 font-semibold uppercase tracking-wide">Workspaces</div>
                       <div className="space-y-1">
                         {workspaces.slice(0, 2).map((ws) => (
                           <div
                             key={ws.id}
-                            className="flex items-center justify-between text-sm p-2 rounded-md hover:bg-accent cursor-pointer"
+                            className="flex items-center justify-between text-sm p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer transition-all duration-200"
                             onClick={() => handleSwitchWorkspace(ws.id)}
                           >
-                            <span className="truncate">{ws.name}</span>
+                            <span className="truncate text-gray-900 dark:text-gray-50 font-medium">{ws.name}</span>
                             {ws.id === currentWorkspace?.id && (
-                              <Check className="h-3 w-3 text-blue-600 flex-shrink-0 ml-2" />
+                              <Check className="h-3 w-3 text-blue-600 dark:text-blue-400 flex-shrink-0 ml-2" />
                             )}
                           </div>
                         ))}
@@ -288,7 +291,7 @@ export function OrganizationsPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="w-full mt-2 text-xs"
+                          className="w-full mt-2 text-xs text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-gray-50 hover:bg-gray-100 dark:hover:bg-gray-600 font-medium transition-all duration-200"
                           onClick={() => setManagingOrganization(org)}
                         >
                           View all {workspaces.length} workspaces
@@ -304,13 +307,16 @@ export function OrganizationsPage() {
 
         {/* Empty State */}
         {organizations.length === 0 && (
-          <Card className="p-12 text-center">
-            <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No organizations yet</h3>
-            <p className="text-sm text-muted-foreground mb-4">
+          <Card className="p-8 sm:p-12 text-center bg-white dark:bg-[#374151] border-gray-200 dark:border-gray-600">
+            <Building2 className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-gray-50">No organizations yet</h3>
+            <p className="text-sm text-gray-700 dark:text-gray-200 mb-6">
               Create your first organization to get started
             </p>
-            <Button className="bg-blue-600 hover:bg-blue-700">
+            <Button
+              onClick={() => setShowCreateOrganization(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-medium"
+            >
               <Plus className="h-4 w-4 mr-2" />
               Create Organization
             </Button>
@@ -368,5 +374,6 @@ export function OrganizationsPage() {
         )}
       </div>
     </div>
+    </DashboardLayout>
   );
 }

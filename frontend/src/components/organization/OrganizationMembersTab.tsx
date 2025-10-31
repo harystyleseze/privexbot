@@ -292,8 +292,8 @@ export const OrganizationMembersTab = ({
     <div className="space-y-4">
       {/* Error Message */}
       {error && (
-        <div className="bg-red-500/10 border border-red-500/50 rounded p-3">
-          <p className="text-sm text-red-400">{error}</p>
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 rounded-md p-3">
+          <p className="text-sm text-red-800 dark:text-red-300 font-medium">{error}</p>
         </div>
       )}
 
@@ -303,66 +303,66 @@ export const OrganizationMembersTab = ({
           {!showAddMember ? (
             <Button
               onClick={() => setShowAddMember(true)}
-              className="w-full bg-blue-600 hover:bg-blue-700"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm"
             >
               <Mail className="h-4 w-4 mr-2" />
               Send Invitation
             </Button>
           ) : (
-            <form onSubmit={handleSubmit(handleSendInvitation)} className="bg-[#2B2D31] rounded-lg p-4 space-y-3">
+            <form onSubmit={handleSubmit(handleSendInvitation)} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 space-y-3 border border-gray-200 dark:border-gray-600">
               {/* Root Error Message */}
               {formErrors.root && (
-                <div className="bg-red-500/10 border border-red-500/50 rounded p-3">
-                  <p className="text-sm text-red-400">{formErrors.root.message}</p>
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 rounded-md p-3">
+                  <p className="text-sm text-red-800 dark:text-red-300 font-medium">{formErrors.root.message}</p>
                 </div>
               )}
 
               <div>
-                <label htmlFor="invite-email" className="block text-xs font-bold text-gray-300 uppercase mb-2">
-                  Email Address <span className="text-red-400">*</span>
+                <label htmlFor="invite-email" className="block text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase tracking-wide mb-2">
+                  Email Address <span className="text-red-600 dark:text-red-400">*</span>
                 </label>
                 <input
                   id="invite-email"
                   type="email"
                   {...register("email")}
                   placeholder="user@example.com"
-                  className="w-full px-3 py-2 bg-[#1E1F22] border border-[#26272B] rounded text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  className="w-full px-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-gray-50 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-colors"
                 />
                 {formErrors.email && (
-                  <p className="mt-1 text-xs text-red-400">{formErrors.email.message}</p>
+                  <p className="mt-1.5 text-xs text-red-700 dark:text-red-400 font-medium">{formErrors.email.message}</p>
                 )}
                 {!formErrors.email && (
-                  <p className="mt-1 text-xs text-gray-400">
+                  <p className="mt-1.5 text-xs text-gray-600 dark:text-gray-300">
                     An invitation email will be sent to this address
                   </p>
                 )}
               </div>
 
               <div>
-                <label htmlFor="invite-role" className="block text-xs font-bold text-gray-300 uppercase mb-2">
+                <label htmlFor="invite-role" className="block text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase tracking-wide mb-2">
                   Role
                 </label>
                 <select
                   id="invite-role"
                   {...register("role")}
-                  className="w-full px-3 py-2 bg-[#1E1F22] border border-[#26272B] rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-600"
+                  className="w-full px-3 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-colors"
                 >
                   <option value="member">Member</option>
                   <option value="admin">Admin</option>
                 </select>
                 {formErrors.role && (
-                  <p className="mt-1 text-xs text-red-400">{formErrors.role.message}</p>
+                  <p className="mt-1.5 text-xs text-red-700 dark:text-red-400 font-medium">{formErrors.role.message}</p>
                 )}
-                <p className="mt-1 text-xs text-gray-400">
+                <p className="mt-1.5 text-xs text-gray-600 dark:text-gray-300">
                   Note: Organizations can only have one owner
                 </p>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex gap-2 pt-2">
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm"
                 >
                   {isSubmitting ? "Sending..." : "Send Invitation"}
                 </Button>
@@ -373,7 +373,7 @@ export const OrganizationMembersTab = ({
                     resetForm();
                   }}
                   variant="outline"
-                  className="flex-1"
+                  className="flex-1 border-gray-300 dark:border-gray-500 text-gray-900 dark:text-gray-50 hover:bg-gray-100 dark:hover:bg-gray-600 font-medium"
                   disabled={isSubmitting}
                 >
                   Cancel
@@ -388,9 +388,9 @@ export const OrganizationMembersTab = ({
       {canManageMembers && invitations.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-yellow-500" />
-            <h3 className="text-sm font-semibold text-gray-300">Pending Invitations</h3>
-            <Badge variant="outline" className="text-xs">
+            <Clock className="h-4 w-4 text-yellow-600 dark:text-yellow-500" />
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-50">Pending Invitations</h3>
+            <Badge variant="outline" className="text-xs text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-500">
               {invitations.length}
             </Badge>
           </div>
@@ -399,19 +399,19 @@ export const OrganizationMembersTab = ({
             {invitations.map((invitation) => (
               <div
                 key={invitation.id}
-                className="bg-[#2B2D31] rounded-lg p-4 flex items-center justify-between"
+                className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 flex items-center justify-between gap-4 border border-gray-200 dark:border-gray-600"
               >
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <div className="flex-shrink-0">
-                    <Mail className="h-4 w-4 text-yellow-500" />
+                    <Mail className="h-4 w-4 text-yellow-600 dark:text-yellow-500" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-white font-medium truncate">{invitation.email}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge className="bg-yellow-500 text-white text-xs">
+                    <p className="text-gray-900 dark:text-gray-50 font-medium truncate">{invitation.email}</p>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <Badge className="bg-yellow-600 text-white text-xs">
                         {invitation.invited_role}
                       </Badge>
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-gray-600 dark:text-gray-300">
                         Expires: {new Date(invitation.expires_at).toLocaleDateString()}
                       </span>
                     </div>
@@ -423,7 +423,7 @@ export const OrganizationMembersTab = ({
                     size="sm"
                     variant="outline"
                     onClick={() => handleResendInvitation(invitation.id, invitation.email)}
-                    className="text-blue-400 hover:text-blue-500 hover:border-blue-500"
+                    className="border-gray-300 dark:border-gray-500 text-blue-700 hover:text-blue-800 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-950/30"
                     title="Resend invitation"
                   >
                     <RefreshCw className="h-3 w-3" />
@@ -432,7 +432,7 @@ export const OrganizationMembersTab = ({
                     size="sm"
                     variant="outline"
                     onClick={() => handleCancelInvitation(invitation.id, invitation.email)}
-                    className="text-red-500 hover:text-red-600 hover:border-red-500"
+                    className="text-red-700 hover:text-red-800 border-red-300 hover:border-red-400 dark:border-red-700 dark:hover:border-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 dark:text-red-400 dark:hover:text-red-300"
                     title="Cancel invitation"
                   >
                     <X className="h-3 w-3" />
@@ -454,8 +454,8 @@ export const OrganizationMembersTab = ({
       {/* Members List */}
       {!isLoading && members.length === 0 && (
         <div className="text-center py-8">
-          <UsersIcon className="h-12 w-12 text-gray-500 mx-auto mb-3" />
-          <p className="text-gray-400 text-sm">No members found</p>
+          <UsersIcon className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
+          <p className="text-sm text-gray-700 dark:text-gray-200">No members found</p>
         </div>
       )}
 
@@ -469,7 +469,7 @@ export const OrganizationMembersTab = ({
             return (
               <div
                 key={member.id}
-                className="bg-[#2B2D31] rounded-lg p-4 flex items-center justify-between"
+                className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 flex items-center justify-between gap-4 border border-gray-200 dark:border-gray-600"
               >
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <div className="flex-shrink-0">
@@ -477,13 +477,13 @@ export const OrganizationMembersTab = ({
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="text-white font-medium truncate">
+                      <p className="text-gray-900 dark:text-gray-50 font-medium truncate">
                         {member.username}
-                        {isCurrentUser && <span className="text-blue-400 ml-1">(You)</span>}
+                        {isCurrentUser && <span className="text-blue-600 dark:text-blue-400 ml-1">(You)</span>}
                       </p>
                     </div>
                     {member.email && (
-                      <p className="text-xs text-gray-400 truncate">{member.email}</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-300 truncate">{member.email}</p>
                     )}
                   </div>
                 </div>
@@ -493,7 +493,7 @@ export const OrganizationMembersTab = ({
                     <select
                       value={member.role}
                       onChange={(e) => handleUpdateRole(member.id, e.target.value as OrganizationRole)}
-                      className="px-2 py-1 text-xs bg-[#1E1F22] border border-[#26272B] rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-600"
+                      className="px-2 py-1 text-xs bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-600 transition-colors"
                     >
                       <option value="member">Member</option>
                       <option value="admin">Admin</option>
@@ -509,7 +509,7 @@ export const OrganizationMembersTab = ({
                       size="sm"
                       variant="outline"
                       onClick={() => handleRemoveMember(member.id, member.username)}
-                      className="text-red-500 hover:text-red-600 hover:border-red-500"
+                      className="text-red-700 hover:text-red-800 border-red-300 hover:border-red-400 dark:border-red-700 dark:hover:border-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 dark:text-red-400 dark:hover:text-red-300"
                     >
                       <Trash2 className="h-3 w-3" />
                     </Button>
