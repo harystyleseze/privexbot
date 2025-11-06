@@ -8,6 +8,7 @@
 export interface User {
   id: string;
   username: string;
+  avatar_url?: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;

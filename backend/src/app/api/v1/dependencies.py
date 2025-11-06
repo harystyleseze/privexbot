@@ -123,3 +123,141 @@ async def get_current_active_user(
             detail="Inactive user"
         )
     return current_user
+
+
+async def get_current_user_with_org(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+) -> tuple[User, str, str | None]:
+    """
+    Get authenticated user with validated organization context.
+
+    WHY: Org-scoped endpoints need to ensure user has valid organization
+    HOW: Validates JWT, verifies org_id exists and user is a member
+
+    This dependency is for ORGANIZATION-SCOPED resources like:
+    - Chatbots, Chatflows, Knowledge Bases
+    - Workspaces (within an org)
+    - Org-level analytics
+
+    For USER-LEVEL resources (profile, create org, invitations),
+    use get_current_user instead.
+
+    Args:
+        credentials: HTTP Bearer token from header
+        db: Database session
+
+    Returns:
+        Tuple of (User, org_id: str, ws_id: str | None)
+
+    Raises:
+        HTTPException(401): Invalid token or inactive user
+        HTTPException(400): No organization or org deleted
+            - Returns structured error with action_required field
+            - Frontend can catch this and show "Create Organization" prompt
+
+    Usage:
+        @router.post("/chatbots")
+        def create_chatbot(
+            user_and_org: tuple = Depends(get_current_user_with_org),
+            db: Session = Depends(get_db)
+        ):
+            user, org_id, ws_id = user_and_org
+            # Now safe to create chatbot in org context
+    """
+    from uuid import UUID
+    from app.models.organization_member import OrganizationMember
+    from app.models.organization import Organization
+
+    # Extract and decode token
+    token = credentials.credentials
+
+    try:
+        payload = decode_token(token)
+        user_id: str = payload.get("sub")
+        org_id: str | None = payload.get("org_id")
+        ws_id: str | None = payload.get("ws_id")
+
+        if user_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authentication token"
+            )
+
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials"
+        )
+
+    # Lookup user in database
+    user = db.query(User).filter(User.id == user_id).first()
+
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found"
+        )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User account is inactive"
+        )
+
+    # CRITICAL: Validate organization context
+    if not org_id:
+        # User has no organization in JWT
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error_code": "NO_ORGANIZATION",
+                "message": "You need an organization to access this resource.",
+                "action_required": "CREATE_ORGANIZATION",
+                "suggestions": [
+                    "Create a new organization",
+                    "Accept a pending invitation"
+                ]
+            }
+        )
+
+    # Verify organization exists and user is a member
+    org_member = db.query(OrganizationMember).filter(
+        OrganizationMember.organization_id == org_id,
+        OrganizationMember.user_id == user_id
+    ).first()
+
+    if not org_member:
+        # Organization was deleted or user was removed
+        org_exists = db.query(Organization).filter(
+            Organization.id == org_id
+        ).first()
+
+        if not org_exists:
+            error_detail = {
+                "error_code": "ORGANIZATION_DELETED",
+                "message": "Your organization was deleted. Please create a new one.",
+                "action_required": "CREATE_ORGANIZATION",
+                "suggestions": [
+                    "Create a new organization",
+                    "Accept a pending invitation"
+                ]
+            }
+        else:
+            error_detail = {
+                "error_code": "NO_ORGANIZATION_ACCESS",
+                "message": "You no longer have access to this organization.",
+                "action_required": "CREATE_ORGANIZATION",
+                "suggestions": [
+                    "Create a new organization",
+                    "Accept a pending invitation"
+                ]
+            }
+
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_detail
+        )
+
+    # All validations passed - return user with org context
+    return (user, org_id, ws_id)

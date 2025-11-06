@@ -27,7 +27,13 @@
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronDown, ChevronRight, Settings, LogOut, Building2 } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  Settings,
+  LogOut,
+  Building2,
+} from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { useApp } from "@/contexts/AppContext";
@@ -54,7 +60,7 @@ const getRecentOrgIds = (): string[] => {
  */
 const addRecentOrg = (orgId: string) => {
   try {
-    const recent = getRecentOrgIds().filter(id => id !== orgId);
+    const recent = getRecentOrgIds().filter((id) => id !== orgId);
     recent.unshift(orgId); // Add to front
     const trimmed = recent.slice(0, MAX_RECENT_ORGS);
     localStorage.setItem(RECENT_ORGS_KEY, JSON.stringify(trimmed));
@@ -66,7 +72,8 @@ const addRecentOrg = (orgId: string) => {
 export function OrganizationSwitcher() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { organizations, currentOrganization, switchOrganization, isLoading } = useApp();
+  const { organizations, currentOrganization, switchOrganization, isLoading } =
+    useApp();
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -82,7 +89,7 @@ export function OrganizationSwitcher() {
    */
   const recentOrganizations = useMemo(() => {
     const recentIds = getRecentOrgIds();
-    const orgMap = new Map(organizations.map(org => [org.id, org]));
+    const orgMap = new Map(organizations.map((org) => [org.id, org]));
 
     // Get orgs that exist in recent list and current orgs
     const recent: Organization[] = [];
@@ -96,7 +103,7 @@ export function OrganizationSwitcher() {
     // If less than MAX_RECENT_ORGS, add remaining orgs
     if (recent.length < MAX_RECENT_ORGS) {
       for (const org of organizations) {
-        if (!recent.find(r => r.id === org.id)) {
+        if (!recent.find((r) => r.id === org.id)) {
           recent.push(org);
           if (recent.length >= MAX_RECENT_ORGS) break;
         }
@@ -141,7 +148,10 @@ export function OrganizationSwitcher() {
    */
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         setShowDropdown(false);
       }
     };
@@ -213,7 +223,9 @@ export function OrganizationSwitcher() {
             {!isLoading && organizations.length === 0 && (
               <div className="p-4 text-center">
                 <p className="text-xs text-gray-400">No organizations found</p>
-                <p className="text-[10px] text-gray-500 mt-1">Please contact support</p>
+                <p className="text-[10px] text-gray-500 mt-1">
+                  Please contact support or create a new one
+                </p>
               </div>
             )}
 
@@ -264,7 +276,9 @@ export function OrganizationSwitcher() {
 
                   {/* Organization Info */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs sm:text-sm font-medium truncate">{org.name}</p>
+                    <p className="text-xs sm:text-sm font-medium truncate">
+                      {org.name}
+                    </p>
                     <p className="text-[10px] sm:text-xs text-gray-400 dark:text-gray-500 capitalize truncate">
                       {org.subscription_tier} • {org.user_role}
                     </p>
@@ -309,7 +323,9 @@ export function OrganizationSwitcher() {
               className="w-full flex items-center space-x-2 p-2 rounded-md text-gray-200 dark:text-gray-300 hover:bg-[#2B2D31] dark:hover:bg-[#232427] transition-colors text-left"
             >
               <Settings className="h-4 w-4 flex-shrink-0" />
-              <span className="text-xs sm:text-sm font-medium">Manage Organizations</span>
+              <span className="text-xs sm:text-sm font-medium">
+                Manage Organizations
+              </span>
             </button>
 
             {/* Logout */}

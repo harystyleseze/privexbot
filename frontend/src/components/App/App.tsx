@@ -10,6 +10,17 @@ import { SignupPage } from "@/pages/SignupPage";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { OrganizationsPage } from "@/pages/OrganizationsPage";
 import { InvitationAcceptPage } from "@/pages/InvitationAcceptPage";
+import { ChatbotsPage } from "@/pages/ChatbotsPage";
+import { StudioPage } from "@/pages/StudioPage";
+import { KnowledgeBasePage } from "@/pages/KnowledgeBasePage";
+import { ActivitiesPage } from "@/pages/ActivitiesPage";
+import { LeadsPage } from "@/pages/LeadsPage";
+import { AnalyticsPage } from "@/pages/AnalyticsPage";
+import { BillingsPage } from "@/pages/BillingsPage";
+import { MarketplacePage } from "@/pages/MarketplacePage";
+import { ReferralsPage } from "@/pages/ReferralsPage";
+import { DocumentationPage } from "@/pages/DocumentationPage";
+import { ProfilePage } from "@/pages/ProfilePage";
 
 function App() {
   return (
@@ -41,8 +52,94 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-
-              {/* Add more routes as needed */}
+              <Route
+                path="/chatbots"
+                element={
+                  <ProtectedRoute>
+                    <ChatbotsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/studio"
+                element={
+                  <ProtectedRoute>
+                    <StudioPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/knowledge-base"
+                element={
+                  <ProtectedRoute>
+                    <KnowledgeBasePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/activities"
+                element={
+                  <ProtectedRoute>
+                    <ActivitiesPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/leads"
+                element={
+                  <ProtectedRoute>
+                    <LeadsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/analytics"
+                element={
+                  <ProtectedRoute>
+                    <AnalyticsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/billings"
+                element={
+                  <ProtectedRoute>
+                    <BillingsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <ProfilePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/marketplace"
+                element={
+                  <ProtectedRoute>
+                    <MarketplacePage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/referrals"
+                element={
+                  <ProtectedRoute>
+                    <ReferralsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/documentation"
+                element={
+                  <ProtectedRoute>
+                    <DocumentationPage />
+                  </ProtectedRoute>
+                }
+              />
             </Routes>
           </Router>
           <Toaster />

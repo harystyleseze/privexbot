@@ -240,7 +240,7 @@ get_digest() {
         echo "║                          IMAGE DIGEST (PRODUCTION)                         ║"
         echo "╠════════════════════════════════════════════════════════════════════════════╣"
         echo "║                                                                            ║"
-        echo "║  Copy this digest and update docker-compose.prod.yml:                     ║"
+        echo "║  Copy this digest and update docker-compose.yml:                           ║"
         echo "║                                                                            ║"
         echo "║  image: ${digest}"
         echo "║                                                                            ║"

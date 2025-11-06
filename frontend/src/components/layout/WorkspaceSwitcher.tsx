@@ -151,8 +151,8 @@ export function WorkspaceSwitcher({
                       className={cn(
                         "text-xs font-bold transition-all duration-200 rounded-[14px]",
                         isActive
-                          ? "bg-[#2563EB] text-white" // Design Guide: Active = #2563EB background
-                          : "bg-[#36373D] dark:bg-[#2B2D31] text-[#D1D5DB] dark:text-[#9CA3AF] group-hover:bg-[#3B82F6] group-hover:text-white" // Design Guide: Inactive, hover effect
+                          ? "bg-gray-600 dark:bg-gray-700 text-white" // Active: Gray background instead of blue
+                          : "bg-[#36373D] dark:bg-[#2B2D31] text-[#D1D5DB] dark:text-[#9CA3AF] group-hover:bg-[#3B82F6] group-hover:text-white" // Inactive, original blue hover
                       )}
                     >
                       {getInitials(workspace.name)}

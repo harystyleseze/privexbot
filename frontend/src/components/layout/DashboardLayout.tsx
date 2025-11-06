@@ -41,7 +41,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [showCreateWorkspace, setShowCreateWorkspace] = useState(false);
   const [showManageWorkspace, setShowManageWorkspace] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { currentOrganization, currentWorkspace, refreshData, switchWorkspace } = useApp();
+  const {
+    currentOrganization,
+    currentWorkspace,
+    refreshData,
+    switchWorkspace,
+  } = useApp();
 
   // Close mobile menu
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
@@ -97,7 +102,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           md:relative md:translate-x-0
           fixed top-0 bottom-0 left-0 z-50
           transition-transform duration-300 ease-out
-          ${isMobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'}
+          ${isMobileMenuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"}
         `}
       >
         {/* ========== TOP SECTION: Logo Only (Fixed at Top) ========== */}
@@ -128,11 +133,16 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           />
 
           {/* Right Column: Main Menu (scrollable) */}
-          <div onClick={closeMobileMenu} className="flex-1 min-h-0 flex flex-col pb-3">
-            <MainMenu onOpenSettings={() => {
-              setShowManageWorkspace(true);
-              closeMobileMenu();
-            }} />
+          <div
+            onClick={closeMobileMenu}
+            className="flex-1 min-h-0 flex flex-col pb-3"
+          >
+            <MainMenu
+              onOpenSettings={() => {
+                setShowManageWorkspace(true);
+                closeMobileMenu();
+              }}
+            />
           </div>
         </div>
 

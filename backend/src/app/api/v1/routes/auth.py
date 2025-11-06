@@ -254,22 +254,51 @@ async def email_login(
     user_orgs = list_user_organizations(db=db, user_id=user.id)
 
     if not user_orgs:
-        # Should never happen after signup fix, but handle gracefully
-        raise HTTPException(
-            status_code=500,
-            detail="User has no organizations. Please contact support."
+        # USER HAS NO ORGANIZATIONS - Auto-create default organization
+        # This can happen when:
+        # 1. User deleted all their organizations
+        # 2. User was removed from all organizations
+        # 3. Data migration/corruption edge case
+
+        # Get user's email for billing_email (if available)
+        from app.models.auth_identity import AuthIdentity
+        email_identity = db.query(AuthIdentity).filter(
+            AuthIdentity.user_id == user.id,
+            AuthIdentity.provider == "email"
+        ).first()
+
+        billing_email = email_identity.provider_id if email_identity else f"{user.username}@local.privexbot.com"
+
+        # Auto-create default organization
+        org = create_organization(
+            db=db,
+            name=f"{user.username}'s Organization",
+            billing_email=billing_email,
+            creator_id=user.id
         )
 
-    # Step 3: Use first organization (usually Personal org)
-    org, role = user_orgs[0]
+        # Get the default workspace that was automatically created
+        workspace = db.query(Workspace).filter(
+            Workspace.organization_id == org.id,
+            Workspace.is_default == True
+        ).first()
 
-    # Step 4: Get first workspace in that org (prefer default)
-    workspace = db.query(Workspace).filter(
-        Workspace.organization_id == org.id
-    ).order_by(
-        Workspace.is_default.desc(),  # Default workspace first
-        Workspace.created_at.asc()     # Otherwise oldest
-    ).first()
+        # Log this event for monitoring
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Auto-created organization for user {user.id} ({user.username}) during login")
+
+    else:
+        # Step 3: Use first organization (usually Personal org)
+        org, role = user_orgs[0]
+
+        # Step 4: Get first workspace in that org (prefer default)
+        workspace = db.query(Workspace).filter(
+            Workspace.organization_id == org.id
+        ).order_by(
+            Workspace.is_default.desc(),  # Default workspace first
+            Workspace.created_at.asc()     # Otherwise oldest
+        ).first()
 
     # Step 5: Generate JWT with context
     access_token = create_access_token(data={
