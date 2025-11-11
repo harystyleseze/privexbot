@@ -14,8 +14,10 @@
  */
 
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { config } from '@/config/env';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+// Use centralized config for consistent environment variable access
+const API_BASE_URL = config.API_BASE_URL;
 
 // Create axios instance
 export const apiClient = axios.create({
@@ -77,21 +79,88 @@ apiClient.interceptors.response.use(
       }
     }
 
+    // Handle 400 - NO_ORGANIZATION error (user deleted all orgs)
+    if (error.response?.status === 400) {
+      const errorDetail = (error.response?.data as any)?.detail;
+
+      // Check if it's a structured error response from backend
+      if (errorDetail && typeof errorDetail === 'object') {
+        const errorCode = (errorDetail as any).error_code;
+
+        if (errorCode === 'NO_ORGANIZATION' || errorCode === 'ORGANIZATION_DELETED') {
+          // Emit custom event for NO_ORGANIZATION error
+          // Components can listen to this and show "Create Organization" modal
+          window.dispatchEvent(new CustomEvent('no-organization-error', {
+            detail: {
+              error_code: errorCode,
+              message: (errorDetail as any).message,
+              action_required: (errorDetail as any).action_required,
+              suggestions: (errorDetail as any).suggestions,
+            }
+          }));
+
+          // Add error code to error object for component-level handling
+          (error as any).errorCode = errorCode;
+        }
+      }
+    }
+
     return Promise.reject(error);
   }
 );
 
-// API error handler
+// API error handler - Enhanced to handle structured errors
 export const handleApiError = (error: unknown): string => {
   if (axios.isAxiosError(error)) {
-    if (error.response?.data?.detail) {
-      return error.response.data.detail;
+    const detail = error.response?.data?.detail;
+
+    // Handle structured error responses (from backend)
+    if (detail && typeof detail === 'object') {
+      const structuredError = detail as any;
+
+      // Return the message from structured error
+      if (structuredError.message) {
+        return structuredError.message;
+      }
+
+      // Handle array of validation errors
+      if (Array.isArray(structuredError)) {
+        return structuredError.map((e: any) => e.msg || e.message || String(e)).join(', ');
+      }
+
+      // Handle object errors
+      if (structuredError.msg || structuredError.error) {
+        return structuredError.msg || structuredError.error;
+      }
+
+      // Fallback: stringify the object
+      return JSON.stringify(structuredError);
     }
+
+    // Handle simple string errors
+    if (typeof detail === 'string') {
+      return detail;
+    }
+
+    // Fallback to error message
     if (error.message) {
       return error.message;
     }
   }
+
   return 'An unexpected error occurred';
+};
+
+// Check if error is NO_ORGANIZATION error
+export const isNoOrganizationError = (error: unknown): boolean => {
+  if (axios.isAxiosError(error)) {
+    const detail = error.response?.data?.detail;
+    if (detail && typeof detail === 'object') {
+      const errorCode = (detail as any).error_code;
+      return errorCode === 'NO_ORGANIZATION' || errorCode === 'ORGANIZATION_DELETED';
+    }
+  }
+  return false;
 };
 
 export default apiClient;

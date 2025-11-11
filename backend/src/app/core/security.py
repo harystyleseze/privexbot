@@ -214,6 +214,208 @@ def decode_token(token: str) -> Dict[str, Any]:
         raise JWTError(f"Token validation failed: {str(e)}")
 
 
+def get_user_permissions(
+    db,
+    user_id,
+    organization_id: Optional[str] = None,
+    workspace_id: Optional[str] = None
+) -> Dict[str, bool]:
+    """
+    Calculate user's permissions for current context.
+
+    Args:
+        db: Database session
+        user_id: User to get permissions for
+        organization_id: Current org (optional)
+        workspace_id: Current workspace (optional)
+
+    Returns:
+        Dict of permission -> bool
+    """
+    from app.models.organization_member import OrganizationMember
+    from app.models.workspace_member import WorkspaceMember
+    from uuid import UUID
+
+    permissions = {}
+
+    # Organization permissions
+    ORGANIZATION_PERMISSIONS = {
+        "owner": {
+            "org:read": True,
+            "org:write": True,
+            "org:delete": True,
+            "org:manage_members": True,
+            "workspace:create": True,
+            "workspace:delete": True,
+            "workspace:manage_members": True,
+            "chatbot:create": True,
+            "chatbot:edit": True,
+            "chatbot:delete": True,
+            "chatflow:create": True,
+            "chatflow:edit": True,
+            "chatflow:delete": True,
+        },
+        "admin": {
+            "org:read": True,
+            "org:write": True,
+            "org:delete": False,
+            "org:manage_members": True,
+            "workspace:create": True,
+            "workspace:delete": True,
+            "workspace:manage_members": True,
+            "chatbot:create": True,
+            "chatbot:edit": True,
+            "chatbot:delete": True,
+            "chatflow:create": True,
+            "chatflow:edit": True,
+            "chatflow:delete": True,
+        },
+        "member": {
+            "org:read": True,
+            "org:write": False,
+            "org:delete": False,
+            "org:manage_members": False,
+            "workspace:create": False,
+            "workspace:delete": False,
+            "workspace:manage_members": False,
+            "chatbot:create": False,
+            "chatbot:edit": False,
+            "chatbot:delete": False,
+            "chatflow:create": False,
+            "chatflow:edit": False,
+            "chatflow:delete": False,
+        }
+    }
+
+    # Workspace permissions
+    WORKSPACE_PERMISSIONS = {
+        "admin": {
+            "workspace:read": True,
+            "workspace:write": True,
+            "workspace:manage_members": True,
+            "chatbot:create": True,
+            "chatbot:edit": True,
+            "chatbot:delete": True,
+            "chatflow:create": True,
+            "chatflow:edit": True,
+            "chatflow:delete": True,
+        },
+        "editor": {
+            "workspace:read": True,
+            "workspace:write": False,
+            "workspace:manage_members": False,
+            "chatbot:create": True,
+            "chatbot:edit": True,
+            "chatbot:delete": False,
+            "chatflow:create": True,
+            "chatflow:edit": True,
+            "chatflow:delete": False,
+        },
+        "viewer": {
+            "workspace:read": True,
+            "workspace:write": False,
+            "workspace:manage_members": False,
+            "chatbot:create": False,
+            "chatbot:edit": False,
+            "chatbot:delete": False,
+            "chatflow:create": False,
+            "chatflow:edit": False,
+            "chatflow:delete": False,
+        }
+    }
+
+    # Convert string IDs to UUID if needed
+    if organization_id and isinstance(organization_id, str):
+        organization_id = UUID(organization_id)
+    if workspace_id and isinstance(workspace_id, str):
+        workspace_id = UUID(workspace_id)
+    if isinstance(user_id, str):
+        user_id = UUID(user_id)
+
+    # Get organization role and permissions
+    org_member = None
+    if organization_id:
+        org_member = db.query(OrganizationMember).filter(
+            OrganizationMember.user_id == user_id,
+            OrganizationMember.organization_id == organization_id
+        ).first()
+
+        if org_member:
+            org_perms = ORGANIZATION_PERMISSIONS.get(org_member.role, {})
+            permissions.update(org_perms)
+
+    # Get workspace role and merge permissions
+    if workspace_id:
+        ws_member = db.query(WorkspaceMember).filter(
+            WorkspaceMember.user_id == user_id,
+            WorkspaceMember.workspace_id == workspace_id
+        ).first()
+
+        # If user is workspace member, merge workspace permissions
+        if ws_member:
+            ws_perms = WORKSPACE_PERMISSIONS.get(ws_member.role, {})
+            # Workspace-specific perms override org defaults
+            for perm, value in ws_perms.items():
+                if perm.startswith(("workspace:", "chatbot:", "chatflow:")):
+                    permissions[perm] = value
+
+        # If org owner/admin but not workspace member, grant admin access
+        elif org_member and org_member.role in ["owner", "admin"]:
+            ws_perms = WORKSPACE_PERMISSIONS["admin"]
+            for perm, value in ws_perms.items():
+                permissions[perm] = value
+
+    return permissions
+
+
+def create_access_token_for_user(
+    db,
+    user,
+    organization_id: Optional[str] = None,
+    workspace_id: Optional[str] = None
+) -> str:
+    """
+    Create access token for a user with specific organization/workspace context.
+
+    Args:
+        db: Database session
+        user: User model instance
+        organization_id: Organization UUID (optional)
+        workspace_id: Workspace UUID (optional)
+
+    Returns:
+        JWT token string
+    """
+    from app.models.auth_identity import AuthIdentity
+
+    # Get user's email if available
+    auth_identity = db.query(AuthIdentity).filter(
+        AuthIdentity.user_id == user.id,
+        AuthIdentity.provider == "email"
+    ).first()
+
+    email = auth_identity.provider_id if auth_identity else None
+
+    # Get permissions for this context
+    permissions = get_user_permissions(
+        db=db,
+        user_id=user.id,
+        organization_id=organization_id,
+        workspace_id=workspace_id
+    )
+
+    # Create token data
+    token_data = {
+        "sub": str(user.id),
+        "email": email,
+        "org_id": str(organization_id) if organization_id else None,
+        "ws_id": str(workspace_id) if workspace_id else None,
+        "perms": permissions
+    }
+
+    return create_access_token(token_data)
+
+
 def validate_password_strength(password: str) -> tuple[bool, str]:
     """
     Validate password meets security requirements.

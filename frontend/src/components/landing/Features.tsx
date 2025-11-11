@@ -10,7 +10,7 @@ const featureTabs = [
     id: "chatbots",
     label: "Chatbots",
     icon: MessageSquare,
-    color: "from-blue-500 to-primary",
+    color: "from-primary-500 to-primary-600",
     features: [
       {
         title: "Form-Based Builder",
@@ -34,7 +34,7 @@ const featureTabs = [
     id: "chatflows",
     label: "Chatflows",
     icon: Workflow,
-    color: "from-purple-500 to-pink-500",
+    color: "from-secondary-500 to-secondary-600",
     features: [
       {
         title: "Visual Workflow Builder",
@@ -58,7 +58,7 @@ const featureTabs = [
     id: "knowledge",
     label: "Knowledge Bases",
     icon: Database,
-    color: "from-cyan-500 to-blue-500",
+    color: "from-accent-500 to-accent-600",
     features: [
       {
         title: "Multi-Source Import",
@@ -82,7 +82,7 @@ const featureTabs = [
     id: "deployment",
     label: "Deployment",
     icon: Cloud,
-    color: "from-green-500 to-emerald-500",
+    color: "from-success-500 to-success-600",
     features: [
       {
         title: "Embeddable Widget",

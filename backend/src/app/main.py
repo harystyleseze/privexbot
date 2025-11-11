@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.db.init_db import init_db
-from app.api.v1.routes import auth
+from app.api.v1.routes import auth, org, workspace, context, invitation
 
 
 @asynccontextmanager
@@ -57,12 +57,36 @@ app.add_middleware(
 )
 
 # Include API routers
-# WHY: Mount authentication routes under /api/v1 prefix
+# WHY: Mount all routes under /api/v1 prefix
 # HOW: Use include_router with prefix and tags
 app.include_router(
     auth.router,
     prefix=settings.API_V1_PREFIX,
     tags=["authentication"]
+)
+
+app.include_router(
+    org.router,
+    prefix=f"{settings.API_V1_PREFIX}/orgs",
+    tags=["organizations"]
+)
+
+app.include_router(
+    workspace.router,
+    prefix=f"{settings.API_V1_PREFIX}/orgs",
+    tags=["workspaces"]
+)
+
+app.include_router(
+    context.router,
+    prefix=f"{settings.API_V1_PREFIX}/switch",
+    tags=["context"]
+)
+
+app.include_router(
+    invitation.router,
+    prefix=settings.API_V1_PREFIX,
+    tags=["invitations"]
 )
 
 

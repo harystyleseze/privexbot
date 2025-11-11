@@ -222,7 +222,7 @@ async def signup_with_email(
     if existing_email:
         raise HTTPException(
             status_code=400,
-            detail="Email already registered"
+            detail="Email already registered. Please log in instead."
         )
 
     # Step 3: Check if username already taken

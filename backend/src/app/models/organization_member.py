@@ -84,3 +84,103 @@ EXAMPLE:
         "org:delete": false  # Only owner can delete org
     }
 """
+
+# ACTUAL IMPLEMENTATION
+from sqlalchemy import Column, String, DateTime, ForeignKey, UniqueConstraint, Index
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
+from app.db.base_class import Base
+import uuid
+from datetime import datetime
+
+
+class OrganizationMember(Base):
+    """
+    OrganizationMember - Junction table for user membership in organizations with roles.
+
+    Enables multi-org support where one user can belong to multiple organizations
+    with different roles in each.
+
+    Roles: owner, admin, member
+    """
+    __tablename__ = "organization_members"
+
+    # Primary key
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Foreign keys
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    organization_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    # Role (owner | admin | member)
+    role = Column(String(50), nullable=False, index=True)
+    # role values: 'owner', 'admin', 'member'
+
+    # Invitation tracking
+    invited_by = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True
+    )
+
+    # Timestamps
+    joined_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    # Constraints
+    __table_args__ = (
+        UniqueConstraint('user_id', 'organization_id', name='uq_user_organization'),
+        Index('idx_orgmember_user', 'user_id'),
+        Index('idx_orgmember_org', 'organization_id'),
+        Index('idx_orgmember_role', 'role'),
+    )
+
+    # Relationships
+    user = relationship("User", foreign_keys=[user_id], backref="organization_memberships")
+    organization = relationship("Organization", back_populates="members")
+    inviter = relationship("User", foreign_keys=[invited_by])
+
+    def __repr__(self):
+        return f"<OrganizationMember(user_id={self.user_id}, org_id={self.organization_id}, role={self.role})>"
+
+    @property
+    def is_owner(self) -> bool:
+        """Check if this member is an owner"""
+        return self.role == 'owner'
+
+    @property
+    def is_admin(self) -> bool:
+        """Check if this member is an admin or owner"""
+        return self.role in ['owner', 'admin']
+
+    @property
+    def can_manage_members(self) -> bool:
+        """Check if this member can manage other members"""
+        return self.role in ['owner', 'admin']
+
+    @property
+    def can_manage_workspaces(self) -> bool:
+        """Check if this member can create/delete workspaces"""
+        return self.role in ['owner', 'admin']
+
+    @property
+    def can_delete_organization(self) -> bool:
+        """Check if this member can delete the organization"""
+        return self.role == 'owner'
+
+    @property
+    def can_manage_billing(self) -> bool:
+        """Check if this member can manage billing and subscriptions"""
+        return self.role == 'owner'
