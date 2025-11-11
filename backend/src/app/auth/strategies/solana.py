@@ -371,10 +371,16 @@ async def link_solana_to_user(
     ).first()
 
     if existing_wallet:
-        raise HTTPException(
-            status_code=400,
-            detail="This wallet is already linked to an account"
-        )
+        if existing_wallet.user_id == user.id:
+            raise HTTPException(
+                status_code=400,
+                detail="This Solana wallet is already linked to your account"
+            )
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="This Solana wallet is already linked to another account. Please use a different wallet or log in with the wallet."
+            )
 
     # Step 5: Create auth identity linking wallet to user
     auth_identity = AuthIdentity(

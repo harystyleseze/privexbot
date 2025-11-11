@@ -40,6 +40,7 @@ from typing import Dict
 
 from app.api.v1.dependencies import get_db, get_current_user
 from app.models.user import User
+from app.models.workspace import Workspace
 from app.core.security import create_access_token
 from app.core.config import settings
 from app.schemas.token import (
@@ -56,6 +57,7 @@ from app.schemas.token import (
 )
 from app.schemas.user import UserProfile, AuthMethodInfo
 from app.auth.strategies import email, evm, solana, cosmos
+from app.services.tenant_service import create_organization, list_user_organizations
 
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
@@ -148,15 +150,17 @@ async def email_signup(
     Register a new user with email and password.
 
     WHY: Allow users to create account with traditional credentials
-    HOW: Validate input, create user, return JWT token
+    HOW: Validate input, create user, create default org + workspace, return JWT token
 
     Flow:
     1. Validate email format and password strength
     2. Check if email already registered
     3. Hash password with bcrypt
     4. Create User and AuthIdentity records
-    5. Generate JWT token
-    6. Return token for immediate login
+    5. Create default Personal organization (as owner)
+    6. Create default workspace (as admin)
+    7. Generate JWT token with org_id + ws_id
+    8. Return token for immediate login
 
     Args:
         request: EmailSignupRequest with username, email, password
@@ -169,7 +173,7 @@ async def email_signup(
         HTTPException(400): Email already registered or weak password
         HTTPException(400): Username already taken
     """
-    # Call email strategy
+    # Step 1: Create user with email strategy
     user = await email.signup_with_email(
         email=request.email,
         password=request.password,
@@ -177,8 +181,27 @@ async def email_signup(
         db=db
     )
 
-    # Generate access token
-    access_token = create_access_token(data={"sub": str(user.id)})
+    # Step 2: Create default Personal organization + workspace
+    # This function creates org, adds user as owner, creates default workspace, adds user as admin
+    org = create_organization(
+        db=db,
+        name=f"{user.username}'s Organization",
+        billing_email=request.email,
+        creator_id=user.id
+    )
+
+    # Step 3: Get the default workspace that was just created
+    default_workspace = db.query(Workspace).filter(
+        Workspace.organization_id == org.id,
+        Workspace.is_default == True
+    ).first()
+
+    # Step 4: Generate JWT with org + workspace context
+    access_token = create_access_token(data={
+        "sub": str(user.id),
+        "org_id": str(org.id),
+        "ws_id": str(default_workspace.id) if default_workspace else None
+    })
 
     return Token(
         access_token=access_token,
@@ -195,14 +218,15 @@ async def email_login(
     Login with email and password.
 
     WHY: Authenticate existing users with credentials
-    HOW: Verify password hash, return JWT token
+    HOW: Verify password hash, return JWT token with org/workspace context
 
     Flow:
     1. Find user by email
     2. Verify password matches hash
     3. Check account is active
-    4. Generate JWT token
-    5. Return token for authenticated requests
+    4. Get user's organizations and workspaces
+    5. Generate JWT token with org_id + ws_id
+    6. Return token for authenticated requests
 
     Args:
         request: EmailLoginRequest with email and password
@@ -213,20 +237,75 @@ async def email_login(
 
     Raises:
         HTTPException(401): Invalid credentials or inactive account
+        HTTPException(500): User has no organizations
 
     Security:
     - Same error for all failures (prevents user enumeration)
     - Bcrypt constant-time comparison (prevents timing attacks)
     """
-    # Call email strategy
+    # Step 1: Verify credentials
     user = await email.login_with_email(
         email=request.email,
         password=request.password,
         db=db
     )
 
-    # Generate access token
-    access_token = create_access_token(data={"sub": str(user.id)})
+    # Step 2: Get user's organizations (returns list of (org, role) tuples)
+    user_orgs = list_user_organizations(db=db, user_id=user.id)
+
+    if not user_orgs:
+        # USER HAS NO ORGANIZATIONS - Auto-create default organization
+        # This can happen when:
+        # 1. User deleted all their organizations
+        # 2. User was removed from all organizations
+        # 3. Data migration/corruption edge case
+
+        # Get user's email for billing_email (if available)
+        from app.models.auth_identity import AuthIdentity
+        email_identity = db.query(AuthIdentity).filter(
+            AuthIdentity.user_id == user.id,
+            AuthIdentity.provider == "email"
+        ).first()
+
+        billing_email = email_identity.provider_id if email_identity else f"{user.username}@local.privexbot.com"
+
+        # Auto-create default organization
+        org = create_organization(
+            db=db,
+            name=f"{user.username}'s Organization",
+            billing_email=billing_email,
+            creator_id=user.id
+        )
+
+        # Get the default workspace that was automatically created
+        workspace = db.query(Workspace).filter(
+            Workspace.organization_id == org.id,
+            Workspace.is_default == True
+        ).first()
+
+        # Log this event for monitoring
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Auto-created organization for user {user.id} ({user.username}) during login")
+
+    else:
+        # Step 3: Use first organization (usually Personal org)
+        org, role = user_orgs[0]
+
+        # Step 4: Get first workspace in that org (prefer default)
+        workspace = db.query(Workspace).filter(
+            Workspace.organization_id == org.id
+        ).order_by(
+            Workspace.is_default.desc(),  # Default workspace first
+            Workspace.created_at.asc()     # Otherwise oldest
+        ).first()
+
+    # Step 5: Generate JWT with context
+    access_token = create_access_token(data={
+        "sub": str(user.id),
+        "org_id": str(org.id),
+        "ws_id": str(workspace.id) if workspace else None
+    })
 
     return Token(
         access_token=access_token,
@@ -328,7 +407,7 @@ async def evm_verify(
     Verify EVM wallet signature and authenticate user.
 
     WHY: Cryptographically prove wallet ownership without passwords
-    HOW: Recover signer from signature, verify matches address
+    HOW: Recover signer from signature, verify matches address, create org if new user
 
     Flow:
     1. Retrieve nonce from Redis (single-use)
@@ -336,7 +415,9 @@ async def evm_verify(
     3. Recover signer address from signature
     4. Verify recovered address matches claimed address
     5. Find or create user
-    6. Generate JWT token
+    6. If new user, create default org + workspace
+    7. Get user's organizations and workspaces
+    8. Generate JWT token with org_id + ws_id
 
     Args:
         request: WalletVerifyRequest with address, message, signature
@@ -354,7 +435,7 @@ async def evm_verify(
     - ECDSA signature recovery proves private key ownership
     - No password needed - cryptographic proof
     """
-    # Call EVM strategy
+    # Step 1: Verify signature and get or create user
     user = await evm.verify_signature(
         address=request.address,
         signed_message=request.signed_message,
@@ -363,8 +444,36 @@ async def evm_verify(
         username=request.username
     )
 
-    # Generate access token
-    access_token = create_access_token(data={"sub": str(user.id)})
+    # Step 2: Check if user has organization, create if not
+    user_orgs = list_user_organizations(db=db, user_id=user.id)
+
+    if not user_orgs:
+        # New user - create default organization + workspace
+        org = create_organization(
+            db=db,
+            name=f"{user.username}'s Organization",
+            billing_email=f"{user.username}@wallet.user",  # Placeholder email
+            creator_id=user.id
+        )
+        user_orgs = [(org, "owner")]
+
+    # Step 3: Use first organization
+    org, role = user_orgs[0]
+
+    # Step 4: Get first workspace in that org (prefer default)
+    workspace = db.query(Workspace).filter(
+        Workspace.organization_id == org.id
+    ).order_by(
+        Workspace.is_default.desc(),  # Default workspace first
+        Workspace.created_at.asc()     # Otherwise oldest
+    ).first()
+
+    # Step 5: Generate JWT with context
+    access_token = create_access_token(data={
+        "sub": str(user.id),
+        "org_id": str(org.id),
+        "ws_id": str(workspace.id) if workspace else None
+    })
 
     return Token(
         access_token=access_token,
@@ -465,7 +574,7 @@ async def solana_verify(
     Verify Solana wallet signature and authenticate user.
 
     WHY: Cryptographically prove wallet ownership using Ed25519
-    HOW: Verify signature against public key from address
+    HOW: Verify signature against public key from address, create org if new user
 
     Flow:
     1. Retrieve nonce from Redis (single-use)
@@ -473,7 +582,9 @@ async def solana_verify(
     3. Decode signature and address from base58
     4. Verify Ed25519 signature
     5. Find or create user
-    6. Generate JWT token
+    6. If new user, create default org + workspace
+    7. Get user's organizations and workspaces
+    8. Generate JWT token with org_id + ws_id
 
     Args:
         request: WalletVerifyRequest with address, message, signature
@@ -491,7 +602,7 @@ async def solana_verify(
     - Ed25519 signature verification proves private key ownership
     - Solana address IS the public key
     """
-    # Call Solana strategy
+    # Step 1: Verify signature and get or create user
     user = await solana.verify_signature(
         address=request.address,
         signed_message=request.signed_message,
@@ -500,8 +611,36 @@ async def solana_verify(
         username=request.username
     )
 
-    # Generate access token
-    access_token = create_access_token(data={"sub": str(user.id)})
+    # Step 2: Check if user has organization, create if not
+    user_orgs = list_user_organizations(db=db, user_id=user.id)
+
+    if not user_orgs:
+        # New user - create default organization + workspace
+        org = create_organization(
+            db=db,
+            name=f"{user.username}'s Organization",
+            billing_email=f"{user.username}@wallet.user",  # Placeholder email
+            creator_id=user.id
+        )
+        user_orgs = [(org, "owner")]
+
+    # Step 3: Use first organization
+    org, role = user_orgs[0]
+
+    # Step 4: Get first workspace in that org (prefer default)
+    workspace = db.query(Workspace).filter(
+        Workspace.organization_id == org.id
+    ).order_by(
+        Workspace.is_default.desc(),  # Default workspace first
+        Workspace.created_at.asc()     # Otherwise oldest
+    ).first()
+
+    # Step 5: Generate JWT with context
+    access_token = create_access_token(data={
+        "sub": str(user.id),
+        "org_id": str(org.id),
+        "ws_id": str(workspace.id) if workspace else None
+    })
 
     return Token(
         access_token=access_token,
@@ -602,7 +741,7 @@ async def cosmos_verify(
     Verify Cosmos wallet signature and authenticate user.
 
     WHY: Cryptographically prove wallet ownership using secp256k1
-    HOW: Verify pubkey matches address, then verify signature
+    HOW: Verify pubkey matches address, then verify signature, create org if new user
 
     Flow:
     1. Retrieve nonce from Redis (single-use)
@@ -611,7 +750,9 @@ async def cosmos_verify(
     4. Derive address from public key (verify it matches)
     5. Verify secp256k1 signature
     6. Find or create user
-    7. Generate JWT token
+    7. If new user, create default org + workspace
+    8. Get user's organizations and workspaces
+    9. Generate JWT token with org_id + ws_id
 
     Args:
         request: CosmosWalletVerifyRequest with address, message, signature, public_key
@@ -633,7 +774,7 @@ async def cosmos_verify(
     Note: Unlike EVM (which recovers pubkey from signature), Cosmos
     wallets provide the public key separately and we must verify it matches.
     """
-    # Call Cosmos strategy
+    # Step 1: Verify signature and get or create user
     user = await cosmos.verify_signature(
         address=request.address,
         signed_message=request.signed_message,
@@ -643,8 +784,36 @@ async def cosmos_verify(
         username=request.username
     )
 
-    # Generate access token
-    access_token = create_access_token(data={"sub": str(user.id)})
+    # Step 2: Check if user has organization, create if not
+    user_orgs = list_user_organizations(db=db, user_id=user.id)
+
+    if not user_orgs:
+        # New user - create default organization + workspace
+        org = create_organization(
+            db=db,
+            name=f"{user.username}'s Organization",
+            billing_email=f"{user.username}@wallet.user",  # Placeholder email
+            creator_id=user.id
+        )
+        user_orgs = [(org, "owner")]
+
+    # Step 3: Use first organization
+    org, role = user_orgs[0]
+
+    # Step 4: Get first workspace in that org (prefer default)
+    workspace = db.query(Workspace).filter(
+        Workspace.organization_id == org.id
+    ).order_by(
+        Workspace.is_default.desc(),  # Default workspace first
+        Workspace.created_at.asc()     # Otherwise oldest
+    ).first()
+
+    # Step 5: Generate JWT with context
+    access_token = create_access_token(data={
+        "sub": str(user.id),
+        "org_id": str(org.id),
+        "ws_id": str(workspace.id) if workspace else None
+    })
 
     return Token(
         access_token=access_token,

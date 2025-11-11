@@ -38,10 +38,12 @@ declare global {
  * 1. Runtime config (window.ENV_CONFIG) - Production
  * 2. Build-time env vars (import.meta.env) - Development
  * 3. Default value
+ *
+ * Note: Must use direct env var access (not dynamic) for Vite's static replacement
  */
-function getConfig(
+function getConfigValue(
   runtimeKey: keyof NonNullable<typeof window.ENV_CONFIG>,
-  envKey: string,
+  buildTimeValue: string | undefined,
   defaultValue: string
 ): string {
   // Check if we have runtime config (production)
@@ -53,10 +55,9 @@ function getConfig(
     }
   }
 
-  // Check build-time environment variables (development)
-  const envValue = import.meta.env[envKey];
-  if (envValue) {
-    return envValue;
+  // Check build-time environment variables (Vite replaces these at build time)
+  if (buildTimeValue) {
+    return buildTimeValue;
   }
 
   // Fallback to default
@@ -76,9 +77,9 @@ export const config = {
    * - Staging: https://staging-api.company.com/api/v1
    * - Production: https://api.company.com/api/v1
    */
-  API_BASE_URL: getConfig(
+  API_BASE_URL: getConfigValue(
     'API_BASE_URL',
-    'VITE_API_BASE_URL',
+    import.meta.env.VITE_API_BASE_URL,
     'http://localhost:8000/api/v1'
   ),
 
@@ -86,9 +87,9 @@ export const config = {
    * Widget CDN URL
    * Where the chat widget JavaScript is hosted
    */
-  WIDGET_CDN_URL: getConfig(
+  WIDGET_CDN_URL: getConfigValue(
     'WIDGET_CDN_URL',
-    'VITE_WIDGET_CDN_URL',
+    import.meta.env.VITE_WIDGET_CDN_URL,
     'http://localhost:8080'
   ),
 
@@ -96,21 +97,21 @@ export const config = {
    * Environment name
    * Used for debugging and feature flags
    */
-  ENVIRONMENT: getConfig(
+  ENVIRONMENT: getConfigValue(
     'ENVIRONMENT',
-    'VITE_ENV',
+    import.meta.env.VITE_ENV,
     'development'
   ),
 
   /**
    * Is production environment?
    */
-  IS_PRODUCTION: getConfig('ENVIRONMENT', 'VITE_ENV', 'development') === 'production',
+  IS_PRODUCTION: getConfigValue('ENVIRONMENT', import.meta.env.VITE_ENV, 'development') === 'production',
 
   /**
    * Is development environment?
    */
-  IS_DEVELOPMENT: getConfig('ENVIRONMENT', 'VITE_ENV', 'development') === 'development',
+  IS_DEVELOPMENT: getConfigValue('ENVIRONMENT', import.meta.env.VITE_ENV, 'development') === 'development',
 } as const;
 
 // Log configuration in development (helps debugging)

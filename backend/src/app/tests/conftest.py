@@ -18,8 +18,9 @@ from app.core.config import settings
 
 # Use PostgreSQL database for testing (supports UUID)
 # WHY: SQLite doesn't support UUID type, so we use PostgreSQL
-# HOW: Connect to local PostgreSQL instance running in Docker
-SQLALCHEMY_DATABASE_URL = "postgresql://privexbot:privexbot_dev@localhost:5432/privexbot_dev"
+# HOW: Connect to PostgreSQL instance running in Docker
+# NOTE: hostname is 'postgres' (Docker service name), not 'localhost'
+SQLALCHEMY_DATABASE_URL = "postgresql://privexbot:privexbot_dev@postgres:5432/privexbot_dev"
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
@@ -42,9 +43,19 @@ def db_session():
     finally:
         # Clean up data after test
         session.rollback()
-        # Delete all test data
+        # Delete all test data (order matters due to foreign keys)
+        from app.models.workspace_member import WorkspaceMember
+        from app.models.workspace import Workspace
+        from app.models.organization_member import OrganizationMember
+        from app.models.organization import Organization
         from app.models.auth_identity import AuthIdentity
         from app.models.user import User
+
+        # Delete in reverse dependency order
+        session.query(WorkspaceMember).delete()
+        session.query(Workspace).delete()
+        session.query(OrganizationMember).delete()
+        session.query(Organization).delete()
         session.query(AuthIdentity).delete()
         session.query(User).delete()
         session.commit()

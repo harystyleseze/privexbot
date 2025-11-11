@@ -4,7 +4,7 @@
 
 services:
   backend:
-    image: harystyles/privexbot-backend@sha256:bc5cd3a5c8ae2aa2c0a67f4e5aec4bcd7fb8c63b4e25a3889639d8d6b8c842de
+    image: harystyles/privexbot-backend@sha256:939dc432668eed01aaaeb9a0662123aedfec964c37c08d87572a1bcf14d3d4a3
     container_name: privexbot-backend
     ports:
       - "8000:8000"
