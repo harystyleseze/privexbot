@@ -19,12 +19,14 @@ from app.models.workspace import Workspace
 from app.models.workspace_member import WorkspaceMember
 from app.models.invitation import Invitation
 
+# Knowledge Base models (IMPLEMENTED)
+from app.models.knowledge_base import KnowledgeBase
+from app.models.document import Document
+from app.models.chunk import Chunk
+
 # NOTE: The following models are still pseudocode and not imported yet:
 # - Chatbot
 # - Chatflow
-# - KnowledgeBase
-# - Document
-# - Chunk
 # - ChatSession
 # - ChatMessage
 # - Lead
@@ -41,4 +43,8 @@ __all__ = [
     "Workspace",
     "WorkspaceMember",
     "Invitation",
+    # Knowledge Base
+    "KnowledgeBase",
+    "Document",
+    "Chunk",
 ]

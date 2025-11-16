@@ -58,10 +58,16 @@ class UnifiedDraftService:
         WHY: Separate Redis DB for drafts
         HOW: Redis db=1 for drafts, db=0 for cache
         """
-        self.redis_client = redis.Redis(
-            host=settings.REDIS_HOST,
-            port=settings.REDIS_PORT,
-            db=1,  # Separate DB for drafts
+        # Parse REDIS_URL and override db to 1 for drafts
+        redis_url = settings.REDIS_URL
+        # Replace db=0 with db=1 for drafts
+        if '/0' in redis_url:
+            redis_url = redis_url.replace('/0', '/1')
+        elif not redis_url.endswith(('/0', '/1', '/2', '/3', '/4', '/5', '/6', '/7', '/8', '/9')):
+            redis_url = redis_url.rstrip('/') + '/1'
+
+        self.redis_client = redis.from_url(
+            redis_url,
             decode_responses=True
         )
 

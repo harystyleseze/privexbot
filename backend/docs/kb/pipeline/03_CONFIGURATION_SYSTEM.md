@@ -4,28 +4,6 @@
 
 Build a comprehensive configuration system that allows users to customize chunking, indexing, and retrieval settings per source while providing intelligent annotations that help the AI understand documents better. This system builds on the existing `Document.annotations` and `KnowledgeBase.config` fields.
 
-## Current Foundation (What We Have)
-
-### Existing Configuration Structure
-```python
-# backend/src/app/models/knowledge_base.py
-embedding_config: JSONB  # Embedding model and settings
-vector_store_config: JSONB  # Vector database configuration
-context_settings: JSONB  # Access control and retrieval settings
-
-# backend/src/app/models/document.py
-chunking_config: JSONB  # Document-level chunking override
-annotations: JSONB  # User annotations to help AI understand document
-custom_metadata: JSONB  # User-defined metadata for filtering
-```
-
-### Existing Draft System
-```python
-# backend/src/app/services/kb_draft_service.py
-draft_service.create_draft(DraftType.KB, workspace_id, user_id, kb_data)
-draft_service.update_draft(draft_type, draft_id, updates)
-```
-
 ## Enhanced Configuration Architecture
 
 ### Hierarchical Configuration System
@@ -108,7 +86,7 @@ class VectorStoreConfiguration:
     """Vector store and indexing configuration"""
 
     # Vector Store Settings
-    provider: str = "faiss"  # faiss, qdrant, weaviate, pinecone, etc.
+    provider: str = "qdrant"  # faiss, qdrant, weaviate, pinecone, etc.
     index_type: str = "auto" # auto-select or specific index type
     similarity_metric: str = "cosine"  # cosine, euclidean, dot_product
 

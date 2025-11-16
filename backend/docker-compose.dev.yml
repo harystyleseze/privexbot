@@ -21,20 +21,23 @@ services:
       - PYTHONUNBUFFERED=1
       - DATABASE_URL=postgresql://privexbot:privexbot_dev@postgres:5432/privexbot_dev
       - REDIS_URL=redis://redis:6379/0
+      - QDRANT_URL=http://qdrant:6333
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      qdrant:
         condition: service_healthy
     networks:
       - privexbot-dev
     restart: unless-stopped
 
   postgres:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     container_name: privexbot-postgres-dev
     ports:
-      - "5432:5432"
+      - "5434:5432"  # Using 5434 on host to avoid conflict
     environment:
       - POSTGRES_USER=privexbot
       - POSTGRES_PASSWORD=privexbot_dev
@@ -54,7 +57,7 @@ services:
     image: redis:7-alpine
     container_name: privexbot-redis-dev
     ports:
-      - "6379:6379"
+      - "6380:6379"  # Using 6380 on host to avoid conflict
     volumes:
       - redis_data_dev:/data
     healthcheck:
@@ -66,28 +69,106 @@ services:
       - privexbot-dev
     restart: unless-stopped
 
-  # Optional: Celery worker for background tasks
-  # Uncomment when you create src/app/tasks/celery_worker.py
-  # celery-worker:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile.dev
-  #   container_name: privexbot-celery-dev
-  #   command: celery -A src.app.tasks.celery_worker worker --loglevel=info
-  #   volumes:
-  #     - ./src:/app/src
-  #   env_file:
-  #     - .env.dev
-  #   environment:
-  #     - PYTHONUNBUFFERED=1
-  #     - DATABASE_URL=postgresql://privexbot:privexbot_dev@postgres:5432/privexbot_dev
-  #     - REDIS_URL=redis://redis:6379/0
-  #   depends_on:
-  #     - postgres
-  #     - redis
-  #   networks:
-  #     - privexbot-dev
-  #   restart: unless-stopped
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: privexbot-qdrant-dev
+    ports:
+      - "6335:6333"  # HTTP API (using 6335 on host to avoid conflict)
+      - "6336:6334"  # gRPC API (optional)
+    volumes:
+      - qdrant_data_dev:/qdrant/storage
+    environment:
+      - QDRANT__SERVICE__GRPC_PORT=6334
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 1 bash -c '</dev/tcp/localhost/6333' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - privexbot-dev
+    restart: unless-stopped
+
+  # Celery worker for background tasks (KB processing, embeddings, crawling)
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: privexbot-celery-dev
+    command: celery -A app.tasks.celery_worker worker --loglevel=info --queues=default,high_priority,low_priority --concurrency=2
+    volumes:
+      - ./src:/app/src
+      - ./pyproject.toml:/app/pyproject.toml
+      - ./uv.lock:/app/uv.lock
+    env_file:
+      - .env.dev
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DATABASE_URL=postgresql://privexbot:privexbot_dev@postgres:5432/privexbot_dev
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - QDRANT_URL=http://qdrant:6333
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    networks:
+      - privexbot-dev
+    restart: unless-stopped
+
+  # Celery Beat for scheduled tasks (periodic re-indexing, maintenance)
+  celery-beat:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: privexbot-celery-beat-dev
+    command: celery -A app.tasks.celery_worker beat --loglevel=info
+    volumes:
+      - ./src:/app/src
+      - ./pyproject.toml:/app/pyproject.toml
+      - ./uv.lock:/app/uv.lock
+    env_file:
+      - .env.dev
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DATABASE_URL=postgresql://privexbot:privexbot_dev@postgres:5432/privexbot_dev
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - privexbot-dev
+    restart: unless-stopped
+
+  # Flower for Celery monitoring (Web UI at http://localhost:5555)
+  flower:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: privexbot-flower-dev
+    command: celery -A app.tasks.celery_worker flower --port=5555 --basic_auth=admin:admin123
+    ports:
+      - "5555:5555"
+    volumes:
+      - ./src:/app/src
+    env_file:
+      - .env.dev
+    environment:
+      - PYTHONUNBUFFERED=1
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - privexbot-dev
+    restart: unless-stopped
 
 networks:
   privexbot-dev:
@@ -96,3 +177,4 @@ networks:
 volumes:
   postgres_data_dev:
   redis_data_dev:
+  qdrant_data_dev:

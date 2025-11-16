@@ -29,4 +29,11 @@ dependencies = [
     "bech32>=1.2.0",
     # Rate limiting
     "slowapi>=0.1.9",
+    # KB implementation
+    "pgvector>=0.2.4",
+    "crawl4ai>=0.2.0",
+    "sentence-transformers>=2.2.0",
+    "qdrant-client>=1.7.0",
+    "torch>=2.0.0",
+    "playwright>=1.40.0",
 ]

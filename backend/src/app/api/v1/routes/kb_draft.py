@@ -1,126 +1,189 @@
 """
-KB Draft Routes - Draft mode endpoints for knowledge base creation.
+KB Draft Routes - Web URL Knowledge Base creation (3-Phase Flow).
 
-WHY:
-- Dedicated draft endpoints for KB workflow
-- Document management in draft mode
-- Web crawling configuration
-- Cloud sync setup
+PHASE 1: Draft Mode (Redis Only)
+- User configures KB without database writes
+- Add URLs, configure chunking/embedding
+- Fast, non-committal configuration
 
-HOW:
-- FastAPI router
-- Redis-based draft storage
-- Document upload in draft
-- Finalization triggers processing
+PHASE 2: Finalization (Create DB Records)
+- Create KB + Document placeholders in PostgreSQL
+- Queue Celery background task
+- Return pipeline_id for progress tracking
 
-PSEUDOCODE follows the existing codebase patterns.
+PHASE 3: Background Processing (Celery Task)
+- Scrape → Parse → Chunk → Embed → Index
+- Real-time progress updates to Redis
+- Update KB status on completion
+
+This file implements PHASE 1 & 2 (API endpoints).
+PHASE 3 is implemented in Celery tasks.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from uuid import UUID
+from pydantic import BaseModel, Field
 
 from app.db.session import get_db
 from app.api.v1.dependencies import get_current_user
 from app.models.user import User
-from app.services.draft_service import draft_service
+from app.models.workspace import Workspace
+from app.services.draft_service import draft_service, DraftType
 from app.services.kb_draft_service import kb_draft_service
 
 router = APIRouter(prefix="/kb-drafts", tags=["kb_drafts"])
 
 
-@router.post("/")
+# ========================================
+# REQUEST/RESPONSE MODELS
+# ========================================
+
+class CreateKBDraftRequest(BaseModel):
+    """Request model for creating KB draft"""
+    name: str = Field(..., min_length=1, max_length=255, description="KB name")
+    description: Optional[str] = Field(None, description="KB description")
+    workspace_id: UUID = Field(..., description="Workspace ID")
+
+
+class AddWebSourceRequest(BaseModel):
+    """Request model for adding web URL to draft"""
+    url: str = Field(..., description="Web URL to scrape/crawl")
+    config: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Crawl configuration"
+    )
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "url": "https://docs.example.com/introduction",
+                "config": {
+                    "method": "crawl",
+                    "max_pages": 50,
+                    "max_depth": 3,
+                    "include_patterns": ["/docs/**", "/guides/**"],
+                    "exclude_patterns": ["/admin/**"],
+                    "stealth_mode": True
+                }
+            }
+        }
+
+
+class UpdateChunkingConfigRequest(BaseModel):
+    """Request model for chunking configuration"""
+    strategy: str = Field(default="by_heading", description="Chunking strategy")
+    chunk_size: int = Field(default=1000, ge=100, le=5000, description="Chunk size")
+    chunk_overlap: int = Field(default=200, ge=0, le=1000, description="Chunk overlap")
+    preserve_code_blocks: bool = Field(default=True, description="Preserve code blocks")
+
+
+class UpdateEmbeddingConfigRequest(BaseModel):
+    """Request model for embedding configuration"""
+    model: str = Field(default="all-MiniLM-L6-v2", description="Embedding model")
+    device: str = Field(default="cpu", description="Device (cpu or cuda)")
+    batch_size: int = Field(default=32, ge=1, le=128, description="Batch size")
+    normalize_embeddings: bool = Field(default=True, description="Normalize embeddings")
+
+
+# ========================================
+# PHASE 1: DRAFT MODE ENDPOINTS (Redis Only)
+# ========================================
+
+@router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_kb_draft(
-    workspace_id: UUID,
-    initial_data: dict,
+    request: CreateKBDraftRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
-    Create new KB draft.
+    Create new KB draft in Redis (Phase 1).
 
-    WHY: Start KB creation workflow
-    HOW: Create draft in Redis
+    PHASE: 1 (Draft Mode - Redis Only)
+    DURATION: <50ms
+    DATABASE: No writes to PostgreSQL
 
-    BODY:
+    Returns:
         {
-            "name": "Product Documentation",
-            "description": "Product guides and FAQs",
-            "chunking_config": {
-                "strategy": "recursive",
-                "chunk_size": 1000,
-                "chunk_overlap": 200
-            },
-            "embedding_model": "text-embedding-ada-002"
-        }
-
-    RETURNS:
-        {
-            "draft_id": "draft_kb_abc123",
-            "expires_at": "2025-10-02T12:00:00Z"
+            "draft_id": str,
+            "workspace_id": str,
+            "expires_at": str,
+            "message": str
         }
     """
 
-    from app.models.workspace import Workspace
-
     # Validate workspace access
     workspace = db.query(Workspace).filter(
-        Workspace.id == workspace_id,
-        Workspace.org_id == current_user.org_id
+        Workspace.id == request.workspace_id,
+        Workspace.organization_id == current_user.org_id
     ).first()
 
     if not workspace:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Workspace not found"
+            detail="Workspace not found or access denied"
         )
 
-    # Create draft
+    # Create draft in Redis
     draft_id = draft_service.create_draft(
-        draft_type="kb",
-        workspace_id=workspace_id,
+        draft_type=DraftType.KB,
+        workspace_id=request.workspace_id,
         created_by=current_user.id,
-        initial_data=initial_data
+        initial_data={
+            "name": request.name,
+            "description": request.description,
+            "sources": [],
+            "chunking_config": {
+                "strategy": "by_heading",
+                "chunk_size": 1000,
+                "chunk_overlap": 200,
+                "preserve_code_blocks": True
+            },
+            "embedding_config": {
+                "model": "all-MiniLM-L6-v2",
+                "device": "cpu",
+                "batch_size": 32,
+                "normalize_embeddings": True
+            }
+        }
     )
 
-    draft = draft_service.get_draft(draft_id)
+    draft = draft_service.get_draft(DraftType.KB, draft_id)
 
     return {
         "draft_id": draft_id,
-        "expires_at": draft["expires_at"]
+        "workspace_id": str(request.workspace_id),
+        "expires_at": draft["expires_at"],
+        "message": "KB draft created successfully (stored in Redis, no database writes)"
     }
 
 
 @router.get("/{draft_id}")
 async def get_kb_draft(
     draft_id: str,
-    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
-    Get KB draft.
+    Get KB draft from Redis.
 
-    WHY: Retrieve draft for editing
-    HOW: Get from Redis
+    PHASE: 1 (Draft Mode - Redis Only)
+    DURATION: <10ms
+
+    Returns:
+        Full draft data from Redis
     """
 
-    draft = draft_service.get_draft(draft_id)
+    draft = draft_service.get_draft(DraftType.KB, draft_id)
 
     if not draft:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Draft not found or expired"
+            detail="KB draft not found or expired"
         )
 
-    # Verify access
-    from app.models.workspace import Workspace
-    workspace = db.query(Workspace).filter(
-        Workspace.id == UUID(draft["workspace_id"]),
-        Workspace.org_id == current_user.org_id
-    ).first()
-
-    if not workspace:
+    # Verify user owns this draft
+    if draft["created_by"] != str(current_user.id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied"
@@ -129,253 +192,268 @@ async def get_kb_draft(
     return draft
 
 
-@router.patch("/{draft_id}")
-async def update_kb_draft(
+@router.post("/{draft_id}/sources/web")
+async def add_web_source_to_draft(
     draft_id: str,
-    updates: dict,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """
-    Update KB draft configuration.
-
-    WHY: Modify KB settings during creation
-    HOW: Update in Redis
-
-    BODY:
-        {
-            "name": "Updated Name",
-            "chunking_config": {
-                "chunk_size": 1500
-            }
-        }
-    """
-
-    draft = draft_service.get_draft(draft_id)
-
-    if not draft:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Draft not found"
-        )
-
-    # Update draft
-    draft_service.update_draft(draft_id, updates)
-
-    return {"status": "updated"}
-
-
-@router.post("/{draft_id}/documents/upload")
-async def upload_document_to_draft(
-    draft_id: str,
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """
-    Upload document to KB draft.
-
-    WHY: Add files during KB creation
-    HOW: Store in Redis, parse metadata
-
-    RETURNS:
-        {
-            "document_id": "temp_doc_xyz789",
-            "filename": "guide.pdf",
-            "file_size": 1234567,
-            "content_type": "application/pdf",
-            "status": "parsed"
-        }
-    """
-
-    draft = draft_service.get_draft(draft_id)
-
-    if not draft:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Draft not found"
-        )
-
-    # Read file
-    content = await file.read()
-
-    # Add to draft
-    result = await kb_draft_service.add_document_to_draft(
-        draft_id=draft_id,
-        filename=file.filename,
-        content=content,
-        content_type=file.content_type
-    )
-
-    return result
-
-
-@router.post("/{draft_id}/documents/url")
-async def add_url_to_draft(
-    draft_id: str,
-    url: str,
-    db: Session = Depends(get_db),
+    request: AddWebSourceRequest,
     current_user: User = Depends(get_current_user)
 ):
     """
     Add web URL to KB draft.
 
-    WHY: Crawl website during KB creation
-    HOW: Store URL, will crawl on finalization
+    PHASE: 1 (Draft Mode - Redis Only)
+    DURATION: <50ms
+    DATABASE: No writes to PostgreSQL
 
-    BODY:
+    Returns:
         {
-            "url": "https://example.com/docs"
-        }
-
-    RETURNS:
-        {
-            "url_id": "temp_url_123",
-            "url": "https://example.com/docs",
-            "status": "pending"
+            "source_id": str,
+            "message": str
         }
     """
 
-    draft = draft_service.get_draft(draft_id)
+    # Verify draft exists and user owns it
+    draft = draft_service.get_draft(DraftType.KB, draft_id)
 
     if not draft:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Draft not found"
+            detail="KB draft not found or expired"
         )
 
-    # Add URL to draft
-    result = await kb_draft_service.add_url_to_draft(
-        draft_id=draft_id,
-        url=url
-    )
+    if draft["created_by"] != str(current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
+        )
 
-    return result
+    # Add web source
+    try:
+        source_id = kb_draft_service.add_web_source_to_draft(
+            draft_id=draft_id,
+            url=request.url,
+            config=request.config
+        )
+
+        return {
+            "source_id": source_id,
+            "message": "Web source added to draft (not saved to database yet)"
+        }
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
 
-@router.post("/{draft_id}/documents/cloud")
-async def add_cloud_source_to_draft(
+@router.delete("/{draft_id}/sources/{source_id}")
+async def remove_source_from_draft(
     draft_id: str,
-    source_type: str,
-    source_config: dict,
-    db: Session = Depends(get_db),
+    source_id: str,
     current_user: User = Depends(get_current_user)
 ):
     """
-    Add cloud source to KB draft.
+    Remove source from KB draft.
 
-    WHY: Import from Notion, Google Drive, etc.
-    HOW: Store config, will sync on finalization
+    PHASE: 1 (Draft Mode - Redis Only)
+    DURATION: <50ms
 
-    BODY:
+    Returns:
         {
-            "source_type": "notion",
-            "source_config": {
-                "credential_id": "uuid",
-                "page_id": "notion_page_id"
-            }
-        }
-
-    OR:
-
-        {
-            "source_type": "google_drive",
-            "source_config": {
-                "credential_id": "uuid",
-                "folder_id": "google_folder_id"
-            }
-        }
-
-    RETURNS:
-        {
-            "source_id": "temp_source_456",
-            "source_type": "notion",
-            "status": "pending"
+            "message": str
         }
     """
 
-    draft = draft_service.get_draft(draft_id)
+    # Verify draft exists and user owns it
+    draft = draft_service.get_draft(DraftType.KB, draft_id)
 
     if not draft:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Draft not found"
+            detail="KB draft not found or expired"
         )
 
-    # Add cloud source to draft
-    result = await kb_draft_service.add_cloud_source_to_draft(
-        draft_id=draft_id,
-        source_type=source_type,
-        source_config=source_config
-    )
+    if draft["created_by"] != str(current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
+        )
 
-    return result
+    # Remove source
+    try:
+        removed = kb_draft_service.remove_source_from_draft(
+            draft_id=draft_id,
+            source_id=source_id
+        )
+
+        if removed:
+            return {"message": "Source removed from draft"}
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Source not found in draft"
+            )
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
 
-@router.get("/{draft_id}/documents")
-async def list_draft_documents(
+@router.post("/{draft_id}/chunking")
+async def update_chunking_config(
     draft_id: str,
-    db: Session = Depends(get_db),
+    request: UpdateChunkingConfigRequest,
     current_user: User = Depends(get_current_user)
 ):
     """
-    List all documents in KB draft.
+    Update chunking configuration for KB draft.
 
-    WHY: View uploaded/added documents
-    HOW: Get from Redis draft
+    PHASE: 1 (Draft Mode - Redis Only)
+    DURATION: <50ms
 
-    RETURNS:
+    Returns:
         {
-            "documents": [
-                {
-                    "id": "temp_doc_123",
-                    "type": "upload",
-                    "filename": "guide.pdf",
-                    "size": 1234567
-                },
-                {
-                    "id": "temp_url_456",
-                    "type": "url",
-                    "url": "https://example.com"
-                }
-            ]
+            "message": str
         }
     """
 
-    draft = draft_service.get_draft(draft_id)
+    # Verify draft exists and user owns it
+    draft = draft_service.get_draft(DraftType.KB, draft_id)
 
     if not draft:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Draft not found"
+            detail="KB draft not found or expired"
         )
 
-    documents = kb_draft_service.list_draft_documents(draft_id)
+    if draft["created_by"] != str(current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
+        )
 
-    return {"documents": documents}
+    # Update chunking config
+    try:
+        kb_draft_service.update_chunking_config(
+            draft_id=draft_id,
+            chunking_config=request.dict()
+        )
+
+        return {"message": "Chunking configuration updated"}
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
 
-@router.delete("/{draft_id}/documents/{document_id}")
-async def remove_document_from_draft(
+@router.post("/{draft_id}/embedding")
+async def update_embedding_config(
     draft_id: str,
-    document_id: str,
-    db: Session = Depends(get_db),
+    request: UpdateEmbeddingConfigRequest,
     current_user: User = Depends(get_current_user)
 ):
     """
-    Remove document from KB draft.
+    Update embedding configuration for KB draft.
 
-    WHY: Delete unwanted document
-    HOW: Remove from Redis draft
+    PHASE: 1 (Draft Mode - Redis Only)
+    DURATION: <50ms
+
+    NOTE: Always uses local sentence-transformers for privacy.
+
+    Returns:
+        {
+            "message": str
+        }
     """
 
-    await kb_draft_service.remove_document_from_draft(
-        draft_id=draft_id,
-        document_id=document_id
-    )
+    # Verify draft exists and user owns it
+    draft = draft_service.get_draft(DraftType.KB, draft_id)
 
-    return {"status": "removed"}
+    if not draft:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="KB draft not found or expired"
+        )
 
+    if draft["created_by"] != str(current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
+        )
+
+    # Update embedding config
+    try:
+        kb_draft_service.update_embedding_config(
+            draft_id=draft_id,
+            embedding_config=request.dict()
+        )
+
+        return {"message": "Embedding configuration updated"}
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
+@router.get("/{draft_id}/validate")
+async def validate_kb_draft(
+    draft_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Validate KB draft before finalization.
+
+    PHASE: 1 (Draft Mode - Redis Only)
+    DURATION: <50ms
+
+    Returns:
+        {
+            "is_valid": bool,
+            "errors": List[str],
+            "warnings": List[str],
+            "estimated_duration": int,
+            "total_sources": int,
+            "estimated_pages": int
+        }
+    """
+
+    # Verify draft exists and user owns it
+    draft = draft_service.get_draft(DraftType.KB, draft_id)
+
+    if not draft:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="KB draft not found or expired"
+        )
+
+    if draft["created_by"] != str(current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
+        )
+
+    # Validate draft
+    try:
+        validation = kb_draft_service.validate_draft(draft_id)
+        return validation
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
+# ========================================
+# PHASE 2: FINALIZATION (Create DB Records)
+# ========================================
 
 @router.post("/{draft_id}/finalize")
 async def finalize_kb_draft(
@@ -384,152 +462,106 @@ async def finalize_kb_draft(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Finalize KB draft and process documents.
+    Finalize KB draft: Create DB records and queue background processing.
 
-    WHY: Convert draft to production KB
-    HOW: Save to DB, queue processing tasks
+    PHASE: 2 (Finalization - Create DB Records)
+    DURATION: <100ms (synchronous)
+    DATABASE: Creates KB + Document records in PostgreSQL
 
-    FLOW:
-    1. Validate draft (has documents, valid config)
-    2. Create KB in database
-    3. Create documents in database
-    4. Queue Celery tasks:
-       - process_document_task for uploads
-       - crawl_website_task for URLs
-       - sync_notion_page_task for cloud sources
-    5. Delete draft from Redis
+    CRITICAL FLOW:
+    1. Validate draft
+    2. Create KB record (status="processing")
+    3. Create Document placeholders
+    4. Create pipeline tracking in Redis
+    5. Queue Celery background task (Phase 3)
+    6. Delete draft from Redis
+    7. Return kb_id and pipeline_id
 
-    RETURNS:
+    IMPORTANT: This is SYNCHRONOUS (<100ms).
+    Heavy processing happens in background Celery task (Phase 3).
+
+    Returns:
         {
-            "kb_id": "uuid",
-            "documents_queued": 10,
-            "urls_queued": 2,
-            "cloud_sources_queued": 1,
-            "status": "processing"
+            "kb_id": str,
+            "pipeline_id": str,
+            "status": "processing",
+            "message": str,
+            "tracking_url": str,
+            "estimated_completion_minutes": int
         }
     """
 
-    # Finalize draft
-    result = await draft_service.finalize_draft(
-        db=db,
-        draft_id=draft_id,
-        finalized_by=current_user.id
-    )
-
-    if not result["success"]:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=result.get("errors", ["Finalization failed"])
-        )
-
-    return result
-
-
-@router.post("/{draft_id}/validate")
-async def validate_kb_draft(
-    draft_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """
-    Validate KB draft before finalization.
-
-    WHY: Check for errors before finalizing
-    HOW: Run validation checks
-
-    RETURNS:
-        {
-            "is_valid": true,
-            "errors": [],
-            "warnings": [
-                "No documents added yet"
-            ],
-            "stats": {
-                "total_documents": 5,
-                "total_urls": 2,
-                "estimated_chunks": 1234
-            }
-        }
-    """
-
-    draft = draft_service.get_draft(draft_id)
+    # Verify draft exists and user owns it
+    draft = draft_service.get_draft(DraftType.KB, draft_id)
 
     if not draft:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Draft not found"
+            detail="KB draft not found or expired"
         )
 
-    # Validate draft
-    validation_result = kb_draft_service.validate_draft(draft)
+    if draft["created_by"] != str(current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
+        )
 
-    return validation_result
+    # Finalize draft (creates DB records and queues task)
+    try:
+        result = await kb_draft_service.finalize_draft(
+            db=db,
+            draft_id=draft_id
+        )
+
+        return result
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        # Log error
+        print(f"Error finalizing KB draft: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to finalize KB draft"
+        )
 
 
 @router.delete("/{draft_id}")
 async def delete_kb_draft(
     draft_id: str,
-    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
-    Delete KB draft.
+    Delete KB draft from Redis.
 
-    WHY: Cancel KB creation
-    HOW: Delete from Redis
+    PHASE: 1 (Draft Mode - Redis Only)
+    DURATION: <10ms
+
+    Returns:
+        {
+            "message": str
+        }
     """
 
-    draft = draft_service.get_draft(draft_id)
+    # Verify draft exists and user owns it
+    draft = draft_service.get_draft(DraftType.KB, draft_id)
 
     if not draft:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Draft not found"
+            detail="KB draft not found or expired"
+        )
+
+    if draft["created_by"] != str(current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
         )
 
     # Delete draft
-    draft_service.delete_draft(draft_id)
+    draft_service.delete_draft(DraftType.KB, draft_id)
 
-    return {"status": "deleted"}
-
-
-@router.post("/{draft_id}/extend")
-async def extend_kb_draft_expiry(
-    draft_id: str,
-    hours: int = 24,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """
-    Extend KB draft expiry time.
-
-    WHY: Keep draft alive longer
-    HOW: Update TTL in Redis
-
-    BODY:
-        {
-            "hours": 48
-        }
-
-    RETURNS:
-        {
-            "draft_id": "draft_kb_abc123",
-            "new_expires_at": "2025-10-04T12:00:00Z"
-        }
-    """
-
-    draft = draft_service.get_draft(draft_id)
-
-    if not draft:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Draft not found"
-        )
-
-    # Extend expiry
-    new_expiry = draft_service.extend_draft_expiry(draft_id, hours)
-
-    return {
-        "draft_id": draft_id,
-        "new_expires_at": new_expiry
-    }
+    return {"message": "KB draft deleted"}

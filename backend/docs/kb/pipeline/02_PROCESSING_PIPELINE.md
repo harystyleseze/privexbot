@@ -4,31 +4,6 @@
 
 Build an intelligent processing pipeline that preserves document structure while providing configurable chunking strategies. The system builds on existing `chunking_service.py` and `embedding_service.py` while adding smart parsing capabilities.
 
-## Current Foundation (What We Have)
-
-### Existing Services
-```python
-# backend/src/app/services/chunking_service.py
-class ChunkingService:
-    def chunk_document(self, content: str, strategy: str, chunk_size: int)
-
-# backend/src/app/services/embedding_service.py
-class EmbeddingService:
-    def generate_embeddings(self, chunks: List[str], model: str)
-
-# backend/src/app/services/indexing_service.py
-class IndexingService:
-    def index_chunks(self, chunks: List[Chunk], kb_id: UUID)
-```
-
-### Existing Document Status Tracking
-```python
-# backend/src/app/models/document.py
-status: str  # "pending", "processing", "embedding", "completed", "failed"
-processing_progress: int  # 0-100
-processing_metadata: JSONB  # Processing details and stats
-```
-
 ## Enhanced Processing Architecture
 
 ### Smart Document Parser

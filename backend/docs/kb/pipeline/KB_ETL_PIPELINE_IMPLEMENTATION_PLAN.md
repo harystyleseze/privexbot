@@ -457,7 +457,7 @@ async def pipeline_metrics_middleware(request: Request, call_next):
 ## Migration and Rollout
 
 ### 1. Backwards Compatibility
-- Existing KB functionality remains unchanged
+- Build on existing authentication and authorization functionalities
 - Enhanced features are opt-in
 - Configuration defaults preserve current behavior
 

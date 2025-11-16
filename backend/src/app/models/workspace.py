@@ -193,7 +193,7 @@ class Workspace(Base):
     # NOTE: These relationships will be defined when the models exist
     # chatbots = relationship("Chatbot", back_populates="workspace", cascade="all, delete-orphan")
     # chatflows = relationship("Chatflow", back_populates="workspace", cascade="all, delete-orphan")
-    # knowledge_bases = relationship("KnowledgeBase", back_populates="workspace", cascade="all, delete-orphan")
+    knowledge_bases = relationship("KnowledgeBase", back_populates="workspace", cascade="all, delete-orphan")
     # leads = relationship("Lead", back_populates="workspace", cascade="all, delete-orphan")
 
     def __repr__(self):

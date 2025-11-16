@@ -4,26 +4,6 @@
 
 Build on the existing `document_processing_service.py` to support advanced multi-source data ingestion while maintaining the current draft-first architecture and multi-tenancy patterns.
 
-## Current Foundation (What We Have)
-
-### Existing Document Processing Service
-```python
-# backend/src/app/services/document_processing_service.py
-class DocumentProcessingService:
-    def process_file(self, db, file_path, kb_id, document_name, metadata)
-    def process_url(self, db, url, kb_id, document_name, metadata)
-    def process_text(self, db, text, kb_id, document_name, metadata)
-```
-
-### Existing Document Model
-```python
-# backend/src/app/models/document.py
-source_type: str  # "file_upload", "text_input", "website", "google_docs", "notion"
-source_url: str | None
-source_metadata: JSONB  # Source-specific information
-annotations: JSONB      # User annotations to help AI understand document
-```
-
 ## Enhanced Source Architecture
 
 ### Source Adapter Pattern
