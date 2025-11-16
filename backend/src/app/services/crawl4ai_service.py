@@ -133,7 +133,7 @@ class Crawl4AIService:
         )
 
         # Create crawler
-        self.crawler = AsyncWebCrawler(browser_config=browser_config)
+        self.crawler = AsyncWebCrawler(browser_config)
         await self.crawler.start()
 
     async def _cleanup_crawler(self):
@@ -200,21 +200,38 @@ class Crawl4AIService:
 
         config = config or CrawlConfig(method="single")
 
-        try:
-            # Initialize crawler
-            await self._initialize_crawler(config)
+        # Browser configuration for stealth
+        browser_config = BrowserConfig(
+            headless=True,
+            viewport_width=1920,
+            viewport_height=1080,
+            user_agent=(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/120.0.0.0 Safari/537.36"
+            ),
+            # Anti-detection flags
+            extra_args=[
+                "--disable-blink-features=AutomationControlled",
+                "--disable-dev-shm-usage",
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+            ] if config.stealth_mode else []
+        )
 
-            # Configure crawler run
-            run_config = CrawlerRunConfig(
-                cache_mode=CacheMode.BYPASS,  # Always fresh content
-                wait_for="body",  # Wait for body to load
-                delay_before_return_html=2.0 if config.stealth_mode else 0.5,
-                # Extraction strategy (just get markdown)
-                extraction_strategy=NoExtractionStrategy(),
-            )
+        # Configure crawler run
+        run_config = CrawlerRunConfig(
+            cache_mode=CacheMode.BYPASS,  # Always fresh content
+            wait_for="body",  # Wait for body to load
+            delay_before_return_html=2.0 if config.stealth_mode else 0.5,
+            # Extraction strategy (just get markdown)
+            extraction_strategy=NoExtractionStrategy(),
+        )
 
+        # Use crawler as context manager
+        async with AsyncWebCrawler(config=browser_config) as crawler:
             # Scrape page
-            result = await self.crawler.arun(
+            result = await crawler.arun(
                 url=url,
                 config=run_config
             )
@@ -225,7 +242,7 @@ class Crawl4AIService:
             # Extract metadata
             metadata = {
                 "status_code": result.status_code,
-                "content_type": result.headers.get("content-type", "unknown"),
+                "content_type": "text/html",  # Default for web scraping
                 "word_count": len(result.markdown.split()) if result.markdown else 0,
                 "character_count": len(result.markdown) if result.markdown else 0,
             }
@@ -233,7 +250,15 @@ class Crawl4AIService:
             # Extract links if requested
             links = []
             if config.extract_links and result.links:
-                links = [link for link in result.links.get("internal", []) if link]
+                internal_links = result.links.get("internal", [])
+                # Extract href from link objects (can be dict or string)
+                links = [
+                    link.get("href") if isinstance(link, dict) else link
+                    for link in internal_links
+                    if link
+                ]
+                # Filter out None values
+                links = [link for link in links if link]
 
             return ScrapedPage(
                 url=url,
@@ -244,10 +269,6 @@ class Crawl4AIService:
                 metadata=metadata,
                 scraped_at=datetime.utcnow()
             )
-
-        finally:
-            # Cleanup
-            await self._cleanup_crawler()
 
     async def crawl_website(
         self,
@@ -270,10 +291,27 @@ class Crawl4AIService:
 
         config = config or CrawlConfig(method="crawl")
 
-        try:
-            # Initialize crawler
-            await self._initialize_crawler(config)
+        # Browser configuration for stealth
+        browser_config = BrowserConfig(
+            headless=True,
+            viewport_width=1920,
+            viewport_height=1080,
+            user_agent=(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/120.0.0.0 Safari/537.36"
+            ),
+            # Anti-detection flags
+            extra_args=[
+                "--disable-blink-features=AutomationControlled",
+                "--disable-dev-shm-usage",
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+            ] if config.stealth_mode else []
+        )
 
+        # Use crawler as context manager (same pattern as scrape_single_url)
+        async with AsyncWebCrawler(config=browser_config) as crawler:
             # Track crawled and pending URLs
             crawled_urls = set()
             pending_urls = [(start_url, 0)]  # (url, depth)
@@ -295,7 +333,7 @@ class Crawl4AIService:
                         extraction_strategy=NoExtractionStrategy(),
                     )
 
-                    result = await self.crawler.arun(url=url, config=run_config)
+                    result = await crawler.arun(url=url, config=run_config)
 
                     if not result.success:
                         print(f"Failed to scrape {url}: {result.error_message}")
@@ -314,11 +352,19 @@ class Crawl4AIService:
                     if result.links:
                         internal_links = result.links.get("internal", [])
                         for link in internal_links:
-                            if link and self._should_crawl_url(link, config, start_url):
-                                full_url = urljoin(url, link)
+                            if not link:
+                                continue
+
+                            # Extract href from link object (can be dict or string)
+                            link_url = link.get("href") if isinstance(link, dict) else link
+                            if not link_url:
+                                continue
+
+                            if self._should_crawl_url(link_url, config, start_url):
+                                full_url = urljoin(url, link_url)
                                 if full_url not in crawled_urls:
                                     pending_urls.append((full_url, depth + 1))
-                                links.append(link)
+                                links.append(link_url)
 
                     # Add to results
                     scraped_pages.append(ScrapedPage(
@@ -342,10 +388,6 @@ class Crawl4AIService:
                     continue
 
             return scraped_pages
-
-        finally:
-            # Cleanup
-            await self._cleanup_crawler()
 
 
 # Global instance

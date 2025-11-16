@@ -370,7 +370,15 @@ class KnowledgeBase(Base):
     #     "scraping": {"max_pages": 50, "max_depth": 3}
     # }
 
-    # Context settings (access control)
+    # Context-based access control (simplified)
+    context = Column(
+        String(50),
+        nullable=False,
+        default="both",
+        index=True
+    )  # chatbot, chatflow, both
+
+    # Context settings (access control) - deprecated in favor of simpler context field
     context_settings = Column(JSONB, nullable=False, default=dict)
 
     # Embedding configuration
@@ -412,6 +420,11 @@ class KnowledgeBase(Base):
     documents = relationship(
         "Document",
         back_populates="knowledge_base",
+        cascade="all, delete-orphan"
+    )
+    members = relationship(
+        "KBMember",
+        back_populates="kb",
         cascade="all, delete-orphan"
     )
 

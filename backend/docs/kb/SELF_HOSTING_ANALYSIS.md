@@ -598,5 +598,3 @@ Then migrate to self-hosted alternatives.
 
 **Total estimated cost**: $120/month to start, can optimize to $50/month with self-hosting later.
 
-
-

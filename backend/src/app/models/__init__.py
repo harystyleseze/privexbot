@@ -24,6 +24,12 @@ from app.models.knowledge_base import KnowledgeBase
 from app.models.document import Document
 from app.models.chunk import Chunk
 
+# KB RBAC, Audit, Notifications, Analytics (IMPLEMENTED)
+from app.models.kb_member import KBMember
+from app.models.kb_audit_log import KBAuditLog
+from app.models.kb_notification import KBNotification
+from app.models.kb_analytics import KBAnalyticsEvent
+
 # NOTE: The following models are still pseudocode and not imported yet:
 # - Chatbot
 # - Chatflow
@@ -47,4 +53,9 @@ __all__ = [
     "KnowledgeBase",
     "Document",
     "Chunk",
+    # KB RBAC, Audit, Notifications, Analytics
+    "KBMember",
+    "KBAuditLog",
+    "KBNotification",
+    "KBAnalyticsEvent",
 ]

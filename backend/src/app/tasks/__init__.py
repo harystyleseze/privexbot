@@ -14,3 +14,6 @@ HOW:
 - Task queues by priority
 - Result storage
 """
+
+# Import tasks to register them with Celery
+from app.tasks.kb_pipeline_tasks import process_web_kb_task  # noqa: F401

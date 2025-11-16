@@ -291,15 +291,21 @@ def process_web_kb_task(
                 # Scrape (single or crawl)
                 method = source_config.get("method", "single")
 
+                print(f"[DEBUG] About to scrape: {source_url}, method={method}")
+                tracker.add_log("info", f"Starting scrape: {source_url} (method={method})")
+
                 if method == "crawl":
+                    print(f"[DEBUG] Calling crawl_website for {source_url}")
                     scraped_pages = loop.run_until_complete(
                         crawl4ai_service.crawl_website(
                             start_url=source_url,
                             config=crawl_config
                         )
                     )
+                    print(f"[DEBUG] Crawl completed, got {len(scraped_pages)} pages")
                 else:
                     # Single page scrape
+                    print(f"[DEBUG] Calling scrape_single_url for {source_url}")
                     scraped_page = loop.run_until_complete(
                         crawl4ai_service.scrape_single_url(
                             url=source_url,
@@ -307,6 +313,7 @@ def process_web_kb_task(
                         )
                     )
                     scraped_pages = [scraped_page]
+                    print(f"[DEBUG] Single page scrape completed")
 
                 tracker.update_stats(pages_scraped=tracker.stats["pages_scraped"] + len(scraped_pages))
                 tracker.add_log("info", f"Scraped {len(scraped_pages)} pages from {source_url}")
@@ -367,6 +374,7 @@ def process_web_kb_task(
                         # STEP 2e: CREATE DOCUMENT + CHUNKS
                         # ========================================
 
+                        print(f"[DEBUG] Creating Document record for page: {page_url}")
                         # Create Document record
                         document = Document(
                             kb_id=UUID(kb_id),
@@ -374,9 +382,11 @@ def process_web_kb_task(
                             name=scraped_page.title or page_url,
                             source_type="web_scraping",
                             source_url=page_url,
-                            content=page_content,
+                            content_preview=page_content[:500] if page_content else None,
+                            word_count=len(page_content.split()) if page_content else 0,
+                            character_count=len(page_content) if page_content else 0,
                             source_metadata={
-                                "scraped_at": scraped_page.scraped_at,
+                                "scraped_at": scraped_page.scraped_at.isoformat() if scraped_page.scraped_at else None,
                                 "content_length": len(page_content),
                                 "metadata": scraped_page.metadata
                             },
@@ -395,16 +405,17 @@ def process_web_kb_task(
                             chunk = Chunk(
                                 document_id=document.id,
                                 kb_id=UUID(kb_id),
-                                workspace_id=kb.workspace_id,
                                 content=chunk_data["content"],
                                 chunk_index=chunk_idx,
+                                position=chunk_idx,  # Order within document
                                 embedding=embedding,  # pgvector
                                 chunk_metadata={
                                     "token_count": chunk_data.get("token_count", 0),
                                     "strategy": "recursive",
                                     "chunk_size": chunk_size,
                                     "page_url": page_url,
-                                    "page_title": scraped_page.title
+                                    "page_title": scraped_page.title,
+                                    "workspace_id": str(kb.workspace_id)
                                 },
                                 created_at=datetime.utcnow()
                             )
@@ -430,17 +441,27 @@ def process_web_kb_task(
                             )
 
                         db.commit()
+                        print(f"[DEBUG] Database commit successful, created {len(qdrant_chunks)} chunks for page: {page_url}")
 
                         # ========================================
                         # STEP 2f: INDEX IN QDRANT
                         # ========================================
 
-                        loop.run_until_complete(
-                            qdrant_service.upsert_chunks(
-                                kb_id=UUID(kb_id),
-                                chunks=qdrant_chunks
+                        print(f"[DEBUG] About to upsert {len(qdrant_chunks)} chunks to Qdrant for page: {page_url}")
+                        try:
+                            loop.run_until_complete(
+                                qdrant_service.upsert_chunks(
+                                    kb_id=UUID(kb_id),
+                                    chunks=qdrant_chunks
+                                )
                             )
-                        )
+                            print(f"[DEBUG] Qdrant upsert successful for {len(qdrant_chunks)} chunks")
+                        except Exception as qdrant_error:
+                            print(f"[ERROR] Qdrant upsert failed: {str(qdrant_error)}")
+                            print(f"[ERROR] Qdrant error type: {type(qdrant_error).__name__}")
+                            import traceback
+                            print(f"[ERROR] Traceback:\n{traceback.format_exc()}")
+                            raise  # Re-raise to be caught by outer exception handler
 
                         tracker.update_stats(
                             vectors_indexed=tracker.stats["vectors_indexed"] + len(qdrant_chunks)
@@ -465,16 +486,26 @@ def process_web_kb_task(
                             f"Failed to process page: {scraped_page.url}",
                             {"error": str(page_error)}
                         )
+                        # Also print to stdout for debugging
+                        print(f"[ERROR] Failed to process page: {scraped_page.url}")
+                        print(f"[ERROR] Error: {str(page_error)}")
+                        print(f"[ERROR] Error type: {type(page_error).__name__}")
+                        import traceback
+                        print(f"[ERROR] Traceback:\n{traceback.format_exc()}")
                         # Continue with next page
                         continue
 
             except Exception as source_error:
                 tracker.update_stats(pages_failed=tracker.stats["pages_failed"] + 1)
-                tracker.add_log(
-                    "error",
-                    f"Failed to process source: {source_url}",
-                    {"error": str(source_error), "traceback": traceback.format_exc()}
-                )
+                error_msg = f"Failed to process source: {source_url}"
+                error_details = {"error": str(source_error), "traceback": traceback.format_exc()}
+
+                # Log to both tracker and stdout for debugging
+                tracker.add_log("error", error_msg, error_details)
+                print(f"[ERROR] {error_msg}")
+                print(f"[ERROR] Error details: {str(source_error)}")
+                print(f"[ERROR] Traceback:\n{traceback.format_exc()}")
+
                 # Continue with next source
                 continue
 

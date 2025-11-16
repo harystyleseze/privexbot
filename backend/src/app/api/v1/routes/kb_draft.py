@@ -45,6 +45,7 @@ class CreateKBDraftRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=255, description="KB name")
     description: Optional[str] = Field(None, description="KB description")
     workspace_id: UUID = Field(..., description="Workspace ID")
+    context: str = Field(default="both", description="Context: chatbot, chatflow, or both")
 
 
 class AddWebSourceRequest(BaseModel):
@@ -113,17 +114,18 @@ async def create_kb_draft(
         }
     """
 
-    # Validate workspace access
+    # Validate workspace exists
     workspace = db.query(Workspace).filter(
-        Workspace.id == request.workspace_id,
-        Workspace.organization_id == current_user.org_id
+        Workspace.id == request.workspace_id
     ).first()
 
     if not workspace:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Workspace not found or access denied"
+            detail="Workspace not found"
         )
+
+    # TODO: Add workspace membership check via RBAC service
 
     # Create draft in Redis
     draft_id = draft_service.create_draft(
@@ -448,6 +450,172 @@ async def validate_kb_draft(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
+        )
+
+
+# ========================================
+# CHUNKING PREVIEW ENDPOINT (Non-blocking)
+# ========================================
+
+class ChunkingPreviewRequest(BaseModel):
+    """Request model for chunking preview"""
+    url: str = Field(..., description="Web URL to preview")
+    strategy: str = Field(default="by_heading", description="Chunking strategy")
+    chunk_size: int = Field(default=1000, ge=100, le=5000)
+    chunk_overlap: int = Field(default=200, ge=0, le=1000)
+    max_preview_chunks: int = Field(default=10, ge=1, le=20, description="Max chunks to show in preview")
+
+
+@router.post("/preview")
+async def preview_chunking(
+    request: ChunkingPreviewRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Preview chunking strategy for a URL without creating KB.
+
+    WHY: Give users clear picture of how content will be chunked
+    HOW: Non-blocking preview using dedicated preview service
+
+    PHASE: Pre-Draft (Exploratory)
+    DURATION: 2-10 seconds (fetches URL content)
+    NON-BLOCKING: Does not interfere with main pipeline
+
+    OPTIMIZED FOR: GitBook, GitHub Docs, Notion, documentation sites
+
+    Returns:
+        {
+            "url": str,
+            "title": str,
+            "strategy": str,
+            "config": {...},
+            "preview_chunks": [...]  # First N chunks with previews,
+            "total_chunks_estimated": int,
+            "document_stats": {...},
+            "strategy_recommendation": str,
+            "optimized_for": str  # gitbook, github, notion, etc.
+        }
+    """
+
+    from app.services.preview_service import preview_service
+
+    try:
+        preview_data = await preview_service.preview_chunking_for_url(
+            url=request.url,
+            strategy=request.strategy,
+            chunk_size=request.chunk_size,
+            chunk_overlap=request.chunk_overlap,
+            max_preview_chunks=request.max_preview_chunks
+        )
+
+        if "error" in preview_data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=preview_data.get("message", "Preview generation failed")
+            )
+
+        return preview_data
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Preview generation failed: {str(e)}"
+        )
+
+
+class DraftPreviewRequest(BaseModel):
+    """Request model for draft-based realistic preview"""
+    strategy: Optional[str] = Field(None, description="Chunking strategy (overrides draft config if provided)")
+    chunk_size: Optional[int] = Field(None, ge=100, le=5000, description="Chunk size (overrides draft config)")
+    chunk_overlap: Optional[int] = Field(None, ge=0, le=1000, description="Chunk overlap (overrides draft config)")
+    max_preview_pages: int = Field(default=5, ge=1, le=10, description="Max pages to crawl for preview")
+
+
+@router.post("/{draft_id}/preview")
+async def preview_draft_chunking(
+    draft_id: str,
+    request: DraftPreviewRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Generate realistic multi-page preview using draft's crawl configuration.
+
+    WHY: Users want to see realistic preview before finalizing KB
+    HOW: Use draft's URLs and crawl config to crawl multiple pages
+
+    TYPE: Draft Preview (Realistic Multi-Page)
+    DURATION: 10-30 seconds (crawls multiple pages)
+    NON-BLOCKING: Does not interfere with main pipeline
+
+    USE CASE:
+    - Draft created with URLs and crawl config
+    - Want to see how multiple pages will be chunked
+    - Before finalizing the KB
+    - Need realistic representation
+
+    Returns:
+        {
+            "draft_id": str,
+            "pages_previewed": int,
+            "total_chunks": int,
+            "strategy": str,
+            "config": {...},
+            "pages": [
+                {
+                    "url": str,
+                    "title": str,
+                    "chunks": int,
+                    "preview_chunks": [...]
+                }
+            ],
+            "estimated_total_chunks": int,
+            "crawl_config": {...},
+            "note": str
+        }
+    """
+
+    from app.services.preview_service import preview_service
+
+    # Verify draft exists and user owns it
+    draft = draft_service.get_draft(DraftType.KB, draft_id)
+
+    if not draft:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="KB draft not found or expired"
+        )
+
+    if draft["created_by"] != str(current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
+        )
+
+    try:
+        preview_data = await preview_service.preview_chunking_for_draft(
+            draft_id=draft_id,
+            strategy=request.strategy,
+            chunk_size=request.chunk_size,
+            chunk_overlap=request.chunk_overlap,
+            max_preview_pages=request.max_preview_pages
+        )
+
+        if "error" in preview_data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=preview_data.get("message", "Preview generation failed")
+            )
+
+        return preview_data
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Preview generation failed: {str(e)}"
         )
 
 

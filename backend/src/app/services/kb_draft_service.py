@@ -366,6 +366,7 @@ class KBDraftService:
             name=data["name"],
             description=data.get("description"),
             config=data.get("config", {}),
+            context=data.get("context", "both"),  # chatbot, chatflow, or both
             context_settings=data.get("context_settings", {}),
             embedding_config=data.get("embedding_config", {
                 "model": "all-MiniLM-L6-v2",
