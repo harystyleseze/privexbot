@@ -95,7 +95,7 @@ services:
       context: .
       dockerfile: Dockerfile.dev
     container_name: privexbot-celery-dev
-    command: celery -A app.tasks.celery_worker worker --loglevel=info --queues=default,high_priority,low_priority --concurrency=2
+    command: celery -A app.tasks.celery_worker worker --loglevel=info --queues=default,high_priority,low_priority --pool=solo
     volumes:
       - ./src:/app/src
       - ./pyproject.toml:/app/pyproject.toml
@@ -109,6 +109,12 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/1
       - CELERY_RESULT_BACKEND=redis://redis:6379/2
       - QDRANT_URL=http://qdrant:6333
+      # PyTorch/OpenMP compatibility with Celery
+      - OMP_NUM_THREADS=1
+      - MKL_NUM_THREADS=1
+      - OPENBLAS_NUM_THREADS=1
+      - VECLIB_MAXIMUM_THREADS=1
+      - NUMEXPR_NUM_THREADS=1
     depends_on:
       postgres:
         condition: service_healthy

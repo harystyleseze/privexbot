@@ -20,7 +20,7 @@ This file implements PHASE 1 & 2 (API endpoints).
 PHASE 3 is implemented in Celery tasks.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Body
+from fastapi import APIRouter, Depends, HTTPException, status, Body, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from uuid import UUID
@@ -617,6 +617,288 @@ async def preview_draft_chunking(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Preview generation failed: {str(e)}"
         )
+
+
+# ========================================
+# DRAFT INSPECTION ENDPOINTS (View stored pages/chunks)
+# ========================================
+
+@router.get("/{draft_id}/pages")
+async def get_draft_pages(
+    draft_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    List all scraped pages stored in the draft (from preview).
+
+    WHY: Allow users to inspect what pages were crawled during preview
+    HOW: Retrieve pages data from draft in Redis
+
+    PHASE: 1 (Draft Mode - Redis Only)
+    DURATION: <50ms
+
+    Returns:
+        {
+            "draft_id": str,
+            "total_pages": int,
+            "pages": [
+                {
+                    "index": int,
+                    "url": str,
+                    "title": str,
+                    "content_preview": str,
+                    "word_count": int,
+                    "scraped_at": str
+                }
+            ]
+        }
+    """
+
+    # Verify draft exists and user owns it
+    draft = draft_service.get_draft(DraftType.KB, draft_id)
+
+    if not draft:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="KB draft not found or expired"
+        )
+
+    if draft["created_by"] != str(current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
+        )
+
+    # Get pages from draft preview data
+    preview_data = draft.get("preview_data", {})
+    pages = preview_data.get("pages", [])
+
+    if not pages:
+        return {
+            "draft_id": draft_id,
+            "total_pages": 0,
+            "pages": [],
+            "message": "No preview data found. Run preview first using POST /{draft_id}/preview"
+        }
+
+    # Format pages with preview info
+    formatted_pages = []
+    for idx, page_data in enumerate(pages):
+        formatted_pages.append({
+            "index": idx,
+            "url": page_data.get("url", ""),
+            "title": page_data.get("title", ""),
+            "content_preview": page_data.get("content", "")[:200] + "..." if len(page_data.get("content", "")) > 200 else page_data.get("content", ""),
+            "word_count": len(page_data.get("content", "").split()),
+            "character_count": len(page_data.get("content", "")),
+            "chunks": page_data.get("chunks", 0),
+            "scraped_at": preview_data.get("generated_at", "")
+        })
+
+    return {
+        "draft_id": draft_id,
+        "total_pages": len(formatted_pages),
+        "pages": formatted_pages
+    }
+
+
+@router.get("/{draft_id}/pages/{page_index}")
+async def get_draft_page(
+    draft_id: str,
+    page_index: int,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get full content of a specific scraped page from draft.
+
+    WHY: Allow users to see complete page content before finalization
+    HOW: Retrieve specific page from draft preview data
+
+    PHASE: 1 (Draft Mode - Redis Only)
+    DURATION: <50ms
+
+    Returns:
+        {
+            "page_index": int,
+            "url": str,
+            "title": str,
+            "content": str (full markdown content),
+            "content_type": str,
+            "metadata": {...},
+            "word_count": int,
+            "character_count": int,
+            "links": [...]
+        }
+    """
+
+    # Verify draft exists and user owns it
+    draft = draft_service.get_draft(DraftType.KB, draft_id)
+
+    if not draft:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="KB draft not found or expired"
+        )
+
+    if draft["created_by"] != str(current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
+        )
+
+    # Get pages from draft preview data
+    preview_data = draft.get("preview_data", {})
+    pages = preview_data.get("pages", [])
+
+    if not pages:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No preview data found. Run preview first using POST /{draft_id}/preview"
+        )
+
+    if page_index < 0 or page_index >= len(pages):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Page index {page_index} not found (total pages: {len(pages)})"
+        )
+
+    page_data = pages[page_index]
+    content = page_data.get("content", "")
+
+    return {
+        "page_index": page_index,
+        "url": page_data.get("url", ""),
+        "title": page_data.get("title", ""),
+        "content": content,
+        "content_type": "text/markdown",
+        "metadata": {
+            "description": page_data.get("description", ""),
+            "scraped_at": preview_data.get("generated_at", ""),
+            "chunks": page_data.get("chunks", 0)
+        },
+        "word_count": len(content.split()),
+        "character_count": len(content),
+        "chunks_count": len(page_data.get("preview_chunks", []))
+    }
+
+
+@router.get("/{draft_id}/chunks")
+async def get_draft_chunks(
+    draft_id: str,
+    page: int = Query(1, ge=1, description="Page number"),
+    limit: int = Query(20, ge=1, le=100, description="Items per page"),
+    page_index: Optional[int] = Query(None, description="Filter chunks from specific page"),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    List chunks from draft preview with pagination and filtering.
+
+    WHY: Allow users to inspect chunks before finalization
+    HOW: Retrieve chunks from draft preview data with pagination
+
+    PHASE: 1 (Draft Mode - Redis Only)
+    DURATION: <100ms
+
+    Query Parameters:
+        - page: Page number (default: 1)
+        - limit: Items per page (default: 20, max: 100)
+        - page_index: Filter chunks from specific scraped page
+
+    Returns:
+        {
+            "draft_id": str,
+            "total_chunks": int,
+            "page": int,
+            "limit": int,
+            "total_pages": int,
+            "chunks": [
+                {
+                    "index": int,
+                    "content": str,
+                    "word_count": int,
+                    "character_count": int,
+                    "source_page": {
+                        "index": int,
+                        "url": str,
+                        "title": str
+                    }
+                }
+            ]
+        }
+    """
+
+    # Verify draft exists and user owns it
+    draft = draft_service.get_draft(DraftType.KB, draft_id)
+
+    if not draft:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="KB draft not found or expired"
+        )
+
+    if draft["created_by"] != str(current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
+        )
+
+    # Get preview data from draft
+    preview_data = draft.get("preview_data", {})
+    pages = preview_data.get("pages", [])
+
+    if not pages:
+        return {
+            "draft_id": draft_id,
+            "total_chunks": 0,
+            "page": page,
+            "limit": limit,
+            "total_pages": 0,
+            "chunks": [],
+            "message": "No preview data found. Run preview first using POST /{draft_id}/preview"
+        }
+
+    # Collect all chunks from all pages
+    all_chunks = []
+    for page_idx, page_data in enumerate(pages):
+        # Filter by page_index if specified
+        if page_index is not None and page_idx != page_index:
+            continue
+
+        page_chunks = page_data.get("preview_chunks", [])
+        for chunk_idx, chunk in enumerate(page_chunks):
+            all_chunks.append({
+                "global_index": len(all_chunks),
+                "page_index": page_idx,
+                "chunk_index": chunk_idx,
+                "content": chunk.get("content", ""),
+                "word_count": chunk.get("word_count", 0),
+                "character_count": chunk.get("character_count", 0),
+                "source_page": {
+                    "index": page_idx,
+                    "url": page_data.get("url", ""),
+                    "title": page_data.get("title", "")
+                }
+            })
+
+    # Apply pagination
+    total_chunks = len(all_chunks)
+    total_pages = (total_chunks + limit - 1) // limit if total_chunks > 0 else 0
+
+    start_idx = (page - 1) * limit
+    end_idx = start_idx + limit
+    paginated_chunks = all_chunks[start_idx:end_idx]
+
+    return {
+        "draft_id": draft_id,
+        "total_chunks": total_chunks,
+        "page": page,
+        "limit": limit,
+        "total_pages": total_pages,
+        "chunks": paginated_chunks,
+        "filter_applied": {
+            "page_index": page_index
+        }
+    }
 
 
 # ========================================

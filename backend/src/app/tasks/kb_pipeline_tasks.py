@@ -30,6 +30,32 @@ from app.models.document import Document
 from app.models.chunk import Chunk
 
 
+def serialize_metadata(obj: Any) -> Any:
+    """
+    Recursively serialize metadata objects to JSON-compatible types.
+
+    WHY: PostgreSQL JSONB fields can't store datetime objects directly.
+    HOW: Convert datetime to ISO format strings recursively.
+
+    Args:
+        obj: Any Python object (dict, list, datetime, etc.)
+
+    Returns:
+        JSON-serializable version of the object
+    """
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    elif isinstance(obj, dict):
+        return {key: serialize_metadata(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [serialize_metadata(item) for item in obj]
+    elif isinstance(obj, (str, int, float, bool, type(None))):
+        return obj
+    else:
+        # For other types, try to convert to string
+        return str(obj)
+
+
 class PipelineProgressTracker:
     """
     Track pipeline progress in Redis.
@@ -376,6 +402,9 @@ def process_web_kb_task(
 
                         print(f"[DEBUG] Creating Document record for page: {page_url}")
                         # Create Document record
+                        # Serialize metadata to ensure JSON compatibility (datetime → ISO string)
+                        serialized_metadata = serialize_metadata(scraped_page.metadata) if scraped_page.metadata else {}
+
                         document = Document(
                             kb_id=UUID(kb_id),
                             workspace_id=kb.workspace_id,
@@ -388,7 +417,7 @@ def process_web_kb_task(
                             source_metadata={
                                 "scraped_at": scraped_page.scraped_at.isoformat() if scraped_page.scraped_at else None,
                                 "content_length": len(page_content),
-                                "metadata": scraped_page.metadata
+                                "metadata": serialized_metadata
                             },
                             status="processed",
                             created_by=kb.created_by,
@@ -490,7 +519,6 @@ def process_web_kb_task(
                         print(f"[ERROR] Failed to process page: {scraped_page.url}")
                         print(f"[ERROR] Error: {str(page_error)}")
                         print(f"[ERROR] Error type: {type(page_error).__name__}")
-                        import traceback
                         print(f"[ERROR] Traceback:\n{traceback.format_exc()}")
                         # Continue with next page
                         continue
@@ -560,6 +588,11 @@ def process_web_kb_task(
             "total_vectors": tracker.stats["vectors_indexed"],
             "processing_duration_seconds": int(duration)
         }
+
+        # Also update integer columns for compatibility
+        # Note: These are legacy fields but still used by API responses and queries
+        kb.total_documents = tracker.stats["pages_scraped"] - tracker.stats["pages_failed"]
+        kb.total_chunks = tracker.stats["chunks_created"]
 
         db.commit()
 
@@ -748,6 +781,12 @@ def reindex_kb_task(self, kb_id: str):
             "total_vectors": total_vectors,
             "reindexed_at": datetime.utcnow().isoformat()
         }
+
+        # Also update integer columns for compatibility
+        # Note: These are legacy fields but still used by API responses and queries
+        kb.total_documents = len(documents)
+        kb.total_chunks = total_chunks
+
         db.commit()
 
         return {

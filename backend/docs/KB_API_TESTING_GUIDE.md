@@ -579,8 +579,8 @@ Authorization: Bearer <access_token>
 
 **cURL Example:**
 ```bash
-curl -X POST http://localhost:8000/api/v1/kb-drafts/$DRAFT_ID/preview \
-  -H "Authorization: Bearer $TOKEN" \
+curl -X POST http://localhost:8000/api/v1/kb-drafts/draft_kb_b063f89f/preview \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwZmJjNmExZi1iM2FmLTRlYmEtOWM0ZC1mN2Y1ZWQ5ZjYwNmIiLCJvcmdfaWQiOiJjMGY3NWVkYS01OGE1LTQ2NjktOWVhNy1mNjUzMGJkZmZhMzgiLCJ3c19pZCI6IjE1ZmI3MmQzLTBiNTQtNDFjYy1iYTA5LTllM2M3NDdmMTM3ZiIsImV4cCI6MTc2MzQwNjYwMCwiaWF0IjoxNzYzMzIwMjAwfQ.T1RxOFhIttagNiSCDwFcvwUBzKWf0gH4xnZaJzpDX_c" \
   -H "Content-Type: application/json" \
   -d '{
     "max_preview_pages": 5

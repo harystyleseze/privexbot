@@ -35,39 +35,43 @@ class Colors:
 class KBTester:
     """End-to-end tester for Knowledge Base functionality"""
 
-    def __init__(self, base_url: str = "http://localhost:8000/api/v1"):
+    def __init__(self, base_url: str = "http://localhost:8000"):
+        # Use base URL without /api/v1 prefix, add it where needed
         self.base_url = base_url
+        self.api_base = f"{base_url}/api/v1"
         self.token: Optional[str] = None
         self.user_id: Optional[str] = None
         self.org_id: Optional[str] = None
         self.workspace_id: Optional[str] = None
         self.session = requests.Session()
+        self.session.headers.update({"Connection": "close"})  # Prevent connection pooling issues
 
     def print_header(self, text: str):
         """Print formatted header"""
-        print(f"\n{Colors.HEADER}{Colors.BOLD}{'='*80}{Colors.END}")
-        print(f"{Colors.HEADER}{Colors.BOLD}{text.center(80)}{Colors.END}")
-        print(f"{Colors.HEADER}{Colors.BOLD}{'='*80}{Colors.END}\n")
+        import sys
+        print(f"\n{Colors.HEADER}{Colors.BOLD}{'='*80}{Colors.END}", flush=True)
+        print(f"{Colors.HEADER}{Colors.BOLD}{text.center(80)}{Colors.END}", flush=True)
+        print(f"{Colors.HEADER}{Colors.BOLD}{'='*80}{Colors.END}\n", flush=True)
 
     def print_step(self, text: str):
         """Print test step"""
-        print(f"{Colors.BLUE}▶ {text}{Colors.END}")
+        print(f"{Colors.BLUE}▶ {text}{Colors.END}", flush=True)
 
     def print_success(self, text: str):
         """Print success message"""
-        print(f"{Colors.GREEN}✓ {text}{Colors.END}")
+        print(f"{Colors.GREEN}✓ {text}{Colors.END}", flush=True)
 
     def print_error(self, text: str):
         """Print error message"""
-        print(f"{Colors.RED}✗ {text}{Colors.END}")
+        print(f"{Colors.RED}✗ {text}{Colors.END}", flush=True)
 
     def print_warning(self, text: str):
         """Print warning message"""
-        print(f"{Colors.YELLOW}⚠ {text}{Colors.END}")
+        print(f"{Colors.YELLOW}⚠ {text}{Colors.END}", flush=True)
 
     def print_info(self, text: str):
         """Print info message"""
-        print(f"{Colors.CYAN}ℹ {text}{Colors.END}")
+        print(f"{Colors.CYAN}ℹ {text}{Colors.END}", flush=True)
 
     def print_json(self, data: Dict[str, Any], title: str = "Response"):
         """Print formatted JSON"""
@@ -80,10 +84,14 @@ class KBTester:
         endpoint: str,
         data: Optional[Dict] = None,
         params: Optional[Dict] = None,
-        expect_success: bool = True
+        expect_success: bool = True,
+        use_api_base: bool = True,
+        timeout: int = 30
     ) -> requests.Response:
         """Make HTTP request with error handling"""
-        url = f"{self.base_url}{endpoint}"
+        # Use api_base for API endpoints, base_url for health/root
+        base = self.api_base if use_api_base else self.base_url
+        url = f"{base}{endpoint}"
         headers = {}
 
         if self.token:
@@ -91,15 +99,15 @@ class KBTester:
 
         try:
             if method == "GET":
-                response = self.session.get(url, headers=headers, params=params)
+                response = self.session.get(url, headers=headers, params=params, timeout=timeout)
             elif method == "POST":
                 headers["Content-Type"] = "application/json"
-                response = self.session.post(url, headers=headers, json=data)
+                response = self.session.post(url, headers=headers, json=data, timeout=timeout)
             elif method == "PUT":
                 headers["Content-Type"] = "application/json"
-                response = self.session.put(url, headers=headers, json=data)
+                response = self.session.put(url, headers=headers, json=data, timeout=timeout)
             elif method == "DELETE":
-                response = self.session.delete(url, headers=headers)
+                response = self.session.delete(url, headers=headers, timeout=timeout)
             else:
                 raise ValueError(f"Unsupported method: {method}")
 
@@ -113,6 +121,13 @@ class KBTester:
 
             return response
 
+        except requests.exceptions.Timeout:
+            self.print_error(f"Request timeout after {timeout}s: {method} {url}")
+            raise
+        except requests.exceptions.ConnectionError as e:
+            self.print_error(f"Connection error: {method} {url}")
+            self.print_error(f"Error: {str(e)}")
+            raise
         except Exception as e:
             self.print_error(f"Request exception: {str(e)}")
             raise
@@ -122,21 +137,29 @@ class KBTester:
         self.print_step("Testing API health...")
 
         try:
-            response = self.make_request("GET", "/health", expect_success=False)
-
-            # Try root endpoint if /health doesn't exist
-            if not response.ok:
-                response = self.make_request("GET", "/", expect_success=False)
+            # Health endpoint is at /health (not /api/v1/health)
+            response = self.make_request("GET", "/health", expect_success=False, use_api_base=False, timeout=10)
 
             if response.ok:
-                self.print_success("API is accessible")
+                health_data = response.json()
+                self.print_success(f"API is healthy: {health_data.get('status', 'unknown')}")
+                self.print_info(f"Service: {health_data.get('service', 'unknown')}")
                 return True
             else:
-                self.print_warning(f"API returned status {response.status_code}")
-                return True  # Continue anyway
+                self.print_warning(f"Health check returned status {response.status_code}")
+                # Try root endpoint as fallback
+                response = self.make_request("GET", "/", expect_success=False, use_api_base=False, timeout=10)
+                if response.ok:
+                    self.print_success("API root endpoint is accessible")
+                    return True
+                return False
 
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+            self.print_error(f"Cannot reach API: {type(e).__name__}")
+            self.print_error(f"Make sure the backend is running: docker compose -f docker-compose.dev.yml up -d")
+            return False
         except Exception as e:
-            self.print_error(f"Cannot reach API: {str(e)}")
+            self.print_error(f"Unexpected error during health check: {str(e)}")
             return False
 
     def test_auth_signup(self, email: str, password: str, username: str):
@@ -402,16 +425,15 @@ class KBTester:
                     consecutive_errors = 0  # Reset error counter on success
                     status = response.json()
                     current_status = status.get("status")
-                    progress = status.get("progress", {})
 
                     # Print progress update
-                    current_progress = progress.get("percentage", 0)
+                    current_progress = status.get("progress_percentage", 0)
                     if current_progress != last_progress:
                         self.print_info(f"Status: {current_status} - {current_progress}% complete")
                         last_progress = current_progress
 
                     # Check if completed
-                    if current_status in ["ready", "ready_with_warnings"]:
+                    if current_status in ["completed", "ready", "ready_with_warnings"]:
                         self.print_success(f"Pipeline completed: {current_status}")
                         stats = status.get("stats", {})
                         self.print_info(f"Stats: {stats}")
@@ -447,7 +469,7 @@ class KBTester:
         """Get KB details"""
         self.print_step(f"Fetching KB details...")
 
-        response = self.make_request("GET", f"/kb/{kb_id}")
+        response = self.make_request("GET", f"/kbs/{kb_id}")
 
         if response.ok:
             kb = response.json()

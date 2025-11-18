@@ -410,7 +410,9 @@ class KBDraftService:
         # ========================================
 
         # Create pipeline execution tracking in Redis
-        pipeline_id = f"pipeline:{str(kb.id)}:{int(time.time())}"
+        # NOTE: pipeline_id format is "{kb_id}:{timestamp}" WITHOUT "pipeline:" prefix
+        # The prefix is added when building Redis keys (e.g., f"pipeline:{pipeline_id}:status")
+        pipeline_id = f"{str(kb.id)}:{int(time.time())}"
 
         # Store pipeline status in Redis
         # Note: This would use Redis client, but for now using draft_service redis

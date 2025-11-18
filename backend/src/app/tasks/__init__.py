@@ -17,3 +17,7 @@ HOW:
 
 # Import tasks to register them with Celery
 from app.tasks.kb_pipeline_tasks import process_web_kb_task  # noqa: F401
+from app.tasks.document_processing_tasks import (  # noqa: F401
+    process_document_task,
+    reprocess_document_task
+)

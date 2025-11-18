@@ -1,8 +1,8 @@
 # Knowledge Base Management - Frontend User Journey & Implementation Guide
 
-**Version**: 1.0
-**Last Updated**: November 16, 2025
-**Status**: ✅ Production Ready
+**Version**: 2.0
+**Last Updated**: January 16, 2025
+**Status**: ✅ Production Ready (with Inspection & CRUD)
 **Audience**: Frontend Developers
 
 ---
@@ -11,40 +11,57 @@
 
 1. [Overview](#overview)
 2. [Complete User Journeys](#complete-user-journeys)
-3. [Detailed Flow Diagrams](#detailed-flow-diagrams)
+3. [Page Layouts & Components](#page-layouts--components)
 4. [API Endpoints by Feature](#api-endpoints-by-feature)
 5. [Frontend Implementation Patterns](#frontend-implementation-patterns)
-6. [Error Handling & Edge Cases](#error-handling--edge-cases)
-7. [State Management](#state-management)
+6. [State Management](#state-management)
+7. [Error Handling & Edge Cases](#error-handling--edge-cases)
 8. [UI/UX Best Practices](#uiux-best-practices)
 
 ---
 
 ## Overview
 
-### What Frontend Developers Need to Know
+### What's New in v2.0
+
+**NEW FEATURES:**
+- ✅ Draft Inspection (preview pages & chunks before finalization)
+- ✅ KB Document Management (list, filter, search documents)
+- ✅ Document CRUD Operations (create, update, delete manually)
+- ✅ Chunk Browser (inspect and verify chunked content)
+- ✅ Content Quality Verification (confidence in clean markdown)
+
+### System Architecture
 
 The KB Management system follows a **3-phase flow**:
-1. **Draft Mode** (Phase 1) - Redis-based, fast, non-committal
-2. **Finalization** (Phase 2) - Creates DB records, queues processing
-3. **Background Processing** (Phase 3) - Celery task processes content
 
-**Key Principles**:
-- ⚡ **Fast Feedback**: Draft operations <50ms
-- 🎨 **Progressive Enhancement**: Show previews before commitment
-- 🔄 **Real-Time Updates**: Poll pipeline status during processing
-- 🚫 **Non-Blocking**: Previews don't interfere with main pipeline
-- 📊 **Clear Progress**: Show users exactly what's happening
+**Phase 1: Draft Mode** (Redis, <50ms response)
+- Create draft
+- Add sources
+- Configure chunking
+- **NEW: Preview pages & chunks** ← Before finalization!
+
+**Phase 2: Finalization** (<100ms response)
+- Create DB records
+- Queue background processing
+- Return pipeline tracking ID
+
+**Phase 3: Background Processing** (2-30 minutes)
+- Scrape pages
+- Chunk content
+- Generate embeddings
+- Index in Qdrant
+- **NEW: Inspect & manage documents** ← After completion!
 
 ---
 
 ## Complete User Journeys
 
-### Journey 1: Create New KB from Web URLs (Happy Path)
+### Journey 1: Create KB with Draft Preview (NEW Enhanced Flow)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    USER JOURNEY: CREATE KB                       │
+│          USER JOURNEY: CREATE KB WITH PREVIEW INSPECTION        │
 └─────────────────────────────────────────────────────────────────┘
 
 Step 1: EXPLORE CHUNKING (Optional but Recommended)
@@ -123,920 +140,1082 @@ Step 6: PREVIEW REALISTIC CHUNKS (Optional but Recommended)
 │   - Per-page breakdown with sample chunks                    │
 └──────────────────────────────────────────────────────────────┘
          ↓
-Step 7: VALIDATE BEFORE FINALIZATION
+Step 7: INSPECT PREVIEW PAGES ✨ NEW
 ┌──────────────────────────────────────────────────────────────┐
-│ User Action: Click "Create" (trigger validation)             │
-│ Frontend: Call GET /api/v1/kb-drafts/{id}/validate          │
-│ Response Time: <50ms                                         │
-│ Response: {                                                  │
-│   "is_valid": true,                                          │
-│   "errors": [],                                              │
-│   "warnings": [],                                            │
-│   "estimated_duration": 5  // minutes                        │
-│ }                                                            │
-│ UI: If valid → proceed. If errors → show and block           │
+│ User Action: Click "View Preview Pages"                      │
+│ Frontend: GET /api/v1/kb-drafts/{id}/pages                  │
+│ Response Time: <100ms (cached from preview)                  │
+│ Display: List of scraped pages with stats                    │
+│                                                              │
+│ UI Shows:                                                    │
+│ ┌────────────────────────────────────────────────────────┐  │
+│ │ Page 1: Getting Started                               │  │
+│ │ URL: docs.example.com/intro                           │  │
+│ │ Word count: 450 | Chunks: 3                           │  │
+│ │ [View Content] [View Chunks]                          │  │
+│ ├────────────────────────────────────────────────────────┤  │
+│ │ Page 2: API Reference                                 │  │
+│ │ URL: docs.example.com/api                             │  │
+│ │ Word count: 1,200 | Chunks: 8                         │  │
+│ │ [View Content] [View Chunks]                          │  │
+│ └────────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────────────────┘
          ↓
-Step 8: FINALIZE KB
+Step 8: VIEW SPECIFIC PAGE CONTENT ✨ NEW
 ┌──────────────────────────────────────────────────────────────┐
-│ User Action: Confirm creation                                │
-│ Frontend: Call POST /api/v1/kb-drafts/{id}/finalize         │
-│ Response Time: <100ms (synchronous)                          │
-│ Response: {                                                  │
-│   "kb_id": "uuid",                                           │
-│   "pipeline_id": "pipeline:uuid:timestamp",                  │
-│   "status": "processing",                                    │
-│   "tracking_url": "/api/v1/pipelines/{id}/status",          │
-│   "estimated_completion_minutes": 5                          │
-│ }                                                            │
-│ Store: kb_id and pipeline_id                                 │
+│ User Action: Click "View Content" on a page                  │
+│ Frontend: GET /api/v1/kb-drafts/{id}/pages/0                │
+│ Response Time: <100ms                                        │
+│                                                              │
+│ UI Shows (Modal/Drawer):                                     │
+│ ┌────────────────────────────────────────────────────────┐  │
+│ │ Getting Started                                        │  │
+│ │ docs.example.com/intro                                │  │
+│ │                                                        │  │
+│ │ # Getting Started                                      │  │
+│ │                                                        │  │
+│ │ Welcome to our API documentation...                   │  │
+│ │ [Full markdown content displayed]                     │  │
+│ │                                                        │  │
+│ │ ✅ Content is clean (no HTML tags)                    │  │
+│ │ ✅ No navigation/footer elements                      │  │
+│ │                                                        │  │
+│ │ Stats: 450 words | 3 chunks                           │  │
+│ └────────────────────────────────────────────────────────┘  │
 └──────────────────────────────────────────────────────────────┘
          ↓
-Step 9: MONITOR PROCESSING
+Step 9: BROWSE PREVIEW CHUNKS ✨ NEW
 ┌──────────────────────────────────────────────────────────────┐
-│ Frontend: Poll GET /api/v1/pipelines/{id}/status            │
-│ Poll Interval: Every 3-5 seconds                             │
-│ Response: {                                                  │
-│   "status": "processing" | "completed" | "failed",           │
-│   "progress": {                                              │
-│     "current_page": 23,                                      │
-│     "total_pages": 50,                                       │
-│     "percent": 46                                            │
-│   },                                                         │
-│   "current_step": "chunking",                                │
-│   "message": "Chunking document 23 of 50..."                 │
-│ }                                                            │
-│ UI: Progress bar + status message                            │
-│ Stop Polling: When status = "completed" or "failed"          │
+│ User Action: Click "View All Chunks"                         │
+│ Frontend: GET /api/v1/kb-drafts/{id}/chunks?page=1&limit=20 │
+│ Response Time: <100ms                                        │
+│                                                              │
+│ UI Shows (Chunk Browser):                                    │
+│ ┌────────────────────────────────────────────────────────┐  │
+│ │ Showing 20 of 123 chunks                               │  │
+│ │                                                        │  │
+│ │ Filter: [All Pages ▼] [Search chunks...]              │  │
+│ │                                                        │  │
+│ │ ┌────────────────────────────────────────────────┐    │  │
+│ │ │ Chunk #1 | From: Page 1 (Getting Started)     │    │  │
+│ │ │ # Getting Started                              │    │  │
+│ │ │ Welcome to our API...                          │    │  │
+│ │ │ 150 words | 950 chars                          │    │  │
+│ │ └────────────────────────────────────────────────┘    │  │
+│ │                                                        │  │
+│ │ [Pagination: 1 2 3 4 5 ... 7]                          │  │
+│ └────────────────────────────────────────────────────────┘  │
+│                                                              │
+│ User Confidence: ✅ Content looks clean and well-chunked!   │
 └──────────────────────────────────────────────────────────────┘
          ↓
-Step 10: REDIRECT TO KB DETAILS
+Step 10: PROCEED WITH CONFIDENCE
 ┌──────────────────────────────────────────────────────────────┐
-│ Frontend: Navigate to /kbs/{kb_id}                           │
-│ Call: GET /api/v1/kbs/{kb_id}                               │
-│ Display: KB details, stats, documents                        │
+│ User Action: Click "Create Knowledge Base"                   │
+│ Frontend: POST /api/v1/kb-drafts/{id}/finalize              │
+│ (User is confident because they previewed the content)       │
 └──────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-### Journey 2: Optimize Existing KB (Re-chunking)
+### Journey 2: Manage Documents in Existing KB (NEW)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│              USER JOURNEY: OPTIMIZE EXISTING KB                  │
+│           USER JOURNEY: DOCUMENT MANAGEMENT IN KB                │
 └─────────────────────────────────────────────────────────────────┘
 
-Step 1: VIEW KB DETAILS
+Step 1: NAVIGATE TO KB DETAILS
 ┌──────────────────────────────────────────────────────────────┐
 │ Frontend: GET /api/v1/kbs/{kb_id}                           │
-│ Display: Current configuration, stats, performance           │
+│ Display: KB overview with tabs:                              │
+│   - Overview                                                 │
+│   - Documents ✨ NEW                                         │
+│   - Chunks ✨ NEW                                            │
+│   - Settings                                                 │
 └──────────────────────────────────────────────────────────────┘
          ↓
-Step 2: PREVIEW DIFFERENT STRATEGY
+Step 2: BROWSE DOCUMENTS ✨ NEW
 ┌──────────────────────────────────────────────────────────────┐
-│ User Action: Click "Optimize Chunking"                       │
-│ UI: Modal/panel with strategy selector                       │
-│ User Selects: New strategy (e.g., "semantic")                │
-│ Frontend: Call POST /api/v1/kbs/{kb_id}/preview-rechunk     │
-│ Payload: {                                                   │
-│   "strategy": "semantic",                                    │
-│   "chunk_size": 1500,                                        │
-│   "chunk_overlap": 300,                                      │
-│   "sample_documents": 3                                      │
+│ User Action: Click "Documents" tab                           │
+│ Frontend: GET /api/v1/kbs/{kb_id}/documents?page=1&limit=20 │
+│                                                              │
+│ UI Layout (Documents Tab):                                   │
+│ ┌────────────────────────────────────────────────────────┐  │
+│ │ Documents (50)                              [+ Add]    │  │
+│ │                                                        │  │
+│ │ Filter: [Status: All ▼] [Source: All ▼]               │  │
+│ │ Search: [Search by name or URL...]                    │  │
+│ │                                                        │  │
+│ │ ┌──────────────────────────────────────────────────┐  │  │
+│ │ │ ✅ API Documentation                             │  │  │
+│ │ │ Source: docs.example.com/api                     │  │  │
+│ │ │ Chunks: 15 | Status: Completed                   │  │  │
+│ │ │ [View] [Edit] [Delete]                           │  │  │
+│ │ ├──────────────────────────────────────────────────┤  │  │
+│ │ │ ⏳ Installation Guide                            │  │  │
+│ │ │ Source: Web Scraping                             │  │  │
+│ │ │ Chunks: 8 | Status: Processing (45%)             │  │  │
+│ │ │ [View Progress]                                  │  │  │
+│ │ └──────────────────────────────────────────────────┘  │  │
+│ │                                                        │  │
+│ │ [Pagination: 1 2 3]                                    │  │
+│ └────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────┘
+         ↓
+Step 3: VIEW DOCUMENT DETAILS ✨ NEW
+┌──────────────────────────────────────────────────────────────┐
+│ User Action: Click "View" on a document                      │
+│ Frontend: GET /api/v1/kbs/{kb_id}/documents/{doc_id}        │
+│                                                              │
+│ UI Shows (Modal or Detail Page):                             │
+│ ┌────────────────────────────────────────────────────────┐  │
+│ │ API Documentation                                      │  │
+│ │ docs.example.com/api                                  │  │
+│ │                                                        │  │
+│ │ Status: ✅ Completed                                   │  │
+│ │ Source Type: Web Scraping                             │  │
+│ │ Created: Jan 15, 2025                                 │  │
+│ │                                                        │  │
+│ │ Stats:                                                 │  │
+│ │ - 1,500 words | 9,500 characters                      │  │
+│ │ - 15 chunks generated                                 │  │
+│ │ - All chunks indexed                                  │  │
+│ │                                                        │  │
+│ │ Content Preview:                                       │  │
+│ │ ┌──────────────────────────────────────────────┐      │  │
+│ │ │ # API Documentation                          │      │  │
+│ │ │                                              │      │  │
+│ │ │ Welcome to our API...                        │      │  │
+│ │ │ [First 500 characters]                       │      │  │
+│ │ └──────────────────────────────────────────────┘      │  │
+│ │                                                        │  │
+│ │ [Edit Document] [View Chunks] [Delete]                │  │
+│ └────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────┘
+         ↓
+Step 4: ADD NEW DOCUMENT MANUALLY ✨ NEW
+┌──────────────────────────────────────────────────────────────┐
+│ User Action: Click "+ Add" button                            │
+│                                                              │
+│ UI Shows (Add Document Modal):                               │
+│ ┌────────────────────────────────────────────────────────┐  │
+│ │ Add Document to Knowledge Base                         │  │
+│ │                                                        │  │
+│ │ Name: [____________]                                   │  │
+│ │ Source Type: [Manual ▼]                                │  │
+│ │ Source URL: [____________] (optional)                  │  │
+│ │                                                        │  │
+│ │ Content: (Markdown supported)                          │  │
+│ │ ┌──────────────────────────────────────────────┐      │  │
+│ │ │ # How to Use Our API                         │      │  │
+│ │ │                                              │      │  │
+│ │ │ This guide explains...                       │      │  │
+│ │ │ [Markdown editor with preview]               │      │  │
+│ │ └──────────────────────────────────────────────┘      │  │
+│ │                                                        │  │
+│ │ Custom Metadata (optional):                            │  │
+│ │ ┌──────────────────────────────────────────────┐      │  │
+│ │ │ { "author": "John", "version": "1.0" }       │      │  │
+│ │ └──────────────────────────────────────────────┘      │  │
+│ │                                                        │  │
+│ │ [Cancel] [Add Document]                                │  │
+│ └────────────────────────────────────────────────────────┘  │
+│                                                              │
+│ Frontend: POST /api/v1/kbs/{kb_id}/documents                │
+│ Response: { id, status: "processing", processing_job_id }   │
+│                                                              │
+│ UI: Show toast → "Document added. Processing in background"  │
+└──────────────────────────────────────────────────────────────┘
+         ↓
+Step 5: EDIT DOCUMENT ✨ NEW
+┌──────────────────────────────────────────────────────────────┐
+│ User Action: Click "Edit" on a document                      │
+│                                                              │
+│ UI Shows (Edit Modal - Similar to Add):                      │
+│ - Pre-populated with existing content                        │
+│ - Shows warning if content will be reprocessed               │
+│                                                              │
+│ User Changes:                                                 │
+│ Option 1: Edit content → Triggers reprocessing               │
+│ Option 2: Edit metadata only → Instant update                │
+│                                                              │
+│ Frontend: PUT /api/v1/kbs/{kb_id}/documents/{doc_id}        │
+│                                                              │
+│ Response (Content Changed):                                  │
+│ {                                                            │
+│   "status": "processing",                                    │
+│   "message": "Re-chunking and re-indexing...",              │
+│   "processing_job_id": "task-67890"                         │
 │ }                                                            │
-│ Response Time: 1-5 seconds (FAST! No scraping)               │
-│ Response: {                                                  │
-│   "current_config": {...},                                   │
-│   "new_config": {...},                                       │
-│   "comparison": {                                            │
-│     "current": {                                             │
-│       "total_chunks": 847,                                   │
-│       "avg_chunk_size": 956                                  │
-│     },                                                       │
-│     "new": {                                                 │
-│       "total_chunks": 623,                                   │
-│       "avg_chunk_size": 1247                                 │
-│     },                                                       │
-│     "delta": {                                               │
-│       "chunks_change": -224,                                 │
-│       "chunks_percent": -26.4,                               │
-│       "recommendation": "Fewer, larger chunks..."            │
-│     }                                                        │
-│   },                                                         │
-│   "sample_chunks": [...]                                     │
+│                                                              │
+│ Response (Metadata Only):                                    │
+│ {                                                            │
+│   "message": "Document updated successfully",                │
+│   "changes_applied": ["name", "custom_metadata"]            │
 │ }                                                            │
 └──────────────────────────────────────────────────────────────┘
          ↓
-Step 3: COMPARE STRATEGIES (User Can Test Multiple)
+Step 6: DELETE DOCUMENT ✨ NEW
 ┌──────────────────────────────────────────────────────────────┐
-│ UI: Show comparison table                                    │
-│ Allow: Testing multiple strategies side-by-side              │
-│ Frontend: Call preview-rechunk for each strategy             │
-│ Display: Comparison chart with recommendations               │
-└──────────────────────────────────────────────────────────────┘
-         ↓
-Step 4: APPLY CHANGES (RE-INDEX)
-┌──────────────────────────────────────────────────────────────┐
-│ User Action: Click "Apply & Re-index"                        │
-│ Frontend: Call POST /api/v1/kbs/{kb_id}/reindex             │
-│ Response: {                                                  │
-│   "task_id": "uuid",                                         │
-│   "status": "queued",                                        │
-│   "message": "Re-indexing queued..."                         │
+│ User Action: Click "Delete" on a document                    │
+│                                                              │
+│ UI Shows (Confirmation Dialog):                              │
+│ ┌────────────────────────────────────────────────────────┐  │
+│ │ ⚠️  Delete Document?                                    │  │
+│ │                                                        │  │
+│ │ Are you sure you want to delete "API Documentation"?  │  │
+│ │                                                        │  │
+│ │ This will:                                             │  │
+│ │ - Delete the document                                 │  │
+│ │ - Remove all 15 chunks                                │  │
+│ │ - Remove vectors from search index                    │  │
+│ │                                                        │  │
+│ │ This action cannot be undone.                         │  │
+│ │                                                        │  │
+│ │ [Cancel] [Delete Document]                            │  │
+│ └────────────────────────────────────────────────────────┘  │
+│                                                              │
+│ Frontend: DELETE /api/v1/kbs/{kb_id}/documents/{doc_id}     │
+│                                                              │
+│ Response:                                                    │
+│ {                                                            │
+│   "message": "Document deleted successfully",                │
+│   "deleted": {                                               │
+│     "document_id": "...",                                    │
+│     "chunks_deleted": 15,                                    │
+│     "qdrant_points_deleted": 15                             │
+│   }                                                          │
 │ }                                                            │
-│ UI: Show progress (similar to Step 9 above)                  │
+│                                                              │
+│ UI: Show success toast, refresh document list                │
 └──────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-### Journey 3: Browse & Filter KBs
+### Journey 3: Chunk Browser & Quality Verification (NEW)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                USER JOURNEY: BROWSE KBs                          │
+│         USER JOURNEY: VERIFY CONTENT QUALITY VIA CHUNKS          │
 └─────────────────────────────────────────────────────────────────┘
 
-Step 1: LIST ALL KBs (Organization-Wide)
+Step 1: NAVIGATE TO CHUNKS TAB ✨ NEW
 ┌──────────────────────────────────────────────────────────────┐
-│ Frontend: GET /api/v1/kbs/                                   │
-│ Query Params: (none)                                         │
-│ Result: All KBs from all workspaces in user's org            │
-└──────────────────────────────────────────────────────────────┘
-         ↓
-Step 2: FILTER BY WORKSPACE
-┌──────────────────────────────────────────────────────────────┐
-│ User Action: Select workspace from dropdown                  │
-│ Frontend: GET /api/v1/kbs/?workspace_id={uuid}               │
-│ Result: Only KBs from selected workspace                     │
-└──────────────────────────────────────────────────────────────┘
-         ↓
-Step 3: FILTER BY CONTEXT
-┌──────────────────────────────────────────────────────────────┐
-│ User Action: Filter by chatbot/chatflow/both                 │
-│ Frontend: GET /api/v1/kbs/?context=chatbot                   │
-│ Result: Only KBs accessible to chatbots                      │
-└──────────────────────────────────────────────────────────────┘
-         ↓
-Step 4: FILTER BY STATUS
-┌──────────────────────────────────────────────────────────────┐
-│ User Action: Filter by status                                │
-│ Frontend: GET /api/v1/kbs/?status=ready                      │
-│ Result: Only ready KBs                                       │
-└──────────────────────────────────────────────────────────────┘
-         ↓
-Step 5: COMBINE FILTERS
-┌──────────────────────────────────────────────────────────────┐
-│ Frontend: GET /api/v1/kbs/?workspace_id={uuid}&context=both  │
-│           &status=ready                                      │
-│ Result: Filtered list                                        │
+│ Frontend: GET /api/v1/kbs/{kb_id}/chunks?page=1&limit=50    │
+│                                                              │
+│ UI Layout (Chunks Tab):                                      │
+│ ┌────────────────────────────────────────────────────────┐  │
+│ │ Chunks (847)                                           │  │
+│ │                                                        │  │
+│ │ [Search in chunks...] [Items per page: 50 ▼]          │  │
+│ │                                                        │  │
+│ │ ┌──────────────────────────────────────────────────┐  │  │
+│ │ │ Chunk #1                                         │  │  │
+│ │ │ From: API Documentation (docs.example.com/api)   │  │  │
+│ │ │                                                  │  │  │
+│ │ │ # API Authentication                             │  │  │
+│ │ │                                                  │  │  │
+│ │ │ Use Bearer tokens for authentication...         │  │  │
+│ │ │ [150 words shown, click to expand]               │  │  │
+│ │ │                                                  │  │  │
+│ │ │ ✅ Clean markdown | ✅ No HTML tags              │  │  │
+│ │ │ 150 words | 950 chars | Position: 0             │  │  │
+│ │ │ [Expand] [Copy] [View Document]                  │  │  │
+│ │ ├──────────────────────────────────────────────────┤  │  │
+│ │ │ Chunk #2                                         │  │  │
+│ │ │ From: Installation Guide                        │  │  │
+│ │ │ ...                                              │  │  │
+│ │ └──────────────────────────────────────────────────┘  │  │
+│ │                                                        │  │
+│ │ [Pagination: 1 2 3 ... 17]                             │  │
+│ └────────────────────────────────────────────────────────┘  │
+│                                                              │
+│ User Can:                                                     │
+│ - Verify content is clean (no nav/footer elements)          │
+│ - Check chunking quality                                     │
+│ - Jump to source document                                    │
+│ - Copy chunks for testing                                    │
 └──────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Detailed Flow Diagrams
+## Page Layouts & Components
 
-### Draft Creation Flow (Phase 1)
+### 1. KB Details Page (Enhanced with New Tabs)
 
-```
-Frontend                     Backend (Redis)              Response
-────────                     ───────────────              ────────
+```tsx
+<KBDetailsPage>
+  <Header>
+    <Breadcrumbs>
+      <Link to="/kbs">Knowledge Bases</Link> / Product Documentation
+    </Breadcrumbs>
+    <Title>Product Documentation</Title>
+    <StatusBadge status="ready" />
+    <Actions>
+      <Button variant="secondary">Settings</Button>
+      <Button variant="primary">Add Document</Button>
+    </Actions>
+  </Header>
 
-1. Create Draft
-POST /kb-drafts/
-{
-  "workspace_id": "uuid",
-  "created_by": "user_uuid"
-}
-                    ────────────────────────────>
-                    Create draft in Redis
-                    Set 24hr TTL
-                    <────────────────────────────
-                                                  {
-                                                    "draft_id": "uuid",
-                                                    "expires_at": "ISO"
-                                                  }
-Store draft_id
+  <StatsCards>
+    <StatCard icon={FileText} label="Documents" value="50" />
+    <StatCard icon={Grid} label="Chunks" value="847" />
+    <StatCard icon={Database} label="Vectors" value="847" />
+    <StatCard icon={CheckCircle} label="Health" value="Healthy" />
+  </StatsCards>
 
-2. Add URLs (Repeat for each)
-POST /kb-drafts/{id}/sources/web
-{
-  "url": "https://...",
-  "config": {
-    "method": "crawl",
-    "max_pages": 50,
-    "max_depth": 3
-  }
-}
-                    ────────────────────────────>
-                    Append to sources array
-                    <────────────────────────────
-                                                  {
-                                                    "source_id": "uuid"
-                                                  }
+  <Tabs>
+    <Tab label="Overview" />
+    <Tab label="Documents" badge="50" /> {/* NEW */}
+    <Tab label="Chunks" badge="847" /> {/* NEW */}
+    <Tab label="Settings" />
+  </Tabs>
 
-3. Configure Chunking
-POST /kb-drafts/{id}/chunking
-{
-  "strategy": "by_heading",
-  "chunk_size": 1000,
-  "chunk_overlap": 200
-}
-                    ────────────────────────────>
-                    Update chunking_config
-                    <────────────────────────────
-                                                  {
-                                                    "message": "Updated"
-                                                  }
+  <TabPanel id="documents">
+    <DocumentsListView /> {/* NEW COMPONENT */}
+  </TabPanel>
 
-4. Preview (Optional)
-POST /kb-drafts/{id}/preview
-{
-  "max_preview_pages": 5
-}
-                    ────────────────────────────>
-                    Fetch draft from Redis
-                    Crawl first 5 URLs
-                    Apply chunking
-                    <────────────────────────────
-                                                  {
-                                                    "pages_previewed": 5,
-                                                    "total_chunks": 123,
-                                                    "estimated_total": 450,
-                                                    "pages": [...]
-                                                  }
-Show preview results
+  <TabPanel id="chunks">
+    <ChunkBrowserView /> {/* NEW COMPONENT */}
+  </TabPanel>
+</KBDetailsPage>
 ```
 
-### Finalization Flow (Phase 2 → 3)
+### 2. Documents List View Component (NEW)
 
+```tsx
+<DocumentsListView kbId={kb.id}>
+  {/* Header with Actions */}
+  <ViewHeader>
+    <Title>Documents ({totalDocuments})</Title>
+    <Button onClick={openAddDocumentModal}>
+      <Plus /> Add Document
+    </Button>
+  </ViewHeader>
+
+  {/* Filters */}
+  <FilterBar>
+    <Select
+      label="Status"
+      options={[
+        { value: null, label: "All" },
+        { value: "completed", label: "Completed" },
+        { value: "processing", label: "Processing" },
+        { value: "failed", label: "Failed" }
+      ]}
+      value={filters.status}
+      onChange={(status) => setFilters({ ...filters, status })}
+    />
+    <Select
+      label="Source Type"
+      options={[
+        { value: null, label: "All Sources" },
+        { value: "web_scraping", label: "Web Scraping" },
+        { value: "manual", label: "Manual" },
+        { value: "file_upload", label: "File Upload" }
+      ]}
+      value={filters.source_type}
+      onChange={(source_type) => setFilters({ ...filters, source_type })}
+    />
+    <SearchInput
+      placeholder="Search by name or URL..."
+      value={filters.search}
+      onChange={(search) => setFilters({ ...filters, search })}
+    />
+  </FilterBar>
+
+  {/* Documents Table/Grid */}
+  {isLoading ? (
+    <SkeletonLoader count={5} />
+  ) : documents.length === 0 ? (
+    <EmptyState
+      icon={<FileText />}
+      title="No Documents Found"
+      message="Add your first document to get started"
+      action={<Button onClick={openAddDocumentModal}>Add Document</Button>}
+    />
+  ) : (
+    <>
+      <DocumentsTable>
+        {documents.map(doc => (
+          <DocumentRow key={doc.id}>
+            <Cell>
+              <StatusIcon status={doc.status} />
+              <DocumentName>{doc.name}</DocumentName>
+              {doc.status === "processing" && (
+                <ProgressBar value={doc.processing_progress} />
+              )}
+            </Cell>
+            <Cell>
+              <SourceBadge type={doc.source_type} />
+              <SourceURL>{doc.source_url}</SourceURL>
+            </Cell>
+            <Cell>
+              <Stat label="Chunks" value={doc.chunk_count} />
+              <Stat label="Words" value={doc.word_count.toLocaleString()} />
+            </Cell>
+            <Cell>
+              <Timestamp>{formatDate(doc.created_at)}</Timestamp>
+            </Cell>
+            <Cell>
+              <ActionMenu>
+                <MenuItem onClick={() => viewDocument(doc.id)}>View</MenuItem>
+                <MenuItem onClick={() => editDocument(doc.id)}>Edit</MenuItem>
+                <MenuItem onClick={() => deleteDocument(doc.id)} destructive>
+                  Delete
+                </MenuItem>
+              </ActionMenu>
+            </Cell>
+          </DocumentRow>
+        ))}
+      </DocumentsTable>
+
+      <Pagination
+        current={page}
+        total={totalPages}
+        onPageChange={setPage}
+      />
+    </>
+  )}
+</DocumentsListView>
 ```
-Frontend            Backend (API)         PostgreSQL       Redis         Celery
-────────            ─────────────         ──────────       ─────         ──────
 
-POST /kb-drafts/{id}/finalize
-                 ─────────────>
-                 Validate draft
+### 3. Add/Edit Document Modal (NEW)
 
-                 Create KB record ───────────>
-                 (status=processing)
+```tsx
+<DocumentFormModal
+  kbId={kb.id}
+  documentId={editingDocId} // null for add, UUID for edit
+  onClose={closeModal}
+  onSuccess={refreshDocuments}
+>
+  <ModalHeader>
+    <Title>{isEditing ? "Edit Document" : "Add Document"}</Title>
+    <CloseButton onClick={closeModal} />
+  </ModalHeader>
 
-                 Create Documents ───────────>
-                 (placeholders)
+  <Form onSubmit={handleSubmit}>
+    <FormField label="Name" required>
+      <Input
+        value={formData.name}
+        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+        placeholder="e.g., API Reference Guide"
+        maxLength={500}
+      />
+    </FormField>
 
-                                               Store pipeline ──>
-                                               tracking data
+    <FormField label="Source Type">
+      <Select
+        value={formData.source_type}
+        onChange={(source_type) => setFormData({ ...formData, source_type })}
+        options={[
+          { value: "manual", label: "Manual Entry" },
+          { value: "web_scraping", label: "Web Scraping" },
+          { value: "file_upload", label: "File Upload" }
+        ]}
+      />
+    </FormField>
 
-                                                           Queue task ──>
-                                                                     Process in
-                                                                     background
+    <FormField label="Source URL" hint="Optional">
+      <Input
+        value={formData.source_url}
+        onChange={(e) => setFormData({ ...formData, source_url: e.target.value })}
+        placeholder="https://example.com/doc"
+      />
+    </FormField>
 
-                 <────────────
-                 {
-                   "kb_id": "uuid",
-                   "pipeline_id": "...",
-                   "status": "processing"
-                 }
+    <FormField label="Content" required>
+      <MarkdownEditor
+        value={formData.content}
+        onChange={(content) => setFormData({ ...formData, content })}
+        placeholder="Enter your content here (Markdown supported)..."
+        minHeight="300px"
+        showPreview
+      />
+      <ValidationHint>
+        {formData.content.length < 50 && (
+          <Error>Content must be at least 50 characters</Error>
+        )}
+        {formData.content.length >= 50 && formData.content.length <= 10485760 && (
+          <Success>Content length: {formData.content.length.toLocaleString()} chars</Success>
+        )}
+        {formData.content.length > 10485760 && (
+          <Error>Content exceeds 10MB limit</Error>
+        )}
+      </ValidationHint>
+    </FormField>
 
-Start polling
-GET /pipelines/{id}/status
-(every 3-5s)
-                 ─────────────>
-                                               Get status ────>
-                 <────────────
-                 {
-                   "status": "processing",
-                   "progress": {"percent": 46}
-                 }
+    <FormField label="Custom Metadata" hint="Optional JSON">
+      <CodeEditor
+        value={formData.custom_metadata}
+        onChange={(custom_metadata) => setFormData({ ...formData, custom_metadata })}
+        language="json"
+        placeholder='{ "author": "John", "version": "1.0" }'
+        height="100px"
+      />
+    </FormField>
 
-Continue polling...
+    {isEditing && formData.content !== originalContent && (
+      <WarningBanner>
+        ⚠️ Changing content will trigger re-chunking and re-indexing. This may take a few minutes.
+      </WarningBanner>
+    )}
+  </Form>
 
-                                                                     Task
-                                                                     completes
-                                               Update status ─>
-                 Update KB ──────────────────>
-                 (status=ready)
+  <ModalFooter>
+    <Button variant="secondary" onClick={closeModal}>
+      Cancel
+    </Button>
+    <Button
+      variant="primary"
+      onClick={handleSubmit}
+      loading={isSubmitting}
+      disabled={!isValid}
+    >
+      {isSubmitting ? "Saving..." : (isEditing ? "Update Document" : "Add Document")}
+    </Button>
+  </ModalFooter>
+</DocumentFormModal>
+```
 
-Next poll
-GET /pipelines/{id}/status
-                 ─────────────>
-                                               Get status ────>
-                 <────────────
-                 {
-                   "status": "completed",
-                   "progress": {"percent": 100}
-                 }
+### 4. Chunk Browser Component (NEW)
 
-Stop polling
-Navigate to KB details
+```tsx
+<ChunkBrowserView kbId={kb.id}>
+  <ViewHeader>
+    <Title>Chunks ({totalChunks})</Title>
+    <ItemsPerPageSelect value={itemsPerPage} onChange={setItemsPerPage} />
+  </ViewHeader>
+
+  <SearchBar>
+    <SearchInput
+      placeholder="Search in chunks..."
+      value={searchQuery}
+      onChange={setSearchQuery}
+      debounce={300}
+    />
+    <FilterButton onClick={openFilters}>Filters</FilterButton>
+  </SearchBar>
+
+  {isLoading ? (
+    <ChunkListSkeleton count={itemsPerPage} />
+  ) : (
+    <ChunkList>
+      {chunks.map(chunk => (
+        <ChunkCard key={chunk.id}>
+          <ChunkHeader>
+            <ChunkIndex>Chunk #{chunk.position + 1}</ChunkIndex>
+            <SourceInfo>
+              From: <Link to={`/kbs/${kbId}/documents/${chunk.document_id}`}>
+                {chunk.document_name}
+              </Link>
+            </SourceInfo>
+          </ChunkHeader>
+
+          <ChunkContent>
+            <MarkdownPreview
+              content={chunk.content}
+              maxLines={expanded[chunk.id] ? undefined : 8}
+            />
+            {!expanded[chunk.id] && chunk.content.split('\n').length > 8 && (
+              <ExpandButton onClick={() => toggleExpand(chunk.id)}>
+                Show more...
+              </ExpandButton>
+            )}
+          </ChunkContent>
+
+          <QualityIndicators>
+            <Indicator status="success">
+              <CheckCircle /> Clean Markdown
+            </Indicator>
+            <Indicator status="success">
+              <CheckCircle /> No HTML Tags
+            </Indicator>
+          </QualityIndicators>
+
+          <ChunkStats>
+            <Stat icon={FileText} label="Words" value={chunk.word_count} />
+            <Stat icon={Hash} label="Characters" value={chunk.character_count} />
+            <Stat icon={MapPin} label="Position" value={chunk.position} />
+          </ChunkStats>
+
+          <ChunkActions>
+            <Button size="sm" variant="ghost" onClick={() => copyChunk(chunk)}>
+              <Copy /> Copy
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => viewDocument(chunk.document_id)}>
+              <ExternalLink /> View Document
+            </Button>
+            {expanded[chunk.id] && (
+              <Button size="sm" variant="ghost" onClick={() => toggleExpand(chunk.id)}>
+                <ChevronUp /> Collapse
+              </Button>
+            )}
+          </ChunkActions>
+        </ChunkCard>
+      ))}
+    </ChunkList>
+  )}
+
+  <Pagination
+    current={page}
+    total={totalPages}
+    onPageChange={setPage}
+    showJump
+  />
+</ChunkBrowserView>
+```
+
+### 5. Draft Preview Pages Component (NEW)
+
+```tsx
+<DraftPreviewPages draftId={draftId}>
+  <ViewHeader>
+    <Title>Preview Pages ({totalPages})</Title>
+    <Badge variant="info">Preview Data</Badge>
+  </ViewHeader>
+
+  {!hasPreview ? (
+    <EmptyState
+      icon={<Eye />}
+      title="No Preview Generated"
+      message="Run preview first to see scraped pages"
+      action={<Button onClick={runPreview}>Generate Preview</Button>}
+    />
+  ) : (
+    <PagesList>
+      {pages.map((page, index) => (
+        <PageCard key={index}>
+          <PageHeader>
+            <PageNumber>Page {index + 1}</PageNumber>
+            <PageTitle>{page.title}</PageTitle>
+          </PageHeader>
+
+          <PageURL>
+            <Link2 size={14} />
+            <ExternalLink href={page.url} target="_blank">
+              {page.url}
+            </ExternalLink>
+          </PageURL>
+
+          <PageStats>
+            <Stat label="Words" value={page.word_count} />
+            <Stat label="Characters" value={page.character_count} />
+            <Stat label="Chunks" value={page.chunks} />
+          </PageStats>
+
+          <ContentPreview>
+            <MarkdownPreview
+              content={page.content_preview}
+              maxLines={3}
+            />
+          </ContentPreview>
+
+          <PageActions>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => viewFullContent(index)}
+            >
+              <Eye /> View Full Content
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => viewPageChunks(index)}
+            >
+              <Grid /> View Chunks ({page.chunks})
+            </Button>
+          </PageActions>
+        </PageCard>
+      ))}
+    </PagesList>
+  )}
+</DraftPreviewPages>
 ```
 
 ---
 
 ## API Endpoints by Feature
 
-### 🎨 Preview & Exploration (Before Creating KB)
+### 🔍 Draft Inspection (NEW)
 
-#### 1. Quick Single-Page Preview
+#### 1. List Draft Pages
 ```http
-POST /api/v1/kb-drafts/preview/quick
-Content-Type: application/json
-
-{
-  "url": "https://docs.example.com/intro",
-  "strategy": "by_heading",
-  "chunk_size": 1000,
-  "chunk_overlap": 200,
-  "max_preview_chunks": 10
-}
+GET /api/v1/kb-drafts/{draft_id}/pages?page=1&limit=20
 ```
 
-**Use Case**: User wants to quickly test chunking on a single page before creating KB
-
-**Response**:
-```json
-{
-  "url": "https://docs.example.com/intro",
-  "title": "Introduction",
-  "strategy": "by_heading",
-  "strategy_recommendation": "by_heading (optimized for GitBook)",
-  "optimized_for": "gitbook",
-  "preview_chunks": [
-    {
-      "index": 0,
-      "content": "# Introduction\nWelcome to...",
-      "full_length": 456,
-      "token_count": 112
-    }
-  ],
-  "total_chunks_estimated": 47,
-  "document_stats": {
-    "heading_count": 12,
-    "structure_type": "highly_structured"
-  }
-}
-```
-
-**Frontend Display**:
-- Show first 10 chunks with expandable content
-- Display recommendation badge
-- Show total chunks estimate
-- Allow strategy switching without re-fetching
-
----
-
-### 📝 Draft Management (Phase 1)
-
-#### 2. Create Draft
-```http
-POST /api/v1/kb-drafts/
-Content-Type: application/json
-
-{
-  "workspace_id": "workspace-uuid",
-  "data": {
-    "name": "Product Documentation",
-    "description": "Complete product docs",
-    "context": "both"
-  }
-}
-```
+**Use Case**: View all pages scraped during preview
 
 **Response**:
 ```json
 {
   "draft_id": "draft-uuid",
-  "workspace_id": "workspace-uuid",
-  "created_by": "user-uuid",
-  "created_at": "2025-11-16T12:00:00Z",
-  "expires_at": "2025-11-17T12:00:00Z",
-  "data": {
-    "name": "Product Documentation",
-    "context": "both"
-  }
-}
-```
-
-#### 3. Add Web Source
-```http
-POST /api/v1/kb-drafts/{draft_id}/sources/web
-Content-Type: application/json
-
-{
-  "url": "https://docs.example.com",
-  "config": {
-    "method": "crawl",
-    "max_pages": 50,
-    "max_depth": 3,
-    "include_patterns": ["/docs/**", "/api/**"],
-    "exclude_patterns": ["/admin/**", "/auth/**"]
-  }
-}
-```
-
-**Response**:
-```json
-{
-  "source_id": "source-uuid",
-  "url": "https://docs.example.com",
-  "config": {...}
-}
-```
-
-**Frontend UI**:
-- URL input field
-- Advanced options (collapsible):
-  - Method: Single page / Crawl
-  - Max pages slider (1-1000)
-  - Max depth slider (1-10)
-  - Include patterns (chips input)
-  - Exclude patterns (chips input)
-
-#### 4. Remove Source
-```http
-DELETE /api/v1/kb-drafts/{draft_id}/sources/{source_id}
-```
-
-**Response**:
-```json
-{
-  "message": "Source removed"
-}
-```
-
-#### 5. Update Chunking Config
-```http
-POST /api/v1/kb-drafts/{draft_id}/chunking
-Content-Type: application/json
-
-{
-  "strategy": "by_heading",
-  "chunk_size": 1000,
-  "chunk_overlap": 200
-}
-```
-
-**Frontend UI**:
-- Strategy dropdown with 8 options:
-  - Recursive (default)
-  - Semantic (smart topic detection)
-  - By Heading (GitBook, docs)
-  - By Section (long-form)
-  - Adaptive (auto-select)
-  - Sentence Based (precise)
-  - Paragraph Based (articles)
-  - Hybrid (maximum quality)
-- Chunk size slider (100-5000)
-- Chunk overlap slider (0-1000)
-
-#### 6. Draft Preview (Multi-Page)
-```http
-POST /api/v1/kb-drafts/{draft_id}/preview
-Content-Type: application/json
-
-{
-  "strategy": "by_heading",
-  "max_preview_pages": 5
-}
-```
-
-**Response**:
-```json
-{
-  "draft_id": "draft-uuid",
-  "pages_previewed": 5,
-  "total_chunks": 123,
-  "strategy": "by_heading",
+  "total_pages": 5,
   "pages": [
     {
+      "index": 0,
       "url": "https://docs.example.com/intro",
       "title": "Introduction",
-      "chunks": 23,
-      "preview_chunks": [...]
+      "content_preview": "# Introduction\n\nWelcome...",
+      "word_count": 450,
+      "character_count": 2800,
+      "chunks": 3,
+      "scraped_at": "2025-01-16T10:30:00Z"
     }
-  ],
-  "estimated_total_chunks": 450,
-  "note": "Preview based on 5 of 50 sources..."
+  ]
 }
 ```
 
-**Frontend Display**:
-- Loading state (10-30s)
-- Grouped by page with expandable sections
-- Show per-page chunk count
-- Display estimated total chunks
-- Comparison table if multiple strategies tested
-
-#### 7. Validate Draft
-```http
-GET /api/v1/kb-drafts/{draft_id}/validate
-```
-
-**Response**:
-```json
-{
-  "is_valid": true,
-  "errors": [],
-  "warnings": ["Large number of pages may take 10+ minutes"],
-  "estimated_duration": 8,
-  "total_sources": 12,
-  "estimated_pages": 156
-}
-```
-
-**Frontend Logic**:
-```javascript
-// Call before finalization
-const validation = await validateDraft(draftId);
-
-if (!validation.is_valid) {
-  // Block submission
-  showErrors(validation.errors);
-  return;
-}
-
-if (validation.warnings.length > 0) {
-  // Show warning modal
-  const confirmed = await showWarningDialog({
-    warnings: validation.warnings,
-    estimatedDuration: validation.estimated_duration
+**Frontend Implementation**:
+```tsx
+function useDraftPages(draftId: string, page = 1, limit = 20) {
+  return useQuery({
+    queryKey: ['draft-pages', draftId, page, limit],
+    queryFn: () => api.get(`/kb-drafts/${draftId}/pages`, { params: { page, limit } }),
+    enabled: !!draftId
   });
-
-  if (!confirmed) return;
 }
-
-// Proceed to finalization
-await finalizeDraft(draftId);
 ```
 
-#### 8. Get Draft
+#### 2. Get Specific Page Content
 ```http
-GET /api/v1/kb-drafts/{draft_id}
-```
-
-**Use Case**: Restore draft state, show draft summary
-
----
-
-### ✅ Finalization (Phase 2)
-
-#### 9. Finalize Draft
-```http
-POST /api/v1/kb-drafts/{draft_id}/finalize
+GET /api/v1/kb-drafts/{draft_id}/pages/{page_index}
 ```
 
 **Response**:
 ```json
 {
-  "kb_id": "kb-uuid",
-  "pipeline_id": "pipeline:kb-uuid:1731758400",
-  "status": "processing",
-  "message": "KB created successfully. Processing in background.",
-  "tracking_url": "/api/v1/pipelines/pipeline:kb-uuid:1731758400/status",
-  "estimated_completion_minutes": 5
+  "draft_id": "draft-uuid",
+  "page_index": 0,
+  "url": "https://docs.example.com/intro",
+  "title": "Introduction",
+  "full_content": "# Introduction\n\nWelcome to our documentation...",
+  "word_count": 450,
+  "character_count": 2800,
+  "chunks": 3
 }
 ```
 
-**Frontend Flow**:
-```javascript
-// 1. Finalize
-const result = await finalizeDraft(draftId);
-
-// 2. Store IDs
-setKbId(result.kb_id);
-setPipelineId(result.pipeline_id);
-
-// 3. Navigate to processing page
-navigate(`/kbs/${result.kb_id}/processing`);
-
-// 4. Start polling
-startPolling(result.pipeline_id);
-```
-
----
-
-### 📊 Pipeline Monitoring (Phase 3)
-
-#### 10. Get Pipeline Status
+#### 3. List Draft Chunks
 ```http
-GET /api/v1/pipelines/{pipeline_id}/status
+GET /api/v1/kb-drafts/{draft_id}/chunks?page=1&limit=20&page_index=0
 ```
 
-**Response** (Processing):
+**Query Params**:
+- `page` - Page number (pagination)
+- `limit` - Items per page (1-100)
+- `page_index` - Filter chunks from specific page (optional)
+
+**Response**:
 ```json
 {
-  "pipeline_id": "pipeline:uuid:timestamp",
-  "kb_id": "kb-uuid",
-  "status": "processing",
-  "progress": {
-    "current_page": 23,
-    "total_pages": 50,
-    "percent": 46,
-    "current_step": "chunking"
-  },
-  "message": "Chunking document 23 of 50: Introduction to Product",
-  "started_at": "2025-11-16T12:00:00Z"
-}
-```
-
-**Response** (Completed):
-```json
-{
-  "pipeline_id": "pipeline:uuid:timestamp",
-  "kb_id": "kb-uuid",
-  "status": "completed",
-  "progress": {
-    "percent": 100
-  },
-  "message": "Processing completed successfully",
-  "started_at": "2025-11-16T12:00:00Z",
-  "completed_at": "2025-11-16T12:05:23Z",
-  "stats": {
-    "documents_processed": 50,
-    "chunks_created": 847,
-    "vectors_indexed": 847
-  }
-}
-```
-
-**Frontend Polling Logic**:
-```javascript
-function usePipelinePolling(pipelineId) {
-  const [status, setStatus] = useState(null);
-  const [isPolling, setIsPolling] = useState(true);
-
-  useEffect(() => {
-    if (!isPolling) return;
-
-    const interval = setInterval(async () => {
-      const data = await fetchPipelineStatus(pipelineId);
-      setStatus(data);
-
-      // Stop polling on completion or failure
-      if (data.status === 'completed' || data.status === 'failed') {
-        setIsPolling(false);
-        clearInterval(interval);
+  "draft_id": "draft-uuid",
+  "total_chunks": 15,
+  "page": 1,
+  "limit": 20,
+  "total_pages": 1,
+  "chunks": [
+    {
+      "global_index": 0,
+      "page_index": 0,
+      "chunk_index": 0,
+      "content": "# Introduction\n\nWelcome...",
+      "word_count": 150,
+      "character_count": 950,
+      "source_page": {
+        "index": 0,
+        "url": "https://docs.example.com/intro",
+        "title": "Introduction"
       }
-    }, 3000); // Poll every 3 seconds
-
-    return () => clearInterval(interval);
-  }, [pipelineId, isPolling]);
-
-  return { status, isPolling };
+    }
+  ]
 }
 ```
 
-#### 11. Get Pipeline Logs
-```http
-GET /api/v1/pipelines/{pipeline_id}/logs
-```
-
-**Use Case**: Show detailed logs for debugging
-
 ---
 
-### 📚 KB Management
+### 📄 KB Document Management (NEW)
 
-#### 12. List KBs
+#### 4. List KB Documents
 ```http
-GET /api/v1/kbs/
-GET /api/v1/kbs/?workspace_id={uuid}
-GET /api/v1/kbs/?context=chatbot
-GET /api/v1/kbs/?status=ready
-GET /api/v1/kbs/?workspace_id={uuid}&context=both&status=ready
+GET /api/v1/kbs/{kb_id}/documents?page=1&limit=20&status=completed&source_type=manual&search=API
 ```
+
+**Query Params**:
+- `page` - Page number
+- `limit` - Items per page (1-100)
+- `status` - Filter by status (completed, processing, failed)
+- `source_type` - Filter by source (web_scraping, manual, file_upload)
+- `search` - Search in name/URL
+- `include_disabled` - Include disabled documents (admin only)
+- `include_archived` - Include archived documents (admin only)
 
 **Response**:
 ```json
-[
-  {
-    "id": "kb-uuid",
-    "name": "Product Documentation",
-    "description": "Complete product docs",
-    "workspace_id": "workspace-uuid",
-    "status": "ready",
-    "stats": {
-      "documents": 50,
-      "chunks": 847,
-      "vectors": 847
-    },
-    "created_at": "2025-11-16T12:00:00Z",
-    "created_by": "user-uuid"
-  }
-]
+{
+  "kb_id": "kb-uuid",
+  "total_documents": 25,
+  "page": 1,
+  "limit": 20,
+  "total_pages": 2,
+  "documents": [
+    {
+      "id": "doc-uuid",
+      "kb_id": "kb-uuid",
+      "name": "API Documentation",
+      "source_type": "web_scraping",
+      "source_url": "https://docs.example.com/api",
+      "content_preview": "API Documentation\n\nWelcome...",
+      "status": "completed",
+      "word_count": 1500,
+      "character_count": 9500,
+      "chunk_count": 15,
+      "is_enabled": true,
+      "created_at": "2025-01-16T10:00:00Z",
+      "updated_at": "2025-01-16T10:05:00Z"
+    }
+  ]
+}
 ```
 
-**Frontend UI Components**:
-- Filter bar:
-  - Workspace dropdown
-  - Context filter (chips: All, Chatbot, Chatflow, Both)
-  - Status filter (chips: All, Ready, Processing, Failed)
-- KB cards/table with:
-  - Name, description
-  - Status badge
-  - Stats (documents, chunks)
-  - Created date
-  - Actions (View, Edit, Delete)
+**Frontend Implementation**:
+```tsx
+function useKBDocuments(kbId: string, filters: DocumentFilters) {
+  return useQuery({
+    queryKey: ['kb-documents', kbId, filters],
+    queryFn: () => api.get(`/kbs/${kbId}/documents`, { params: filters }),
+    keepPreviousData: true // For pagination
+  });
+}
+```
 
-#### 13. Get KB Details
+#### 5. Get Document Details
 ```http
-GET /api/v1/kbs/{kb_id}
+GET /api/v1/kbs/{kb_id}/documents/{doc_id}
 ```
 
 **Response**:
 ```json
 {
-  "id": "kb-uuid",
-  "name": "Product Documentation",
-  "description": "Complete product docs",
+  "id": "doc-uuid",
+  "kb_id": "kb-uuid",
   "workspace_id": "workspace-uuid",
-  "status": "ready",
-  "config": {
-    "chunk_size": 1000,
-    "chunk_overlap": 200
+  "name": "API Documentation",
+  "source_type": "web_scraping",
+  "source_url": "https://docs.example.com/api",
+  "source_metadata": {
+    "scraped_at": "2025-01-16T10:00:00Z",
+    "content_length": 9500
   },
-  "embedding_config": {
-    "model": "all-MiniLM-L6-v2",
-    "device": "cpu"
-  },
-  "vector_store_config": {
-    "provider": "qdrant",
-    "collection_name": "kb_kb-uuid"
-  },
-  "indexing_method": "by_heading",
-  "stats": {
-    "documents": 50,
-    "chunks": 847
-  },
-  "error_message": null,
-  "created_at": "2025-11-16T12:00:00Z",
-  "updated_at": "2025-11-16T12:05:23Z"
+  "content_preview": "API Documentation\n\nWelcome...",
+  "status": "completed",
+  "processing_progress": 100,
+  "word_count": 1500,
+  "character_count": 9500,
+  "chunk_count": 15,
+  "custom_metadata": {},
+  "annotations": null,
+  "is_enabled": true,
+  "is_archived": false,
+  "created_by": "user-uuid",
+  "created_at": "2025-01-16T10:00:00Z",
+  "updated_at": "2025-01-16T10:05:00Z"
 }
 ```
 
-#### 14. Get KB Stats
+#### 6. List KB Chunks
 ```http
-GET /api/v1/kbs/{kb_id}/stats
+GET /api/v1/kbs/{kb_id}/chunks?page=1&limit=50
 ```
 
 **Response**:
 ```json
 {
   "kb_id": "kb-uuid",
-  "name": "Product Documentation",
-  "status": "ready",
-  "documents": {
-    "total": 50,
-    "by_status": {
-      "ready": 48,
-      "processing": 2
+  "total_chunks": 150,
+  "page": 1,
+  "limit": 50,
+  "total_pages": 3,
+  "chunks": [
+    {
+      "id": "chunk-uuid",
+      "document_id": "doc-uuid",
+      "document_name": "API Documentation",
+      "content": "# API Authentication\n\nUse Bearer tokens...",
+      "position": 0,
+      "chunk_index": 0,
+      "word_count": 150,
+      "character_count": 950,
+      "source_url": "https://docs.example.com/api",
+      "created_at": "2025-01-16T10:05:00Z"
     }
-  },
-  "chunks": {
-    "total": 847,
-    "avg_per_document": 16.9
-  },
-  "storage": {
-    "total_content_size": 456789,
-    "avg_chunk_size": 539
-  },
-  "health": {
-    "qdrant_healthy": true,
-    "vector_count_match": true
-  }
+  ]
 }
 ```
 
-**Frontend Display**:
-- Stats cards:
-  - Total documents
-  - Total chunks
-  - Avg chunk size
-  - Health status
-- Charts:
-  - Documents by status (pie chart)
-  - Chunk size distribution (histogram)
+---
 
-#### 15. Preview Re-chunking
+### ✏️ Document CRUD Operations (NEW)
+
+#### 7. Create Document
 ```http
-POST /api/v1/kbs/{kb_id}/preview-rechunk
+POST /api/v1/kbs/{kb_id}/documents
 Content-Type: application/json
 
 {
-  "strategy": "semantic",
-  "chunk_size": 1500,
-  "chunk_overlap": 300,
-  "sample_documents": 3
+  "name": "Custom Documentation",
+  "content": "This is the document content (min 50 chars)...",
+  "source_type": "manual",
+  "source_url": "https://example.com/custom",
+  "custom_metadata": {
+    "author": "John",
+    "version": "1.0"
+  },
+  "annotations": "Important reference"
 }
 ```
 
-**Response**:
+**Validation**:
+- `name`: 1-500 characters (required)
+- `content`: 50 chars - 10MB (required)
+- `source_type`: manual, web_scraping, file_upload (required)
+- `source_url`: Valid URL (optional)
+- `custom_metadata`: Valid JSON (optional)
+
+**Response (201)**:
 ```json
 {
-  "kb_id": "kb-uuid",
-  "kb_name": "Product Documentation",
-  "current_config": {
-    "strategy": "by_heading",
-    "chunk_size": 1000,
-    "chunk_overlap": 200
+  "id": "doc-uuid",
+  "status": "processing",
+  "processing_job_id": "celery-task-123"
+}
+```
+
+**Frontend Implementation**:
+```tsx
+const { mutate: createDocument, isLoading } = useMutation({
+  mutationFn: (data: CreateDocumentRequest) =>
+    api.post(`/kbs/${kbId}/documents`, data),
+  onSuccess: (response) => {
+    toast.success("Document added. Processing in background...");
+    navigate(`/kbs/${kbId}/documents`);
+    // Optionally start polling the document status
+    startPollingDocument(response.id);
   },
-  "new_config": {
-    "strategy": "semantic",
-    "chunk_size": 1500,
-    "chunk_overlap": 300
-  },
-  "comparison": {
-    "current": {
-      "total_chunks": 847,
-      "avg_chunk_size": 956,
-      "min_chunk_size": 234,
-      "max_chunk_size": 1456
-    },
-    "new": {
-      "total_chunks": 623,
-      "avg_chunk_size": 1247,
-      "min_chunk_size": 567,
-      "max_chunk_size": 1789
-    },
-    "delta": {
-      "chunks_change": -224,
-      "chunks_percent": -26.4,
-      "avg_size_change": 291,
-      "recommendation": "Fewer, larger chunks (semantic) may improve context retention for complex queries"
+  onError: (error) => {
+    toast.error(error.message);
+  }
+});
+```
+
+#### 8. Update Document
+```http
+PUT /api/v1/kbs/{kb_id}/documents/{doc_id}
+Content-Type: application/json
+
+{
+  "name": "Updated Documentation",
+  "content": "Updated content triggers reprocessing...",
+  "custom_metadata": { "version": "2.0" },
+  "is_enabled": true
+}
+```
+
+**Response (Content Changed - Reprocessing)**:
+```json
+{
+  "id": "doc-uuid",
+  "status": "processing",
+  "message": "Document updated. Re-chunking and re-indexing in progress.",
+  "processing_job_id": "celery-task-456"
+}
+```
+
+**Response (Metadata Only - No Reprocessing)**:
+```json
+{
+  "id": "doc-uuid",
+  "message": "Document updated successfully",
+  "changes_applied": ["name", "custom_metadata"]
+}
+```
+
+**Frontend Implementation**:
+```tsx
+const { mutate: updateDocument } = useMutation({
+  mutationFn: ({ docId, data }: UpdateDocumentParams) =>
+    api.put(`/kbs/${kbId}/documents/${docId}`, data),
+  onSuccess: (response) => {
+    if (response.status === "processing") {
+      toast.info("Document updated. Re-processing in background...");
+      startPollingDocument(response.id);
+    } else {
+      toast.success("Document updated successfully");
     }
+    queryClient.invalidateQueries(['kb-documents', kbId]);
+  }
+});
+```
+
+#### 9. Delete Document
+```http
+DELETE /api/v1/kbs/{kb_id}/documents/{doc_id}
+```
+
+**Response (200)**:
+```json
+{
+  "message": "Document 'API Documentation' deleted successfully",
+  "deleted": {
+    "document_id": "doc-uuid",
+    "chunks_deleted": 15,
+    "qdrant_points_deleted": 15
+  }
+}
+```
+
+**Error Response (Qdrant Failure)**:
+```json
+{
+  "detail": "Failed to delete from vector store. Document marked for retry."
+}
+```
+
+**Frontend Implementation**:
+```tsx
+const { mutate: deleteDocument } = useMutation({
+  mutationFn: (docId: string) =>
+    api.delete(`/kbs/${kbId}/documents/${docId}`),
+  onSuccess: (response) => {
+    toast.success(response.message);
+    queryClient.invalidateQueries(['kb-documents', kbId]);
   },
-  "sample_chunks": [...],
-  "documents_analyzed": 3,
-  "total_documents": 50,
-  "note": "Preview based on 3 sample documents. Apply changes to re-index entire KB."
-}
-```
+  onError: (error) => {
+    if (error.message.includes("marked for retry")) {
+      toast.error("Delete failed. Will retry automatically.");
+    } else {
+      toast.error(error.message);
+    }
+  }
+});
 
-**Frontend UI**:
-- Strategy comparison tool:
-  - Side-by-side comparison table
-  - Visual diff (green/red for improvements/degradations)
-  - Recommendation badge
-  - "Apply Changes" button
-
-#### 16. Re-index KB
-```http
-POST /api/v1/kbs/{kb_id}/reindex
-```
-
-**Response**:
-```json
-{
-  "message": "Re-indexing queued for KB 'Product Documentation'",
-  "kb_id": "kb-uuid",
-  "task_id": "task-uuid",
-  "status": "queued",
-  "note": "Re-indexing will regenerate all embeddings..."
-}
-```
-
-**Frontend Flow**:
-- Show confirmation modal with warning
-- Start polling task status (similar to pipeline)
-- Show progress during re-indexing
-
-#### 17. Delete KB
-```http
-DELETE /api/v1/kbs/{kb_id}
-```
-
-**Response**:
-```json
-{
-  "message": "KB 'Product Documentation' deletion queued",
-  "kb_id": "kb-uuid",
-  "note": "Qdrant collection deletion is processing in background"
-}
-```
-
-**Frontend Flow**:
-```javascript
-async function deleteKB(kbId, kbName) {
+// With confirmation dialog
+async function handleDelete(doc: Document) {
   const confirmed = await showConfirmDialog({
-    title: "Delete Knowledge Base?",
-    message: `Are you sure you want to delete "${kbName}"? This action cannot be undone.`,
+    title: "Delete Document?",
+    message: `This will delete "${doc.name}" and all ${doc.chunk_count} chunks. This cannot be undone.`,
     confirmText: "Delete",
     confirmVariant: "destructive"
   });
 
-  if (!confirmed) return;
-
-  await api.delete(`/kbs/${kbId}`);
-
-  showToast({
-    title: "KB Deleted",
-    message: `"${kbName}" has been deleted successfully`,
-    variant: "success"
-  });
-
-  navigate('/kbs');
+  if (confirmed) {
+    deleteDocument(doc.id);
+  }
 }
 ```
 
@@ -1044,461 +1223,168 @@ async function deleteKB(kbId, kbName) {
 
 ## Frontend Implementation Patterns
 
-### State Management
+### Document Management Hook
 
-#### Draft State (React Example)
-```javascript
-// useDraft.js
-import { useState, useCallback } from 'react';
+```tsx
+// useDocumentManagement.ts
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-export function useDraft(initialWorkspaceId) {
-  const [draft, setDraft] = useState(null);
-  const [sources, setSources] = useState([]);
-  const [chunkingConfig, setChunkingConfig] = useState({
-    strategy: 'by_heading',
-    chunk_size: 1000,
-    chunk_overlap: 200
+interface DocumentFilters {
+  page?: number;
+  limit?: number;
+  status?: string;
+  source_type?: string;
+  search?: string;
+}
+
+export function useDocumentManagement(kbId: string) {
+  const queryClient = useQueryClient();
+  const [filters, setFilters] = useState<DocumentFilters>({
+    page: 1,
+    limit: 20
   });
 
-  const createDraft = useCallback(async (workspaceId, data) => {
-    const result = await api.post('/kb-drafts/', {
-      workspace_id: workspaceId,
-      data
-    });
-    setDraft(result);
-    return result;
-  }, []);
-
-  const addSource = useCallback(async (url, config) => {
-    const result = await api.post(
-      `/kb-drafts/${draft.draft_id}/sources/web`,
-      { url, config }
-    );
-    setSources(prev => [...prev, { id: result.source_id, url, config }]);
-    return result;
-  }, [draft]);
-
-  const removeSource = useCallback(async (sourceId) => {
-    await api.delete(`/kb-drafts/${draft.draft_id}/sources/${sourceId}`);
-    setSources(prev => prev.filter(s => s.id !== sourceId));
-  }, [draft]);
-
-  const updateChunking = useCallback(async (config) => {
-    await api.post(`/kb-drafts/${draft.draft_id}/chunking`, config);
-    setChunkingConfig(config);
-  }, [draft]);
-
-  const finalize = useCallback(async () => {
-    return await api.post(`/kb-drafts/${draft.draft_id}/finalize`);
-  }, [draft]);
-
-  return {
-    draft,
-    sources,
-    chunkingConfig,
-    createDraft,
-    addSource,
-    removeSource,
-    updateChunking,
-    finalize
-  };
-}
-```
-
-#### Pipeline Polling Hook
-```javascript
-// usePipelinePolling.js
-import { useState, useEffect } from 'react';
-
-export function usePipelinePolling(pipelineId, options = {}) {
+  // List documents
   const {
-    interval = 3000,
-    onComplete,
-    onError
-  } = options;
+    data: documentsData,
+    isLoading,
+    error
+  } = useQuery({
+    queryKey: ['kb-documents', kbId, filters],
+    queryFn: () => api.get(`/kbs/${kbId}/documents`, { params: filters }),
+    keepPreviousData: true
+  });
 
-  const [status, setStatus] = useState(null);
-  const [isPolling, setIsPolling] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    if (!pipelineId || !isPolling) return;
-
-    let timeoutId;
-
-    const poll = async () => {
-      try {
-        const data = await api.get(`/pipelines/${pipelineId}/status`);
-        setStatus(data);
-
-        if (data.status === 'completed') {
-          setIsPolling(false);
-          onComplete?.(data);
-        } else if (data.status === 'failed') {
-          setIsPolling(false);
-          onError?.(new Error(data.message));
-        } else {
-          timeoutId = setTimeout(poll, interval);
-        }
-      } catch (err) {
-        setError(err);
-        setIsPolling(false);
-        onError?.(err);
-      }
-    };
-
-    poll();
-
-    return () => clearTimeout(timeoutId);
-  }, [pipelineId, isPolling, interval, onComplete, onError]);
-
-  return {
-    status,
-    isPolling,
-    error,
-    stopPolling: () => setIsPolling(false)
-  };
-}
-```
-
----
-
-### Component Examples
-
-#### KB Creation Wizard
-```jsx
-// KBCreationWizard.jsx
-import { useState } from 'react';
-import { useDraft } from './hooks/useDraft';
-
-export function KBCreationWizard() {
-  const [step, setStep] = useState(1);
-  const {
-    draft,
-    sources,
-    chunkingConfig,
-    createDraft,
-    addSource,
-    updateChunking,
-    finalize
-  } = useDraft();
-
-  const steps = [
-    { id: 1, name: 'Basic Info', component: BasicInfoStep },
-    { id: 2, name: 'Add Sources', component: AddSourcesStep },
-    { id: 3, name: 'Configure Chunking', component: ChunkingStep },
-    { id: 4, name: 'Preview', component: PreviewStep },
-    { id: 5, name: 'Review & Create', component: ReviewStep }
-  ];
-
-  const handleNext = () => setStep(prev => prev + 1);
-  const handleBack = () => setStep(prev => prev - 1);
-
-  const handleFinalize = async () => {
-    const result = await finalize();
-    navigate(`/kbs/${result.kb_id}/processing`);
-  };
-
-  const CurrentStepComponent = steps[step - 1].component;
-
-  return (
-    <div className="wizard">
-      <WizardHeader steps={steps} currentStep={step} />
-
-      <CurrentStepComponent
-        draft={draft}
-        sources={sources}
-        chunkingConfig={chunkingConfig}
-        createDraft={createDraft}
-        addSource={addSource}
-        updateChunking={updateChunking}
-        onNext={handleNext}
-        onBack={handleBack}
-        onFinalize={handleFinalize}
-      />
-
-      <WizardFooter
-        currentStep={step}
-        totalSteps={steps.length}
-        onNext={handleNext}
-        onBack={handleBack}
-        onFinalize={handleFinalize}
-      />
-    </div>
-  );
-}
-```
-
-#### Processing Page with Progress
-```jsx
-// KBProcessingPage.jsx
-import { usePipelinePolling } from './hooks/usePipelinePolling';
-
-export function KBProcessingPage({ kbId, pipelineId }) {
-  const { status, isPolling } = usePipelinePolling(pipelineId, {
-    onComplete: () => {
-      navigate(`/kbs/${kbId}`);
-    },
-    onError: (error) => {
-      showToast({ title: 'Processing failed', message: error.message });
+  // Create document
+  const createMutation = useMutation({
+    mutationFn: (data: CreateDocumentRequest) =>
+      api.post(`/kbs/${kbId}/documents`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['kb-documents', kbId]);
+      toast.success("Document added successfully");
     }
   });
 
-  if (!status) {
-    return <LoadingSpinner />;
-  }
-
-  return (
-    <div className="processing-page">
-      <h1>Processing Knowledge Base</h1>
-
-      <ProgressBar
-        value={status.progress?.percent || 0}
-        max={100}
-      />
-
-      <div className="status-info">
-        <p className="status-message">{status.message}</p>
-
-        {status.progress && (
-          <p className="progress-detail">
-            {status.progress.current_page} of {status.progress.total_pages} pages
-          </p>
-        )}
-      </div>
-
-      {status.status === 'completed' && (
-        <div className="completion-message">
-          <CheckIcon />
-          <h2>Processing Complete!</h2>
-          <p>Created {status.stats.chunks_created} chunks from {status.stats.documents_processed} documents</p>
-          <Button onClick={() => navigate(`/kbs/${kbId}`)}>
-            View Knowledge Base
-          </Button>
-        </div>
-      )}
-    </div>
-  );
-}
-```
-
-#### Re-chunking Preview Modal
-```jsx
-// RechunkingPreviewModal.jsx
-import { useState } from 'react';
-
-export function RechunkingPreviewModal({ kb, onApply, onClose }) {
-  const [strategy, setStrategy] = useState(kb.indexing_method);
-  const [preview, setPreview] = useState(null);
-  const [loading, setLoading] = useState(false);
-
-  const generatePreview = async () => {
-    setLoading(true);
-    try {
-      const result = await api.post(`/kbs/${kb.id}/preview-rechunk`, {
-        strategy,
-        chunk_size: 1500,
-        chunk_overlap: 300
-      });
-      setPreview(result);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <Modal onClose={onClose}>
-      <h2>Optimize Chunking Strategy</h2>
-
-      <StrategySelector
-        value={strategy}
-        onChange={setStrategy}
-        currentStrategy={kb.indexing_method}
-      />
-
-      <Button onClick={generatePreview} loading={loading}>
-        Generate Preview
-      </Button>
-
-      {preview && (
-        <ComparisonView
-          current={preview.comparison.current}
-          new={preview.comparison.new}
-          delta={preview.comparison.delta}
-        />
-      )}
-
-      <ModalFooter>
-        <Button variant="secondary" onClick={onClose}>
-          Cancel
-        </Button>
-        <Button
-          variant="primary"
-          disabled={!preview}
-          onClick={() => onApply(strategy)}
-        >
-          Apply & Re-index
-        </Button>
-      </ModalFooter>
-    </Modal>
-  );
-}
-```
-
----
-
-## Error Handling & Edge Cases
-
-### Error Codes & Messages
-
-| Error Code | HTTP Status | User Message | Frontend Action |
-|------------|-------------|--------------|-----------------|
-| `DRAFT_NOT_FOUND` | 404 | "Your draft has expired. Please start over." | Clear state, redirect to create page |
-| `DRAFT_INVALID` | 400 | "Please add at least one URL source" | Highlight sources section |
-| `KB_NOT_FOUND` | 404 | "Knowledge base not found" | Redirect to list |
-| `ACCESS_DENIED` | 403 | "You don't have permission to access this KB" | Show error, redirect to list |
-| `WORKSPACE_NOT_FOUND` | 404 | "Workspace not found" | Refresh workspace list |
-| `URL_FETCH_FAILED` | 400 | "Unable to fetch URL. Please check and try again." | Highlight failed URL |
-
-### Error Handling Patterns
-
-```javascript
-// API wrapper with error handling
-async function apiCall(endpoint, options = {}) {
-  try {
-    const response = await fetch(`${API_BASE}${endpoint}`, {
-      ...options,
-      headers: {
-        'Authorization': `Bearer ${getToken()}`,
-        'Content-Type': 'application/json',
-        ...options.headers
-      }
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-
-      // Handle specific error codes
-      switch (error.error_code) {
-        case 'DRAFT_NOT_FOUND':
-          showToast({
-            title: 'Draft Expired',
-            message: 'Your draft has expired. Starting fresh.',
-            variant: 'warning'
-          });
-          clearDraftState();
-          navigate('/kbs/create');
-          break;
-
-        case 'ACCESS_DENIED':
-          showToast({
-            title: 'Access Denied',
-            message: "You don't have permission for this action",
-            variant: 'error'
-          });
-          navigate('/kbs');
-          break;
-
-        default:
-          throw new Error(error.detail || 'An error occurred');
-      }
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('API Error:', error);
-    throw error;
-  }
-}
-```
-
-### Edge Cases to Handle
-
-#### 1. Draft Expiration During Creation
-```javascript
-// Auto-save draft periodically
-useEffect(() => {
-  if (!draft) return;
-
-  const interval = setInterval(async () => {
-    try {
-      // Touch draft to reset TTL
-      await api.get(`/kb-drafts/${draft.draft_id}`);
-    } catch (error) {
-      if (error.code === 'DRAFT_NOT_FOUND') {
-        // Draft expired, save current state locally
-        localStorage.setItem('draft_backup', JSON.stringify({
-          sources,
-          chunkingConfig,
-          timestamp: Date.now()
-        }));
-
-        showRecoveryDialog();
-      }
-    }
-  }, 10 * 60 * 1000); // Every 10 minutes
-
-  return () => clearInterval(interval);
-}, [draft]);
-```
-
-#### 2. Network Interruption During Processing
-```javascript
-// Graceful reconnection
-function usePipelinePolling(pipelineId) {
-  const [retryCount, setRetryCount] = useState(0);
-  const MAX_RETRIES = 5;
-
-  const poll = async () => {
-    try {
-      const data = await api.get(`/pipelines/${pipelineId}/status`);
-      setRetryCount(0); // Reset on success
-      return data;
-    } catch (error) {
-      if (retryCount < MAX_RETRIES) {
-        setRetryCount(prev => prev + 1);
-        // Exponential backoff
-        await sleep(Math.pow(2, retryCount) * 1000);
-        return poll();
+  // Update document
+  const updateMutation = useMutation({
+    mutationFn: ({ docId, data }: { docId: string; data: UpdateDocumentRequest }) =>
+      api.put(`/kbs/${kbId}/documents/${docId}`, data),
+    onSuccess: (response) => {
+      queryClient.invalidateQueries(['kb-documents', kbId]);
+      if (response.status === "processing") {
+        toast.info("Document updated. Re-processing...");
       } else {
-        throw new Error('Lost connection to server');
+        toast.success("Document updated");
       }
     }
-  };
+  });
 
-  // ... rest of implementation
+  // Delete document
+  const deleteMutation = useMutation({
+    mutationFn: (docId: string) =>
+      api.delete(`/kbs/${kbId}/documents/${docId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['kb-documents', kbId]);
+      toast.success("Document deleted");
+    }
+  });
+
+  return {
+    // Data
+    documents: documentsData?.documents || [],
+    totalDocuments: documentsData?.total_documents || 0,
+    totalPages: documentsData?.total_pages || 0,
+    isLoading,
+    error,
+
+    // Filters
+    filters,
+    setFilters,
+
+    // Mutations
+    createDocument: createMutation.mutate,
+    updateDocument: updateMutation.mutate,
+    deleteDocument: deleteMutation.mutate,
+
+    isCreating: createMutation.isLoading,
+    isUpdating: updateMutation.isLoading,
+    isDeleting: deleteMutation.isLoading
+  };
 }
 ```
 
-#### 3. Large Number of URLs
-```javascript
-// Batch URL addition with progress
-async function addMultipleUrls(urls, draftId) {
-  const total = urls.length;
-  let completed = 0;
+### Draft Inspection Hook
 
-  showProgressDialog({
-    title: 'Adding URLs',
-    message: `Adding ${total} URLs...`
+```tsx
+// useDraftInspection.ts
+export function useDraftInspection(draftId: string) {
+  // Pages list
+  const {
+    data: pagesData,
+    isLoading: isLoadingPages
+  } = useQuery({
+    queryKey: ['draft-pages', draftId],
+    queryFn: () => api.get(`/kb-drafts/${draftId}/pages`),
+    enabled: !!draftId
   });
 
-  for (const url of urls) {
-    try {
-      await api.post(`/kb-drafts/${draftId}/sources/web`, { url });
-      completed++;
-      updateProgress(completed / total * 100);
-    } catch (error) {
-      console.error(`Failed to add ${url}:`, error);
-      // Continue with next URL
-    }
-  }
+  // Specific page content
+  const [selectedPageIndex, setSelectedPageIndex] = useState<number | null>(null);
 
-  closeProgressDialog();
-
-  showToast({
-    title: 'URLs Added',
-    message: `Successfully added ${completed} of ${total} URLs`
+  const {
+    data: pageContent,
+    isLoading: isLoadingPage
+  } = useQuery({
+    queryKey: ['draft-page', draftId, selectedPageIndex],
+    queryFn: () => api.get(`/kb-drafts/${draftId}/pages/${selectedPageIndex}`),
+    enabled: selectedPageIndex !== null
   });
+
+  // Chunks with pagination
+  const [chunksPage, setChunksPage] = useState(1);
+  const [chunksLimit, setChunksLimit] = useState(20);
+  const [filterByPage, setFilterByPage] = useState<number | null>(null);
+
+  const {
+    data: chunksData,
+    isLoading: isLoadingChunks
+  } = useQuery({
+    queryKey: ['draft-chunks', draftId, chunksPage, chunksLimit, filterByPage],
+    queryFn: () => api.get(`/kb-drafts/${draftId}/chunks`, {
+      params: {
+        page: chunksPage,
+        limit: chunksLimit,
+        page_index: filterByPage
+      }
+    }),
+    enabled: !!draftId,
+    keepPreviousData: true
+  });
+
+  return {
+    // Pages
+    pages: pagesData?.pages || [],
+    totalPages: pagesData?.total_pages || 0,
+    isLoadingPages,
+
+    // Selected page
+    selectedPageIndex,
+    setSelectedPageIndex,
+    pageContent,
+    isLoadingPage,
+
+    // Chunks
+    chunks: chunksData?.chunks || [],
+    totalChunks: chunksData?.total_chunks || 0,
+    chunksPage,
+    setChunksPage,
+    chunksLimit,
+    setChunksLimit,
+    filterByPage,
+    setFilterByPage,
+    isLoadingChunks
+  };
 }
 ```
 
@@ -1506,87 +1392,120 @@ async function addMultipleUrls(urls, draftId) {
 
 ## State Management
 
-### Recommended State Structure
+### Redux/Zustand Store Structure
 
 ```typescript
-// Global state (Redux/Zustand/Context)
 interface KBState {
-  // List view
+  // Existing list view
   kbs: KB[];
-  filters: {
-    workspace_id: string | null;
-    context: 'chatbot' | 'chatflow' | 'both' | null;
-    status: 'ready' | 'processing' | 'failed' | null;
+  filters: KBFilters;
+
+  // Current KB detail
+  currentKB: KB | null;
+
+  // NEW: Document management
+  documents: {
+    list: Document[];
+    total: number;
+    page: number;
+    filters: DocumentFilters;
+    selectedDocument: Document | null;
   };
 
-  // Detail view
-  currentKB: KB | null;
-  kbStats: KBStats | null;
+  // NEW: Chunk browser
+  chunks: {
+    list: Chunk[];
+    total: number;
+    page: number;
+    limit: number;
+  };
 
-  // Draft creation
-  draft: Draft | null;
-  draftSources: Source[];
-  draftChunkingConfig: ChunkingConfig;
+  // NEW: Draft inspection
+  draftInspection: {
+    pages: DraftPage[];
+    chunks: DraftChunk[];
+    selectedPageIndex: number | null;
+  };
 
   // Processing
   activePipelines: Map<string, PipelineStatus>;
 }
 
-// Actions
 interface KBActions {
-  // List
-  fetchKBs: (filters?: Filters) => Promise<void>;
-  setFilters: (filters: Partial<Filters>) => void;
+  // Existing actions...
 
-  // Detail
-  fetchKB: (kbId: string) => Promise<void>;
-  fetchKBStats: (kbId: string) => Promise<void>;
-  deleteKB: (kbId: string) => Promise<void>;
+  // NEW: Document actions
+  fetchDocuments: (kbId: string, filters: DocumentFilters) => Promise<void>;
+  createDocument: (kbId: string, data: CreateDocumentRequest) => Promise<Document>;
+  updateDocument: (kbId: string, docId: string, data: UpdateDocumentRequest) => Promise<void>;
+  deleteDocument: (kbId: string, docId: string) => Promise<void>;
+  setDocumentFilters: (filters: Partial<DocumentFilters>) => void;
 
-  // Draft
-  createDraft: (workspaceId: string, data: any) => Promise<Draft>;
-  addSource: (url: string, config: any) => Promise<void>;
-  removeSource: (sourceId: string) => Promise<void>;
-  updateChunking: (config: ChunkingConfig) => Promise<void>;
-  finalizeDraft: () => Promise<{ kb_id: string, pipeline_id: string }>;
-  clearDraft: () => void;
+  // NEW: Chunk actions
+  fetchChunks: (kbId: string, page: number, limit: number) => Promise<void>;
 
-  // Processing
-  startPipelinePolling: (pipelineId: string) => void;
-  stopPipelinePolling: (pipelineId: string) => void;
+  // NEW: Draft inspection actions
+  fetchDraftPages: (draftId: string) => Promise<void>;
+  fetchDraftPage: (draftId: string, pageIndex: number) => Promise<void>;
+  fetchDraftChunks: (draftId: string, params: ChunkParams) => Promise<void>;
 }
 ```
 
-### Local Storage Strategy
+---
 
-```javascript
-// Persist draft state
-const DRAFT_STORAGE_KEY = 'kb_draft_state';
+## Error Handling & Edge Cases
 
-export function saveDraftToLocalStorage(draft) {
-  localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify({
-    draft,
-    timestamp: Date.now()
-  }));
-}
+### Document CRUD Errors
 
-export function loadDraftFromLocalStorage() {
-  const stored = localStorage.getItem(DRAFT_STORAGE_KEY);
-  if (!stored) return null;
-
-  const { draft, timestamp } = JSON.parse(stored);
-
-  // Expire after 24 hours
-  if (Date.now() - timestamp > 24 * 60 * 60 * 1000) {
-    localStorage.removeItem(DRAFT_STORAGE_KEY);
-    return null;
+```typescript
+// Error handling for document operations
+const DOCUMENT_ERRORS = {
+  CONTENT_TOO_SHORT: {
+    code: 400,
+    message: "Content must be at least 50 characters",
+    userMessage: "Please add more content (minimum 50 characters required)",
+    action: "highlight_content_field"
+  },
+  CONTENT_TOO_LARGE: {
+    code: 413,
+    message: "Content exceeds 10MB limit",
+    userMessage: "Content is too large. Maximum size is 10MB.",
+    action: "show_size_warning"
+  },
+  DOCUMENT_LIMIT_REACHED: {
+    code: 400,
+    message: "KB document limit reached",
+    userMessage: "You've reached the maximum of 10,000 documents per KB",
+    action: "suggest_delete_unused"
+  },
+  QDRANT_SYNC_FAILED: {
+    code: 500,
+    message: "Failed to delete from vector store",
+    userMessage: "Delete failed but will retry automatically",
+    action: "mark_for_retry"
   }
+};
 
-  return draft;
-}
+function handleDocumentError(error: ApiError) {
+  const errorConfig = DOCUMENT_ERRORS[error.code];
 
-export function clearDraftFromLocalStorage() {
-  localStorage.removeItem(DRAFT_STORAGE_KEY);
+  if (errorConfig) {
+    toast.error(errorConfig.userMessage);
+
+    switch (errorConfig.action) {
+      case "highlight_content_field":
+        setFieldError("content", errorConfig.userMessage);
+        break;
+      case "mark_for_retry":
+        showRetryNotification();
+        break;
+      case "suggest_delete_unused":
+        showDocumentLimitModal();
+        break;
+    }
+  } else {
+    toast.error(error.message || "An error occurred");
+  }
 }
 ```
 
@@ -1594,227 +1513,136 @@ export function clearDraftFromLocalStorage() {
 
 ## UI/UX Best Practices
 
-### Loading States
+### Loading States for Documents
 
-```jsx
-// Strategy: Skeleton loaders for list views
-<KBListSkeleton count={5} />
-
-// Strategy: Progress indicators for operations
-<Button loading={isCreating}>
-  {isCreating ? 'Creating...' : 'Create KB'}
-</Button>
-
-// Strategy: Inline loading for previews
-{loadingPreview ? (
-  <div className="preview-loading">
-    <Spinner />
-    <p>Generating preview... (this may take 10-30 seconds)</p>
-  </div>
+```tsx
+// Document list loading
+{isLoading ? (
+  <DocumentListSkeleton count={5} />
+) : documents.length === 0 ? (
+  <EmptyState
+    icon={<FileText />}
+    title="No Documents Found"
+    message={hasFilters
+      ? "Try adjusting your filters"
+      : "Add your first document to get started"
+    }
+    action={!hasFilters && (
+      <Button onClick={openAddDocumentModal}>Add Document</Button>
+    )}
+  />
 ) : (
-  <PreviewResults data={preview} />
+  <DocumentsList documents={documents} />
 )}
-```
 
-### Empty States
-
-```jsx
-// No KBs yet
-<EmptyState
-  icon={<BookIcon />}
-  title="No Knowledge Bases Yet"
-  message="Create your first KB to get started"
-  action={
-    <Button onClick={() => navigate('/kbs/create')}>
-      Create Knowledge Base
-    </Button>
-  }
-/>
-
-// No sources in draft
-<EmptyState
-  icon={<LinkIcon />}
-  title="No Sources Added"
-  message="Add web URLs to build your knowledge base"
-  action={
-    <Button onClick={openAddSourceDialog}>
-      Add URL
-    </Button>
-  }
-/>
+// Document being processed
+{doc.status === "processing" && (
+  <ProcessingIndicator>
+    <Spinner size="sm" />
+    <ProgressBar value={doc.processing_progress} max={100} />
+    <Status>{doc.processing_progress}% complete</Status>
+  </ProcessingIndicator>
+)}
 ```
 
 ### Confirmation Dialogs
 
-```jsx
-// Delete confirmation
-<ConfirmDialog
-  title="Delete Knowledge Base?"
-  message={`Are you sure you want to delete "${kb.name}"? This action cannot be undone.`}
-  confirmText="Delete"
-  confirmVariant="destructive"
-  onConfirm={() => deleteKB(kb.id)}
-  onCancel={closeDialog}
-/>
+```tsx
+// Delete document confirmation
+async function confirmDeleteDocument(doc: Document) {
+  const result = await showConfirmDialog({
+    title: "Delete Document?",
+    message: `Are you sure you want to delete "${doc.name}"?`,
+    details: [
+      `This will delete the document`,
+      `Remove all ${doc.chunk_count} chunks`,
+      `Remove vectors from search index`,
+      `This action cannot be undone`
+    ],
+    confirmText: "Delete Document",
+    confirmVariant: "destructive",
+    requiresTypeConfirmation: doc.chunk_count > 50, // For large documents
+    confirmationText: doc.name
+  });
 
-// Re-index confirmation
-<ConfirmDialog
-  title="Re-index Knowledge Base?"
-  message={`This will regenerate all ${kb.stats.chunks} chunks and may take several minutes.`}
-  confirmText="Re-index"
-  confirmVariant="primary"
-  onConfirm={() => reindexKB(kb.id)}
-  onCancel={closeDialog}
-/>
-```
-
-### Toast Notifications
-
-```javascript
-// Success
-showToast({
-  title: 'KB Created',
-  message: 'Processing in background...',
-  variant: 'success',
-  duration: 5000
-});
-
-// Error
-showToast({
-  title: 'Failed to Add Source',
-  message: 'Unable to fetch URL. Please check and try again.',
-  variant: 'error',
-  duration: 7000
-});
-
-// Info
-showToast({
-  title: 'Preview Ready',
-  message: 'Showing preview for 5 pages',
-  variant: 'info',
-  duration: 3000
-});
-```
-
-### Progress Indicators
-
-```jsx
-// Linear progress for processing
-<div className="processing-card">
-  <h3>Processing Knowledge Base</h3>
-
-  <LinearProgress
-    value={status.progress.percent}
-    max={100}
-    label={`${status.progress.percent}%`}
-  />
-
-  <p className="status-message">{status.message}</p>
-
-  <div className="estimated-time">
-    Estimated time remaining: ~{calculateTimeRemaining(status)} minutes
-  </div>
-</div>
-
-// Circular progress for quick operations
-<CircularProgress
-  size="small"
-  indeterminate
-  label="Validating..."
-/>
-```
-
----
-
-## Performance Optimization
-
-### Caching Strategy
-
-```javascript
-// Use SWR or React Query for automatic caching
-import useSWR from 'swr';
-
-export function useKB(kbId) {
-  const { data, error, mutate } = useSWR(
-    kbId ? `/kbs/${kbId}` : null,
-    fetcher,
-    {
-      revalidateOnFocus: false,
-      dedupingInterval: 60000, // 1 minute
-    }
-  );
-
-  return {
-    kb: data,
-    isLoading: !error && !data,
-    isError: error,
-    refresh: mutate
-  };
+  if (result.confirmed) {
+    deleteDocument(doc.id);
+  }
 }
-```
 
-### Debouncing User Input
+// Update document with content change
+async function confirmContentUpdate(doc: Document, newContent: string) {
+  if (newContent === doc.original_content) {
+    // No confirmation needed for metadata-only updates
+    updateDocument(doc.id, { ...formData });
+    return;
+  }
 
-```javascript
-// Debounce chunking config updates
-import { useDebouncedCallback } from 'use-debounce';
+  const result = await showConfirmDialog({
+    title: "Update Content?",
+    message: "Changing content will trigger re-processing",
+    details: [
+      `All ${doc.chunk_count} chunks will be regenerated`,
+      `Embeddings will be recalculated`,
+      `This may take a few minutes`,
+      `Search results may be temporarily affected`
+    ],
+    confirmText: "Update & Reprocess",
+    confirmVariant: "primary"
+  });
 
-export function ChunkingConfigForm({ draftId, initialConfig }) {
-  const [config, setConfig] = useState(initialConfig);
-
-  const updateConfig = useDebouncedCallback(
-    async (newConfig) => {
-      await api.post(`/kb-drafts/${draftId}/chunking`, newConfig);
-      showToast({ message: 'Configuration updated' });
-    },
-    1000 // Wait 1 second after user stops typing
-  );
-
-  const handleChange = (field, value) => {
-    const newConfig = { ...config, [field]: value };
-    setConfig(newConfig);
-    updateConfig(newConfig);
-  };
-
-  return (
-    <form>
-      <Slider
-        label="Chunk Size"
-        value={config.chunk_size}
-        onChange={(value) => handleChange('chunk_size', value)}
-        min={100}
-        max={5000}
-      />
-      {/* ... */}
-    </form>
-  );
+  if (result.confirmed) {
+    updateDocument(doc.id, { ...formData, content: newContent });
+  }
 }
 ```
 
 ---
 
-## Testing Checklist for Frontend
+## Testing Checklist
 
-### Unit Tests
-- [ ] Draft state management
-- [ ] Pipeline polling logic
-- [ ] Error handling utilities
-- [ ] Form validation
+### Draft Inspection Tests
+- [ ] List draft pages with pagination
+- [ ] View specific page content
+- [ ] Browse chunks with filtering
+- [ ] Handle drafts without preview data
+- [ ] Show helpful empty states
 
-### Integration Tests
-- [ ] Complete KB creation flow
-- [ ] Preview generation
-- [ ] Filter and search
-- [ ] Re-chunking workflow
+### Document Management Tests
+- [ ] List documents with all filters
+- [ ] Search documents by name/URL
+- [ ] View document details
+- [ ] Create document with validation
+- [ ] Update metadata only (no reprocessing)
+- [ ] Update content (triggers reprocessing)
+- [ ] Delete document successfully
+- [ ] Handle Qdrant sync failures
 
-### E2E Tests
-- [ ] Create KB from start to finish
-- [ ] Monitor processing completion
-- [ ] Delete KB
-- [ ] Handle network failures gracefully
+### Chunk Browser Tests
+- [ ] List chunks with pagination
+- [ ] View chunk content
+- [ ] Verify content quality indicators
+- [ ] Navigate to source document
+- [ ] Copy chunk content
+
+### RBAC Tests
+- [ ] Editors can create/edit own documents
+- [ ] Editors can delete own documents
+- [ ] Admins can edit/delete any document
+- [ ] Viewers can only read
+- [ ] Admin-only disabled/archived access
 
 ---
 
-**Last Updated**: November 16, 2025
-**Version**: 1.0
+**Version**: 2.0
+**Last Updated**: January 16, 2025
 **Maintainer**: PrivexBot Team
+
+**Changes in v2.0**:
+- ✅ Added Draft Inspection endpoints and UX
+- ✅ Added Document Management (list, filter, search)
+- ✅ Added Document CRUD operations (create, update, delete)
+- ✅ Added Chunk Browser for content verification
+- ✅ Added comprehensive state management patterns
+- ✅ Added error handling for all new features
+- ✅ Added UI/UX best practices for new components

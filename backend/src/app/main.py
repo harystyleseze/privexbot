@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.db.init_db import init_db
-from app.api.v1.routes import auth, org, workspace, context, invitation, kb_draft, kb_pipeline
+from app.api.v1.routes import auth, org, workspace, context, invitation, kb_draft, kb_pipeline, kb
 
 
 @asynccontextmanager
@@ -99,6 +99,11 @@ app.include_router(
     kb_pipeline.router,
     prefix=settings.API_V1_PREFIX,
     tags=["kb_pipelines"]
+)
+
+app.include_router(
+    kb.router,
+    prefix=settings.API_V1_PREFIX
 )
 
 
