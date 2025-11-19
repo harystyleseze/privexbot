@@ -4,810 +4,735 @@ Privacy-First AI Chatbot Builder - FastAPI Backend Application
 
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com/)
-[![Docker](https://img.shields.io/badge/Docker-Ready-brightgreen.svg)](https://www.docker.com/)
+[![Docker](https://img.shields.io/badge/Docker-CPU--Optimized-brightgreen.svg)](https://www.docker.com/)
 [![Production](https://img.shields.io/badge/Prod-SecretVM-purple.svg)](https://harystyles.store)
-
-# PrivexBot Complete Architecture Summary
-
-**Overview of all architectural components and how they fit together**
-
----
 
 ## Table of Contents
 
-1. [System Overview](#overview)
-2. [Draft-First Architecture](#draft-first)
-3. [Core Entities](#entities)
-4. [Knowledge Base Architecture](#kb-architecture)
-5. [Chatbot vs Chatflow](#chatbot-chatflow)
-6. [Deployment & Multi-Channel](#deployment)
-7. [Lead Capture System](#lead-capture)
-8. [Folder Structure](#folder-structure)
-9. [Technology Stack](#tech-stack)
+1. [Quick Start](#quick-start)
+2. [Architecture Overview](#architecture-overview)
+3. [Development Environment](#development-environment)
+4. [Deployment](#deployment)
+5. [CPU-Optimized Deployment](#cpu-optimized-deployment)
+6. [Project Structure](#project-structure)
+7. [Services & Components](#services--components)
+8. [API Reference](#api-reference)
 
 ---
 
-## 1. System Overview {#overview}
+## Quick Start
+
+### Prerequisites
+
+- Docker and Docker Compose
+- Git
+- Python 3.11+ (for local development)
+
+### Development (5 minutes)
+
+```bash
+# 1. Clone repository
+git clone <repo-url>
+cd privexbot/backend
+
+# 2. Start development environment (builds automatically)
+./scripts/docker/dev.sh up
+
+# 3. Access services
+# Backend API: http://localhost:8000
+# API Docs: http://localhost:8000/api/docs
+# Flower Monitor: http://localhost:5555
+```
+
+### Production Deployment (10 minutes)
+
+```bash
+# 1. Build and deploy CPU-optimized image
+./scripts/docker/deploy-cpu.sh 0.1.0
+
+# 2. Copy files to production server
+scp docker-compose.yml .env server:/path/to/app/
+
+# 3. Deploy on server
+docker compose pull
+docker compose up -d
+```
+
+### SecretVM Deployment
+
+```bash
+# 1. Build and prepare
+./scripts/docker/deploy-cpu.sh 0.1.0 --secretvm
+
+# 2. Show compose file for portal
+./scripts/docker/secretvm-deploy.sh show
+
+# 3. Copy-paste to SecretVM Dev Portal and deploy
+
+# 4. Test deployment
+./scripts/docker/secretvm-deploy.sh test
+```
+
+---
+
+## Architecture Overview
 
 ### What is PrivexBot?
 
 **PrivexBot** is a **multi-tenant SaaS platform** for building and deploying AI chatbots and chatflows with:
 
-- **RAG-powered Knowledge Bases** - Import from multiple sources
-- **Simple Chatbots** - Form-based conversational AI
-- **Advanced Chatflows** - Visual workflow automation (like n8n, Dify)
-- **Multi-Channel Deployment** - Website, Discord, Telegram, WhatsApp, API
-- **Lead Capture** - Generate leads from bot interactions
-- **Secret AI Integration** - Privacy-focused AI inference
+- **🤖 Simple Chatbots** - Form-based conversational AI
+- **🔗 Advanced Chatflows** - Visual workflow automation (like n8n, Dify)
+- **📚 RAG Knowledge Bases** - Import from multiple sources (web, files, APIs)
+- **🌐 Multi-Channel Deployment** - Website, Discord, Telegram, WhatsApp, API
+- **📊 Lead Capture** - Generate leads from bot interactions
+- **🔒 Privacy-Focused** - Secret AI integration, secure inference
 
----
+### System Components
 
-### Tenant Hierarchy
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Production Architecture                   │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  🌐 Multi-Channel Access                                   │
+│  ├── Website Widget (JS)                                   │
+│  ├── Discord Bot                                           │
+│  ├── Telegram Bot                                          │
+│  ├── WhatsApp Business                                     │
+│  └── Direct API                                            │
+│                         ↓                                   │
+│  🚪 Unified Public API                                     │
+│  └── /v1/bots/{id}/chat (works for chatbots & chatflows)  │
+│                         ↓                                   │
+│  ⚙️  Backend Services                                       │
+│  ├── 🖥️  Backend API (FastAPI)                              │
+│  ├── 👷 Celery Worker (Background tasks)                    │
+│  ├── ⏰ Celery Beat (Scheduled tasks)                       │
+│  └── 🌸 Flower (Monitoring UI)                             │
+│                         ↓                                   │
+│  💾 Data Layer                                             │
+│  ├── 🐘 PostgreSQL + pgvector (Main database)              │
+│  ├── 🔴 Redis (Cache, drafts, Celery broker)               │
+│  └── 🔍 Qdrant (Vector database for KB search)             │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Multi-Tenant Hierarchy
 
 ```
 Organization (Company)
   ↓
 Workspace (Team/Department)
   ↓
-├── Chatbots (Simple bots)
-├── Chatflows (Advanced workflows)
-├── Knowledge Bases (Shared RAG knowledge)
+├── Chatbots (Simple form-based bots)
+├── Chatflows (Visual workflow automation)
+├── Knowledge Bases (RAG with multiple sources)
 ├── Credentials (API keys for chatflow nodes)
 └── Leads (Captured from interactions)
 ```
 
-**Key Principle:** Everything is isolated by organization/workspace.
+**Key Principle**: All data is isolated by organization/workspace.
 
 ---
 
-## 2. Draft-First Architecture {#draft-first}
+## Development Environment
 
-### The Universal Flow
+### Services Overview
 
-**CRITICAL:** ALL entity creation (Chatbots, Chatflows, Knowledge Bases) happens in **DRAFT mode** before database save.
+Our development environment runs **6 services** in Docker containers:
+
+| Service           | Purpose                | Port | URL                    |
+| ----------------- | ---------------------- | ---- | ---------------------- |
+| **backend-dev**   | Main API server        | 8000 | http://localhost:8000  |
+| **celery-worker** | Background tasks       | -    | (monitored via Flower) |
+| **celery-beat**   | Scheduled tasks        | -    | (monitored via Flower) |
+| **flower**        | Celery monitoring      | 5555 | http://localhost:5555  |
+| **postgres**      | Main database          | 5434 | localhost:5434         |
+| **redis**         | Cache & message broker | 6380 | localhost:6380         |
+| **qdrant**        | Vector database        | 6335 | localhost:6335         |
+
+### Development Commands
+
+```bash
+# Service Management
+./scripts/docker/dev.sh up              # Start all services
+./scripts/docker/dev.sh down            # Stop all services
+./scripts/docker/dev.sh restart         # Restart all services
+./scripts/docker/dev.sh restart celery  # Restart celery worker only
+./scripts/docker/dev.sh build           # Rebuild backend image
+
+# Monitoring & Logs
+./scripts/docker/dev.sh status          # Show all service status
+./scripts/docker/dev.sh logs            # View all service logs
+./scripts/docker/dev.sh logs backend    # Backend logs only
+./scripts/docker/dev.sh logs celery     # Celery worker logs only
+./scripts/docker/dev.sh logs flower     # Flower logs only
+
+# Database & Development
+./scripts/docker/dev.sh migrate         # Run database migrations
+./scripts/docker/dev.sh shell           # Access backend container
+./scripts/docker/dev.sh db              # Access PostgreSQL shell
+./scripts/docker/dev.sh test            # Run tests
+
+# Cleanup
+./scripts/docker/dev.sh clean           # Remove all containers and volumes
+```
+
+### Development Features
+
+- **🔄 Hot Reload**: Source code mounted, changes reflect immediately
+- **🏗️ Build Once**: Same image used for all services (backend, celery, flower)
+- **📊 Real-time Monitoring**: Flower UI for Celery tasks
+- **💾 Persistent Data**: Volumes for databases survive restarts
+- **🔍 Easy Debugging**: Direct shell access to containers
+
+---
+
+## Deployment
+
+### Deployment Environments
+
+| Environment     | Purpose                 | Build Method    | Image Source         |
+| --------------- | ----------------------- | --------------- | -------------------- |
+| **Development** | Local development       | Build locally   | Local Dockerfile.dev |
+| **Production**  | Standalone server       | Registry images | Docker Hub + digest  |
+| **SecretVM**    | Production with Traefik | Registry images | Docker Hub + digest  |
+
+### CPU-Optimized Architecture
+
+🔥 **Problem Solved**: Docker builds were failing due to 2GB+ NVIDIA CUDA packages causing timeouts.
+
+✅ **Solution**: CPU-optimized builds using PyTorch CPU-only version.
+
+**Benefits**:
+
+- ⚡ **10x faster builds** (~3 min vs 30+ min)
+- 💾 **140MB vs 2GB+** package downloads
+- 🏆 **Perfect for production** (most servers are CPU-only)
+- ✅ **No timeout issues**
+- 📈 **Same performance** for inference workloads
+
+---
+
+## CPU-Optimized Deployment
+
+### Complete Deployment Workflow
+
+```bash
+# One-command deployment (recommended)
+./scripts/docker/deploy-cpu.sh 0.1.0
+
+# What this does:
+# 1. 🔨 Builds CPU-optimized Docker image
+# 2. 📤 Pushes to Docker Hub registry
+# 3. 🔄 Updates docker-compose files with immutable digest
+# 4. 📋 Provides deployment instructions
+```
+
+### Individual Scripts
+
+| Script              | Purpose               | Usage                                                             |
+| ------------------- | --------------------- | ----------------------------------------------------------------- |
+| `deploy-cpu.sh`     | **Complete workflow** | `./scripts/docker/deploy-cpu.sh 0.1.0 [--production\|--secretvm]` |
+| `build-push-cpu.sh` | Build and push only   | `./scripts/docker/build-push-cpu.sh 0.1.0 [--no-cache]`           |
+| `update-digests.sh` | Update compose files  | `./scripts/docker/update-digests.sh [--production\|--secretvm]`   |
+| `test-workflow.sh`  | Validate setup        | `./scripts/docker/test-workflow.sh [--full]`                      |
+
+### Production Deployment
+
+```bash
+# 1. Build and push image
+./scripts/docker/deploy-cpu.sh 0.1.0
+
+# 2. Copy files to production server
+scp docker-compose.yml .env.example server:/path/to/app/
+ssh server "cd /path/to/app && mv .env.example .env"
+
+# 3. Configure environment on server
+# Edit .env with production values:
+POSTGRES_PASSWORD=$(openssl rand -base64 32)
+SECRET_KEY=$(openssl rand -hex 32)
+FLOWER_PASSWORD=$(openssl rand -base64 16)
+BACKEND_CORS_ORIGINS=https://yourdomain.com
+
+# 4. Deploy
+ssh server "cd /path/to/app && docker compose pull && docker compose up -d"
+
+# 5. Optional: Enable monitoring
+ssh server "cd /path/to/app && docker compose --profile monitoring up -d"
+```
+
+### SecretVM Deployment
+
+SecretVM uses **Traefik** for SSL termination and routing.
+
+```bash
+# 1. Build and prepare
+./scripts/docker/deploy-cpu.sh 0.1.0 --secretvm
+
+# 2. Prepare environment file
+./scripts/docker/secretvm-deploy.sh prepare
+
+# 3. Show compose file for portal
+./scripts/docker/secretvm-deploy.sh show
+
+# 4. Deploy via SecretVM Dev Portal:
+#    - Copy compose file output from step 3
+#    - Paste into SecretVM Dev Portal
+#    - Upload deploy/secretvm/.env to portal
+#    - Click "Deploy"
+
+# 5. Test deployment
+./scripts/docker/secretvm-deploy.sh test
+```
+
+**SecretVM Services** (after deployment):
+
+- 🔗 Backend API: https://api.harystyles.store
+- 📚 API Docs: https://api.harystyles.store/api/docs
+- 🌸 Flower Monitor: https://flower.harystyles.store
+- 🗄️ PgAdmin: https://pgadmin.harystyles.store
+- 🔴 Redis UI: https://redis-ui.harystyles.store
+- 🚦 Traefik Dashboard: https://traefik.harystyles.store
+
+---
+
+## Project Structure
+
+### Directory Overview
 
 ```
-Flow for ALL Entities:
+backend/
+├── 🐳 Docker Configuration
+│   ├── docker-compose.dev.yml         # Development (build locally)
+│   ├── docker-compose.yml             # Production (registry images)
+│   ├── docker-compose.secretvm.yml    # SecretVM with Traefik
+│   ├── Dockerfile.dev                 # Development build
+│   ├── Dockerfile.cpu                 # Production CPU-optimized
+│   └── Dockerfile                     # Production standard
+│
+├── 🛠️ Scripts
+│   └── scripts/docker/
+│       ├── dev.sh                     # Development management
+│       ├── deploy-cpu.sh              # Complete deployment workflow
+│       ├── build-push-cpu.sh          # Build and push CPU image
+│       ├── update-digests.sh          # Update compose digests
+│       ├── secretvm-deploy.sh         # SecretVM deployment helper
+│       └── test-workflow.sh           # Validate deployment setup
+│
+├── 📁 Application Code
+│   └── src/app/
+│       ├── models/                    # Database models (SQLAlchemy)
+│       ├── services/                  # Business logic
+│       ├── api/v1/routes/             # API endpoints
+│       ├── tasks/                     # Celery background tasks
+│       ├── chatflow/nodes/            # Chatflow node implementations
+│       ├── integrations/              # External service adapters
+│       └── main.py                    # FastAPI application
+│
+├── 📊 Deployment
+│   └── deploy/
+│       ├── cpu-image-info.json        # Build metadata
+│       └── secretvm/
+│           └── .env                   # SecretVM environment
+│
+├── 📖 Documentation
+│   ├── docs/DEPLOYMENT_CPU.md         # Detailed deployment guide
+│   └── README.md                      # This file
+│
+├── 🔧 Configuration
+│   ├── pyproject.toml                 # Python dependencies
+│   ├── uv.lock                        # Locked dependencies
+│   ├── .env.dev                       # Development environment
+│   ├── .env.example                   # Production template
+│   └── .env.secretvm                  # SecretVM template
+│
+└── 🗄️ Database
+    └── src/alembic/                   # Database migrations
+```
+
+---
+
+## Services & Components
+
+### Core Services
+
+#### **Backend API** (FastAPI)
+
+- **Purpose**: Main application server
+- **Features**: REST API, authentication, business logic
+- **Health**: `GET /health`
+- **Docs**: `GET /api/docs` (Swagger UI)
+
+#### **Celery Worker**
+
+- **Purpose**: Background task processing
+- **Tasks**: KB processing, embeddings, web scraping, document parsing
+- **Queues**: `default`, `high_priority`, `low_priority`
+- **Monitoring**: Via Flower UI
+
+#### **Celery Beat**
+
+- **Purpose**: Scheduled task execution
+- **Tasks**: Maintenance, re-indexing, cleanup
+- **Schedule**: Configurable intervals
+
+#### **Flower**
+
+- **Purpose**: Celery monitoring and management
+- **Features**: Task monitoring, worker status, task history
+- **Access**: http://localhost:5555 (dev), https://flower.harystyles.store (prod)
+
+### Data Layer
+
+#### **PostgreSQL + pgvector**
+
+- **Purpose**: Main application database
+- **Features**: ACID transactions, full-text search, vector similarity
+- **Tables**: organizations, workspaces, chatbots, chatflows, knowledge_bases
+
+#### **Redis**
+
+- **Purpose**: Cache, session storage, Celery broker
+- **Features**: Draft entity storage (24hr TTL), real-time data
+- **Usage**: Draft mode, chat sessions, background task queue
+
+#### **Qdrant**
+
+- **Purpose**: Vector database for knowledge base search
+- **Features**: Semantic search, embedding storage, similarity queries
+- **Usage**: RAG (Retrieval-Augmented Generation)
+
+### Draft-First Architecture
+
+**CRITICAL**: All entity creation (Chatbots, Chatflows, Knowledge Bases) happens in **DRAFT mode** before database save.
+
+```
+Universal Flow for ALL Entities:
 
 1. Create Draft → Redis (NOT Database)
    ↓
-2. Configure & Edit → Auto-save to Redis
-   - Add settings
-   - Add sources (KB only)
-   - Configure appearance
-   - Set variables
+2. Configure & Edit → Auto-save to Redis (24hr TTL)
    ↓
-3. Live Preview & Test → Real AI responses
-   - Test with actual data
-   - No database impact
-   - Preview exactly as users will see
+3. Live Preview & Test → Real AI responses from draft
    ↓
 4. Select Deployment Channels → Choose where to deploy
-   - Website widget
-   - Telegram, Discord, WhatsApp
-   - Zapier, API
    ↓
 5. Validate → Check required fields
-   - Ensure all required data present
-   - Verify configurations
-   - Show errors/warnings
    ↓
-6. DEPLOY → ONLY NOW save to database
-   - Create database record
-   - Generate API keys
-   - Register webhooks for enabled channels
-   - Initialize services
-   - Queue background tasks (KB only)
-   - Delete draft from Redis
+6. DEPLOY → ONLY NOW save to database + register webhooks
    ↓
 7. LIVE → Accessible via selected channels
 ```
 
-**WHY This Approach:**
-- ✅ Users preview and test before deploying
+**Benefits**:
+
 - ✅ No database pollution during creation
 - ✅ Easy to abandon (just discard draft)
-- ✅ Auto-save without DB writes
-- ✅ Faster UX (Redis is fast)
+- ✅ Instant preview without DB writes
 - ✅ Validation before commit
 
-**Storage:**
-- **Drafts:** Redis (24hr TTL, auto-extended on save)
-- **Deployed Entities:** PostgreSQL
-
-**Key Services:**
-- `draft_service.py` - Unified draft management for ALL entity types
-- `kb_draft_service.py` - KB-specific draft operations (chunking preview, source handling)
-- Integration services - Register webhooks on deployment (telegram_integration.py, discord_integration.py, etc.)
-
 ---
 
-## 3. Core Entities {#entities}
+## API Reference
 
-### 1. Organization
+### Authentication
 
-- Top-level tenant
-- Owns workspaces
-- Billing and subscription
+All API endpoints require authentication via JWT tokens or API keys. Support evm, cosmos, and solana wallet sign up/login
 
-### 2. Workspace
+```bash
+# Get access token
+curl -X POST http://localhost:8000/auth/email/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "user@example.com", "password": "password"}'
 
-- Sub-tenant within organization
-- Contains chatbots, chatflows, KBs
-- Team collaboration unit
-
-### 3. Chatbot (Simple)
-
-- **Creation:** Form-based UI
-- **Execution:** Linear, single AI call per message
-- **Use Cases:** FAQ bots, simple Q&A
-- **Database:** `chatbots` table
-
-### 4. Chatflow (Advanced)
-
-- **Creation:** Visual drag-and-drop (ReactFlow)
-- **Execution:** Graph traversal, multiple AI calls
-- **Use Cases:** Multi-step workflows, conditional logic
-- **Database:** `chatflows` table
-- **Nodes:** LLM, KB Search, HTTP, Database, Condition, Loop, etc.
-
-### 5. Knowledge Base
-
-- **Purpose:** RAG (Retrieval-Augmented Generation)
-- **Sources:** Files, websites, Google Docs, Notion, Sheets, text
-- **Architecture:** Draft mode → Finalize → Background processing
-- **Sharing:** One KB can serve multiple chatbots/chatflows
-- **Access:** Context-aware (configurable per bot)
-
-### 6. Lead
-
-- **Purpose:** Capture user info from bot interactions
-- **Data:** Email, name, phone, geolocation
-- **Source:** Website widget, Discord, Telegram, etc.
-- **Analytics:** Geographical distribution, conversion tracking
-
----
-
-## 3. Knowledge Base Architecture {#kb-architecture}
-
-### The Draft-First Approach
-
-**CRITICAL:** KB creation happens in **draft mode** before database save.
-
-```
-Flow:
-1. Create Draft (Redis)
-   ↓
-2. Add Sources (temp storage)
-   - Upload files → /tmp
-   - Scrape websites → content in Redis
-   - Import Notion/Google Docs → content in Redis
-   ↓
-3. Configure & Annotate
-   - Chunking settings
-   - Indexing method
-   - Document annotations
-   ↓
-4. Preview Chunks (generated on-the-fly)
-   - See all chunks from all sources
-   - Edit/remove sources
-   - Adjust settings
-   ↓
-5. FINALIZE
-   - Save KB to PostgreSQL
-   - Create document records
-   - Move temp files to permanent storage
-   - Queue background processing (Celery)
-   - Delete draft from Redis
+# Use token in subsequent requests
+curl -H "Authorization: Bearer <token>" \
+  http://localhost:8000/api/v1/chatbots
 ```
 
-**WHY this approach:**
-- ✅ No database pollution during creation
-- ✅ Fast preview without DB writes
-- ✅ Easy to abandon/rollback (just discard draft)
-- ✅ Better UX (instant feedback)
+### Public API (Multi-Channel)
 
----
+The public API works for both chatbots and chatflows:
 
-### Import Sources
-
-**Supported:**
-
-1. **File Upload** - PDF, Word, Text, CSV, JSON
-   - Tools: Unstructured.io, PyMuPDF, python-docx
-   - Storage: Temp → Permanent on finalize
-
-2. **Website Scraping** - Any public website
-   - Tools: **Crawl4AI** (recommended), Firecrawl, Jina Reader
-   - Features: Multi-page crawl, subdomain include/exclude
-
-3. **Google Docs** - Sync with Google Workspace
-   - Tool: Google Docs API
-   - Features: Auto-sync, preserve formatting
-
-4. **Notion** - Import pages and databases
-   - Tool: Notion API
-   - Features: Hierarchical import, auto-sync
-
-5. **Google Sheets** - Tabular data
-   - Tool: Google Sheets API
-   - Features: Convert to structured text
-
-6. **Direct Text Paste** - Manual input
-   - Formats: Plain text, Markdown, JSON
-
----
-
-### Document Annotations
-
-**Purpose:** Help AI understand document context.
-
-**Fields:**
-- `category` - document, policy, guide, FAQ, etc.
-- `importance` - low, medium, high, critical
-- `purpose` - Why this document exists
-- `context` - Additional background
-- `tags` - Searchable keywords
-- `usage_instructions` - How AI should use it
-- `constraints` - Limitations or warnings
-
-**How Used:**
-- **During Retrieval:** Boost scores based on importance
-- **During Response:** Inject context into prompt
-
----
-
-### Chunking Strategies
-
-**4 Methods:**
-
-1. **Size-Based** - Fixed size with overlap
-2. **By Heading** - Split on Markdown/HTML headings
-3. **By Page** - One chunk per page (PDFs)
-4. **By Similarity** - Semantic grouping
-
-**Configuration Levels:**
-- KB-level (default for all documents)
-- Document-level (override per document)
-
----
-
-### Processing Pipeline (Background)
-
-**After Finalize:**
-
-```
-Celery Tasks (concurrent):
-
-1. process_document.delay(doc_id)
-   ↓
-   Parse content (Unstructured.io)
-   ↓
-   Chunk content (chunking_service)
-   ↓
-   Generate embeddings (embedding_service)
-   ↓
-   Store in vector DB (vector_store_service)
-   ↓
-   Update status: completed
+```bash
+# Send message to any bot (chatbot or chatflow). From the bot is the systems knows if it is a chatflow or a chatbot
+curl -X POST http://localhost:8000/api/v1/bots/{bot_id}/chat \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: <api_key>" \
+  -d '{"message": "Hello, how can you help me?"}'
 ```
 
-**Concurrent Processing:**
-- Multiple Celery workers process documents in parallel
-- Real-time status updates via polling
-- Error handling: Mark as failed with error message
+### Core Endpoints
+
+| Endpoint                  | Method              | Purpose             |
+| ------------------------- | ------------------- | ------------------- |
+| `/health`                 | GET                 | Health check        |
+| `/api/v1/chatbots`        | GET,POST,PUT,DELETE | Chatbot CRUD        |
+| `/api/v1/chatflows`       | GET,POST,PUT,DELETE | Chatflow CRUD       |
+| `/api/v1/knowledge-bases` | GET,POST,PUT,DELETE | Knowledge base CRUD |
+| `/api/v1/kb-draft`        | GET,POST,PUT,DELETE | Draft KB operations |
+| `/api/v1/documents`       | GET,POST,DELETE     | Document management |
+| `/api/v1/leads`           | GET                 | Lead capture data   |
+| `/api/v1/bots/{id}/chat`  | POST                | **Public chat API** |
+
+### Webhook Endpoints
+
+| Endpoint             | Purpose               | Channel  |
+| -------------------- | --------------------- | -------- |
+| `/webhooks/telegram` | Telegram Bot API      | Telegram |
+| `/webhooks/discord`  | Discord webhook       | Discord  |
+| `/webhooks/whatsapp` | WhatsApp Business API | WhatsApp |
 
 ---
 
-## 4. Chatbot vs Chatflow {#chatbot-chatflow}
+## Environment Variables
 
-### Critical Differences
+### Development (.env.dev)
 
-| Aspect | Chatbot | Chatflow |
-|--------|---------|----------|
-| **Creation** | Form-based UI | Drag-and-drop visual editor |
-| **Complexity** | Simple, linear | Complex, branching |
-| **AI Calls** | Single per message | Multiple (one per LLM node) |
-| **Logic** | No conditionals | Full if/else, loops, branching |
-| **API Integration** | No | Yes (HTTP Request nodes) |
-| **Database** | `chatbots` table | `chatflows` table |
-| **Service** | `chatbot_service.py` | `chatflow_service.py` + `chatflow_executor.py` |
-| **Builder** | `ChatbotBuilder.jsx` | `ChatflowBuilder.jsx` (ReactFlow) |
-| **Deployment** | ✅ Same (unified) | ✅ Same (unified) |
+```bash
+# Database
+DATABASE_URL=postgresql://privexbot:privexbot_dev@postgres:5432/privexbot_dev
 
----
+# Redis
+REDIS_URL=redis://redis:6379/0
 
-### Chatbot Execution
+# Celery
+CELERY_BROKER_URL=redis://redis:6379/1
+CELERY_RESULT_BACKEND=redis://redis:6379/2
 
-```python
-def process_message(chatbot, message, session):
-    # 1. Get chat history
-    history = get_chat_history(session)
+# Vector Database
+QDRANT_URL=http://qdrant:6333
 
-    # 2. Retrieve from KB (if configured)
-    context = ""
-    if chatbot.knowledge_bases:
-        context = retrieve_from_kb(chatbot, message)
+# Security
+SECRET_KEY=dev-secret-key-change-in-production
 
-    # 3. Build prompt
-    prompt = f"""
-    System: {chatbot.system_prompt}
+# CORS
+BACKEND_CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+```
 
-    Context from knowledge base:
-    {context}
+### Production (.env)
 
-    Chat history:
-    {history}
+```bash
+# Database (use strong password)
+DATABASE_URL=postgresql://privexbot:STRONG_PASSWORD@postgres:5432/privexbot
+POSTGRES_PASSWORD=STRONG_PASSWORD
 
-    User: {message}
-    """
+# Redis
+REDIS_URL=redis://redis:6379/0
 
-    # 4. Single AI call
-    response = secret_ai.generate(prompt)
+# Celery
+CELERY_BROKER_URL=redis://redis:6379/1
+CELERY_RESULT_BACKEND=redis://redis:6379/2
 
-    # 5. Save to history
-    save_message(session, message, response)
+# Vector Database
+QDRANT_URL=http://qdrant:6333
 
-    return response
+# Security (generate with: openssl rand -hex 32)
+SECRET_KEY=YOUR_RANDOM_SECRET_KEY_HERE
+
+# Monitoring
+FLOWER_PASSWORD=STRONG_PASSWORD_FOR_FLOWER
+
+# CORS (your production domains)
+BACKEND_CORS_ORIGINS=https://yourdomain.com,https://api.yourdomain.com
+
+# Optional: Email configuration
+SMTP_HOST=smtp.gmail.com
+SMTP_USER=your-email@gmail.com
+SMTP_PASSWORD=your-app-password
 ```
 
 ---
 
-### Chatflow Execution
-
-```python
-def execute(chatflow, message, session):
-    # 1. Build execution graph
-    graph = build_graph(chatflow.nodes, chatflow.edges)
-
-    # 2. Initialize context
-    context = {
-        "input": message,
-        "variables": {},
-        "node_outputs": {}
-    }
-
-    # 3. Execute nodes (topological order)
-    current_node = "start"
-
-    while current_node:
-        node = get_node(chatflow, current_node)
-
-        # Execute node based on type
-        if node.type == "llm":
-            output = execute_llm_node(node, context)
-        elif node.type == "kb":
-            output = execute_kb_node(node, context)
-        elif node.type == "condition":
-            output = execute_condition_node(node, context)
-            # Branch based on condition result
-            current_node = output.next_node
-            continue
-        elif node.type == "http":
-            output = execute_http_node(node, context)
-
-        # Store output
-        context["node_outputs"][current_node] = output
-
-        # Get next node
-        current_node = get_next_node(node, graph)
-
-    # 4. Return final output
-    return context["node_outputs"]["response"]
-```
-
----
-
-## 5. Deployment & Multi-Channel {#deployment}
-
-### Multi-Channel Deployment Flow
-
-**CRITICAL:** Users select deployment channels **during draft creation** (final step before deploying).
-
-**Deploy Step in Builder:**
-1. User creates chatbot/chatflow in draft mode
-2. Configures all settings (knowledge, instructions, etc.)
-3. **Deploy Step** - Select channels to deploy to:
-   - ☑ Website Widget
-   - ☑ Telegram Bot
-   - ☐ Discord Bot
-   - ☐ WhatsApp Business
-   - ☐ Zapier Webhook
-4. Click "Deploy to Channels"
-5. Backend:
-   - Saves to database
-   - Generates API keys
-   - **Registers webhooks for enabled channels**
-   - Returns deployment results per channel
-
-**Response Example:**
-```json
-{
-  "chatbot_id": "uuid",
-  "channels": {
-    "website": {
-      "status": "success",
-      "embed_code": "<script>...</script>"
-    },
-    "telegram": {
-      "status": "success",
-      "webhook_url": "https://...",
-      "bot_username": "@your_bot"
-    }
-  }
-}
-```
-
----
+## Multi-Channel Deployment
 
 ### Supported Channels
 
-**1. Website Embed** (Primary)
-- **Method:** JS widget or iframe
-- **Code:** Auto-generated embed code
-- **Widget:** Separate package, framework-agnostic
-- **Config:** Allowed domains, widget position
+1. **🌐 Website Embed** (Primary)
 
-**2. Telegram Bot**
-- **Method:** Telegram Bot API
-- **Integration:** `telegram_integration.py`
-- **Setup:** User provides bot token (from @BotFather)
-- **Webhook:** Auto-registered on deploy
+   - JS widget or iframe
+   - Auto-generated embed code
+   - Customizable appearance
 
-**3. Discord Bot**
-- **Method:** Discord webhook
-- **Integration:** `discord_integration.py`
-- **Setup:** User provides bot token
-- **Webhook:** Auto-registered on deploy
+2. **📱 Telegram Bot**
 
-**4. WhatsApp Business**
-- **Method:** WhatsApp Business API
-- **Integration:** `whatsapp_integration.py`
-- **Setup:** Business phone number + API credentials
+   - Telegram Bot API integration
+   - Auto-registered webhooks
+   - User provides bot token
 
-**5. Zapier Webhook**
-- **Method:** Webhook URL
-- **Use:** Integrate with Zapier workflows
-- **Webhook:** Auto-generated on deploy
+3. **🎮 Discord Bot**
 
-**6. API Direct**
-- **Method:** REST API
-- **Endpoint:** `POST /v1/bots/{bot_id}/chat`
-- **Auth:** API key required
+   - Discord webhook integration
+   - Auto-registered webhooks
+   - User provides bot token
 
----
+4. **📞 WhatsApp Business**
 
-### Unified Public API
+   - WhatsApp Business API
+   - Business phone integration
+   - Requires Business verification
 
-**WHY:** Same API works for both chatbots and chatflows.
+5. **🔌 Zapier Webhook**
 
-```python
-@router.post("/v1/bots/{bot_id}/chat")
-async def chat(bot_id: UUID, request: ChatRequest):
-    # Auto-detect bot type
-    bot_type, bot = detect_bot_type(bot_id)
+   - Auto-generated webhook URL
+   - Integrate with 3000+ apps
+   - Bidirectional communication
 
-    if bot_type == "chatbot":
-        response = await chatbot_service.process_message(bot, request.message)
-    elif bot_type == "chatflow":
-        response = await chatflow_service.execute(bot, request.message)
+6. **🔗 Direct API**
+   - REST API access
+   - API key authentication
+   - Custom integrations
 
-    return {"response": response}
+### Deployment Flow
+
 ```
-
-**Widget doesn't need to know bot type** - it just calls the API.
-
----
-
-### Secret AI Integration
-
-**CRITICAL:** Secret AI is **backend-only** (never exposed to widget/frontend).
-
-**Location:**
-- `backend/src/app/services/inference_service.py`
-
-**Flow:**
-1. Widget sends message to backend API
-2. Backend calls Secret AI
-3. Backend returns response to widget
-
-**WHY:**
-- ✅ API keys never exposed
-- ✅ Secure inference
-- ✅ No client-side AI logic
-
----
-
-## 6. Lead Capture System {#lead-capture}
-
-### Architecture
-
-**Optional Feature** - Disabled by default.
-
-**Configuration** (in chatbot/chatflow):
-```json
-{
-  "lead_capture": {
-    "enabled": false,
-    "timing": "before_chat",  // before, during, after
-    "required_fields": ["email"],
-    "optional_fields": ["name", "phone"],
-    "custom_fields": [
-      {"name": "company", "label": "Company Name", "type": "text"}
-    ],
-    "privacy_notice": "We'll use this to improve your experience.",
-    "auto_capture_location": true  // IP-based geolocation
-  }
-}
+1. User creates chatbot/chatflow in draft mode
+   ↓
+2. Configures all settings, knowledge bases, etc.
+   ↓
+3. Deploy Step: Select channels to enable
+   ☑ Website Widget
+   ☑ Telegram Bot
+   ☐ Discord Bot
+   ☐ WhatsApp Business
+   ☐ Zapier Webhook
+   ↓
+4. Click "Deploy to Channels"
+   ↓
+5. Backend:
+   - Saves to database
+   - Generates API keys
+   - Registers webhooks for enabled channels
+   - Returns deployment info per channel
 ```
 
 ---
 
-### Flow
+## Troubleshooting
 
+### Development Issues
+
+```bash
+# Check service status
+./scripts/docker/dev.sh status
+
+# View logs for specific service
+./scripts/docker/dev.sh logs backend
+./scripts/docker/dev.sh logs celery
+./scripts/docker/dev.sh logs postgres
+
+# Restart problematic service
+./scripts/docker/dev.sh restart celery
+
+# Full reset
+./scripts/docker/dev.sh clean
+./scripts/docker/dev.sh up
 ```
-1. Builder enables lead capture in bot config
-   ↓
-2. Widget detects lead capture enabled
-   ↓
-3. Shows form (before/during/after chat)
-   ↓
-4. User submits email + optional fields
-   ↓
-5. Backend receives lead data
-   ↓
-6. Resolves geolocation from IP (GeoIP service)
-   ↓
-7. Stores in leads table
-   ↓
-8. Builder views leads in dashboard
+
+### Build Issues
+
+```bash
+# Test deployment workflow
+./scripts/docker/test-workflow.sh
+
+# Clean build
+./scripts/docker/build-push-cpu.sh --no-cache 0.1.0
+
+# Check Docker space
+docker system df
+docker system prune -a
 ```
 
----
+### Production Issues
 
-### Geolocation
+```bash
+# Check container status
+docker compose ps
 
-**Tool:** MaxMind GeoIP2 (or IP2Location, ipapi.co)
+# View logs
+docker compose logs -f backend
+docker compose logs -f celery-worker
 
-**Data Captured:**
-- Country, country code
-- Region/state
-- City
-- Timezone
-- Latitude/longitude
-
-**Used For:**
-- Geographical distribution map
-- Analytics and insights
-
----
-
-## 7. Folder Structure {#folder-structure}
-
-### Complete Structure
-
+# Update and restart
+docker compose pull
+docker compose up -d
 ```
-privexbot/
-├── backend/
-│   ├── src/app/
-│   │   ├── models/                  # Database models
-│   │   │   ├── organization.py
-│   │   │   ├── workspace.py
-│   │   │   ├── user.py
-│   │   │   ├── chatbot.py           # Simple chatbot
-│   │   │   ├── chatflow.py          # Advanced workflow
-│   │   │   ├── knowledge_base.py
-│   │   │   ├── document.py          # With annotations field
-│   │   │   ├── chunk.py
-│   │   │   ├── credential.py        # For chatflow nodes
-│   │   │   ├── lead.py              # Lead capture
-│   │   │   ├── chat_session.py      # Works for BOTH
-│   │   │   └── chat_message.py
-│   │   │
-│   │   ├── services/                # Business logic
-│   │   │   ├── chatbot_service.py           # Chatbot execution
-│   │   │   ├── chatflow_service.py          # Chatflow execution
-│   │   │   ├── chatflow_executor.py         # Node executor
-│   │   │   ├── inference_service.py         # Secret AI
-│   │   │   ├── session_service.py           # Chat history
-│   │   │   ├── credential_service.py        # Credentials
-│   │   │   ├── geoip_service.py             # IP geolocation
-│   │   │   ├── kb_draft_service.py          # Draft KB (Redis)
-│   │   │   ├── document_processing_service.py  # Parse, chunk, embed
-│   │   │   ├── chunking_service.py          # Chunking strategies
-│   │   │   ├── indexing_service.py          # Vector indexing
-│   │   │   ├── retrieval_service.py         # Search with boosting
-│   │   │   ├── embedding_service.py         # Generate embeddings
-│   │   │   └── vector_store_service.py      # Vector DB abstraction
-│   │   │
-│   │   ├── integrations/            # External integrations
-│   │   │   ├── discord_integration.py
-│   │   │   ├── telegram_integration.py
-│   │   │   ├── whatsapp_integration.py
-│   │   │   ├── zapier_integration.py
-│   │   │   ├── crawl4ai_adapter.py          # Website scraping
-│   │   │   ├── firecrawl_adapter.py
-│   │   │   ├── jina_adapter.py
-│   │   │   ├── google_adapter.py            # Google Docs/Sheets
-│   │   │   ├── notion_adapter.py
-│   │   │   └── unstructured_adapter.py      # Document parsing
-│   │   │
-│   │   ├── chatflow/                # Chatflow node implementations
-│   │   │   ├── nodes/
-│   │   │   │   ├── llm_node.py
-│   │   │   │   ├── kb_node.py
-│   │   │   │   ├── condition_node.py
-│   │   │   │   ├── http_node.py
-│   │   │   │   ├── variable_node.py
-│   │   │   │   ├── code_node.py
-│   │   │   │   ├── memory_node.py
-│   │   │   │   ├── database_node.py
-│   │   │   │   ├── loop_node.py
-│   │   │   │   └── response_node.py
-│   │   │   └── utils/
-│   │   │       ├── variable_resolver.py
-│   │   │       └── graph_builder.py
-│   │   │
-│   │   ├── tasks/                   # Celery background tasks
-│   │   │   ├── document_tasks.py    # Process documents (AFTER finalize)
-│   │   │   ├── crawling_tasks.py    # Website crawling
-│   │   │   └── sync_tasks.py        # Cloud sync (Notion, Google)
-│   │   │
-│   │   ├── api/v1/routes/           # API endpoints
-│   │   │   ├── auth.py
-│   │   │   ├── chatbots.py
-│   │   │   ├── chatflows.py
-│   │   │   ├── kb_draft.py          # NEW - Draft mode endpoints
-│   │   │   ├── knowledge_bases.py
-│   │   │   ├── documents.py
-│   │   │   ├── credentials.py
-│   │   │   ├── leads.py
-│   │   │   ├── public.py            # Public API (unified)
-│   │   │   └── webhooks/
-│   │   │       ├── discord.py
-│   │   │       ├── telegram.py
-│   │   │       └── whatsapp.py
-│   │   │
-│   │   ├── schemas/                 # Pydantic models
-│   │   ├── celery_app.py            # Celery config
-│   │   └── main.py
-│   │
-│   └── pyproject.toml
-│
-├── frontend/
-│   ├── src/
-│   │   ├── pages/
-│   │   │   ├── Dashboard.jsx
-│   │   │   ├── ChatbotBuilder.jsx       # Form-based
-│   │   │   ├── ChatflowBuilder.jsx      # ReactFlow drag-and-drop
-│   │   │   ├── KBCreationWizard.jsx     # Multi-step KB creation (DRAFT)
-│   │   │   ├── KnowledgeBase.jsx
-│   │   │   ├── Credentials.jsx
-│   │   │   ├── LeadsDashboard.jsx
-│   │   │   └── Deployments.jsx
-│   │   │
-│   │   └── components/
-│   │       ├── chatbot/                 # Chatbot-specific
-│   │       │   ├── ChatbotSettingsForm.jsx
-│   │       │   ├── SystemPromptEditor.jsx
-│   │       │   └── KnowledgeBaseSelector.jsx
-│   │       │
-│   │       ├── chatflow/                # Chatflow-specific (ReactFlow)
-│   │       │   ├── ReactFlowCanvas.jsx
-│   │       │   ├── NodePalette.jsx
-│   │       │   ├── NodeConfigPanel.jsx
-│   │       │   ├── nodes/               # Custom node UI
-│   │       │   │   ├── LLMNode.jsx
-│   │       │   │   ├── KnowledgeBaseNode.jsx
-│   │       │   │   ├── ConditionNode.jsx
-│   │       │   │   └── HTTPRequestNode.jsx
-│   │       │   └── VariableInspector.jsx
-│   │       │
-│   │       ├── kb/                      # KB creation (DRAFT mode)
-│   │       │   ├── SourceSelector.jsx
-│   │       │   ├── FileUploader.jsx     # Temp upload
-│   │       │   ├── WebsiteCrawler.jsx
-│   │       │   ├── NotionIntegration.jsx
-│   │       │   ├── GoogleDocsIntegration.jsx
-│   │       │   ├── TextPasteInput.jsx
-│   │       │   ├── DocumentAnnotationForm.jsx
-│   │       │   ├── ChunkConfigPanel.jsx
-│   │       │   ├── IndexingConfigPanel.jsx
-│   │       │   ├── ChunkPreview.jsx     # Preview before save
-│   │       │   ├── SourcesList.jsx
-│   │       │   └── KBDraftSummary.jsx
-│   │       │
-│   │       └── shared/                  # Works for both
-│   │           ├── EmbedCode.jsx
-│   │           ├── IntegrationSetup.jsx
-│   │           ├── ChatPreview.jsx
-│   │           └── CredentialSelector.jsx
-│
-├── widget/                              # Separate JS package
-│   ├── src/
-│   │   ├── index.js                     # Entry point (unified)
-│   │   ├── ui/
-│   │   │   ├── ChatBubble.js
-│   │   │   ├── ChatWindow.js
-│   │   │   ├── MessageList.js
-│   │   │   ├── InputBox.js
-│   │   │   └── LeadCaptureForm.js       # NEW
-│   │   ├── api/
-│   │   │   └── client.js                # Backend API calls
-│   │   └── styles/
-│   │       └── widget.css
-│   ├── build/
-│   │   └── widget.js                    # Compiled bundle
-│   └── package.json
-│
-└── docs/
-    └── technical-docs/
-        ├── CHATBOT_DEPLOYMENT_ARCHITECTURE.md
-        ├── KNOWLEDGE_BASE_CREATION_FLOW.md
-        ├── KB_DRAFT_MODE_ARCHITECTURE.md
-        └── ARCHITECTURE_SUMMARY.md (this file)
+
+### SecretVM Issues
+
+```bash
+# Test connectivity
+./scripts/docker/secretvm-deploy.sh test
+
+# Check specific services
+curl -k https://api.harystyles.store/health
+curl -k https://flower.harystyles.store
 ```
 
 ---
 
-## 8. Technology Stack {#tech-stack}
+## Contributing
 
-### Backend
+1. **Development Setup**
 
-- **Framework:** FastAPI (Python)
-- **Database:** PostgreSQL (main data)
-- **Cache/Queue:** Redis (draft storage, Celery broker)
-- **Task Queue:** Celery (background processing)
-- **Vector Stores:** FAISS, Qdrant, Weaviate, Milvus, Pinecone, etc.
-- **Embeddings:** OpenAI, Secret AI, Hugging Face, Cohere
+   ```bash
+   ./scripts/docker/dev.sh up
+   ```
 
-### Frontend
+2. **Make Changes**
 
-- **Framework:** React
-- **Chatbot Builder:** Forms
-- **Chatflow Builder:** ReactFlow (drag-and-drop)
-- **State:** React Context/Redux
-- **UI:** Tailwind CSS / Material UI
+   - Code changes reflect immediately (hot reload)
+   - Use `./scripts/docker/dev.sh logs` to monitor
 
-### Widget
+3. **Test Changes**
 
-- **Build:** Vanilla JS (framework-agnostic)
-- **Bundle:** Webpack
-- **Deploy:** CDN
+   ```bash
+   ./scripts/docker/dev.sh test
+   ./scripts/docker/test-workflow.sh
+   ```
 
-### Integrations
+4. **Database Migrations**
 
-- **Website Scraping:** Crawl4AI, Firecrawl, Jina Reader
-- **Document Parsing:** Unstructured.io, PyMuPDF, python-docx
-- **Cloud Sources:** Google Docs API, Notion API, Google Sheets API
-- **Messaging:** Discord.py, python-telegram-bot, Twilio (WhatsApp)
-- **Geolocation:** MaxMind GeoIP2, IP2Location
+   ```bash
+   # Create migration
+   ./scripts/docker/dev.sh shell
+   alembic revision --autogenerate -m "description"
+
+   # Apply migration
+   ./scripts/docker/dev.sh migrate
+   ```
 
 ---
 
-## Key Architectural Principles
+## Security
 
-1. **Multi-Tenancy:** Everything isolated by organization/workspace
-2. **Separation of Concerns:** Chatbot ≠ Chatflow (different tables, services, builders)
-3. **Unified Deployment:** Same API and widget for both types
-4. **Draft-First KB Creation:** Preview everything before DB save
-5. **Background Processing:** Never block API requests (Celery)
-6. **Backend-Only AI:** Secret AI never exposed to frontend
-7. **Context-Aware Access:** Settings-based permissions (no junction tables)
-8. **Minimal & Robust:** Only essential services, no over-engineering
+- **🔐 JWT Authentication**: Secure API access
+- **🛡️ API Key Auth**: For public chat endpoints
+- **🔒 Environment Isolation**: Multi-tenant data separation
+- **🏰 Secret AI**: Backend-only AI inference
+- **📊 CORS Configuration**: Controlled frontend access
+- **🔑 Strong Passwords**: Generated with OpenSSL
 
 ---
 
-## Documentation Files
+## Performance
 
-1. **CHATBOT_DEPLOYMENT_ARCHITECTURE.md** - Complete deployment guide (chatbot vs chatflow, multi-channel, widget, folder structure)
-
-2. **KNOWLEDGE_BASE_CREATION_FLOW.md** - KB import sources, chunking, indexing, background processing
-
-3. **KB_DRAFT_MODE_ARCHITECTURE.md** - Draft mode flow (Redis-based, preview before save)
-
-4. **ARCHITECTURE_SUMMARY.md** - This file (overview of everything)
+- **⚡ CPU-Optimized**: Fast builds and deployments
+- **🚀 Redis Caching**: Sub-millisecond draft operations
+- **📈 Horizontal Scaling**: Multiple Celery workers
+- **🎯 Vector Search**: Optimized knowledge retrieval
+- **🔄 Connection Pooling**: Efficient database usage
 
 ---
 
-This architecture is designed to be **minimal**, **secure**, **robust**, and **scalable** while following best practices for production SaaS platforms.
+## Support
+
+- **📖 Documentation**: [docs/DEPLOYMENT_CPU.md](docs/DEPLOYMENT_CPU.md)
+- **🔧 Scripts Help**: `./scripts/docker/dev.sh --help`
+- **💻 API Docs**: http://localhost:8000/api/docs (development)
+- **🌐 Production**: https://api.harystyles.store/api/docs
+
+For issues, check service logs and verify service status first.

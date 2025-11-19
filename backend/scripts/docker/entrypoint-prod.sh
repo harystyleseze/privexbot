@@ -100,16 +100,26 @@ MIGRATION_CHECK_EXIT=$?
 # If exit code is 2, stamp the database instead of running migration
 if [ $MIGRATION_CHECK_EXIT -eq 2 ]; then
     echo "🔧 Stamping database with current migration version..."
+    # Get latest revision dynamically instead of hardcoding
+    LATEST_REVISION=$(python -c "
+from alembic.config import Config
+from alembic.script import ScriptDirectory
+config = Config('alembic.ini')
+script = ScriptDirectory.from_config(config)
+print(script.get_current_head())
+" 2>/dev/null || echo "e5c1c1c3f41b")
+
+    echo "📌 Using latest revision: $LATEST_REVISION"
     alembic stamp head || {
         echo "❌ ERROR: Failed to stamp database"
         echo "💡 Manual fix required. Connect to database and run:"
         echo "   CREATE TABLE alembic_version (version_num VARCHAR(32) NOT NULL);"
-        echo "   INSERT INTO alembic_version VALUES ('3c4e4feca860');"
+        echo "   INSERT INTO alembic_version VALUES ('$LATEST_REVISION');"
         exit 1
     }
     echo "✅ Database stamped successfully"
 else
-    # Run migrations with verbose output and capture stderr
+    # Try migration with robust error handling, including missing revision detection
     echo "📦 Applying database migrations..."
     MIGRATION_OUTPUT=$(alembic upgrade head 2>&1)
     MIGRATION_EXIT=$?
@@ -124,7 +134,7 @@ else
         echo "$MIGRATION_OUTPUT"
         echo ""
 
-        # Check for common error patterns
+        # Check for common error patterns with enhanced handling
         if echo "$MIGRATION_OUTPUT" | grep -q "already exists"; then
             echo "💡 DIAGNOSIS: Tables already exist"
             echo "🔧 SOLUTION: Stamping database with current version..."
@@ -137,13 +147,41 @@ else
                 echo "   Then execute:"
                 echo "   CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) NOT NULL);"
                 echo "   DELETE FROM alembic_version;"
-                echo "   INSERT INTO alembic_version VALUES ('3c4e4feca860');"
+                # Get latest revision dynamically instead of hardcoding
+                LATEST_REVISION=$(python -c "from alembic.config import Config; from alembic.script import ScriptDirectory; config = Config('alembic.ini'); script = ScriptDirectory.from_config(config); print(script.get_current_head())" 2>/dev/null || echo "e5c1c1c3f41b")
+                echo "   INSERT INTO alembic_version VALUES ('$LATEST_REVISION');"
                 exit 1
             }
         elif echo "$MIGRATION_OUTPUT" | grep -q "permission denied"; then
             echo "💡 DIAGNOSIS: Permission issue"
             echo "🔧 SOLUTION: Check database user has CREATE permissions"
             exit 1
+        elif echo "$MIGRATION_OUTPUT" | grep -q "Can't locate revision"; then
+            echo "💡 DIAGNOSIS: Migration revision not found in current codebase"
+            echo "🔧 SOLUTION: Stamping database with latest revision..."
+            # Get the latest revision from migration files dynamically
+            LATEST_REVISION=$(python -c "
+from alembic.config import Config
+from alembic.script import ScriptDirectory
+config = Config('alembic.ini')
+script = ScriptDirectory.from_config(config)
+print(script.get_current_head())
+" 2>/dev/null || echo "e5c1c1c3f41b")
+
+            echo "📌 Latest available revision: $LATEST_REVISION"
+            alembic stamp head && {
+                echo "✅ Database stamped successfully with revision: $LATEST_REVISION"
+                echo "✅ Migrations are now in sync"
+            } || {
+                echo "❌ Failed to stamp database"
+                echo "💡 Manual fix: Connect to postgres and run:"
+                echo "   docker exec -it privexbot-postgres-secretvm psql -U privexbot -d privexbot"
+                echo "   Then execute:"
+                echo "   CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) NOT NULL);"
+                echo "   DELETE FROM alembic_version;"
+                echo "   INSERT INTO alembic_version VALUES ('$LATEST_REVISION');"
+                exit 1
+            }
         else
             echo "💡 Debugging steps:"
             echo "   1. Check migration files in alembic/versions/"

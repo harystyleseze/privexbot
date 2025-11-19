@@ -36,4 +36,6 @@ dependencies = [
     "qdrant-client>=1.7.0",
     "torch>=2.0.0",
     "playwright>=1.40.0",
+    # Celery monitoring
+    "flower>=2.0.0",
 ]

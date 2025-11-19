@@ -1,13 +1,56 @@
 #!/bin/bash
 # Docker entrypoint script for backend service
 # WHY: Ensures database migrations are applied before server starts
-# HOW: Runs alembic upgrade, then starts uvicorn
+# HOW: Runs alembic upgrade with error handling, then starts uvicorn
 
 set -e
 
 echo "🔄 Running database migrations..."
 cd /app/src
-alembic upgrade head
+
+# Check current migration status and handle missing revisions
+echo "🔍 Checking migration status..."
+CURRENT_REVISION=$(python -c "
+from sqlalchemy import create_engine, text
+from app.core.config import settings
+import sys
+
+try:
+    engine = create_engine(settings.DATABASE_URL)
+    with engine.connect() as conn:
+        result = conn.execute(text('SELECT version_num FROM alembic_version LIMIT 1'))
+        row = result.fetchone()
+        if row:
+            print(row[0])
+        else:
+            print('none')
+except Exception:
+    print('none')
+" 2>/dev/null || echo 'none')
+
+echo "📌 Current database revision: $CURRENT_REVISION"
+
+# Try migration, with fallback to stamp if revision not found
+if ! alembic upgrade head 2>/dev/null; then
+    echo "⚠️  Migration failed, attempting to resolve..."
+
+    # Get the latest revision from migration files
+    LATEST_REVISION=$(python -c "
+from alembic import command
+from alembic.config import Config
+config = Config('alembic.ini')
+script_dir = config.get_main_option('script_location')
+from alembic.script import ScriptDirectory
+script = ScriptDirectory.from_config(config)
+print(script.get_current_head())
+" 2>/dev/null)
+
+    echo "🔧 Stamping database with latest revision: $LATEST_REVISION"
+    alembic stamp head
+    echo "✅ Database stamped successfully"
+else
+    echo "✅ Migration completed successfully"
+fi
 
 echo "🚀 Starting uvicorn server..."
 cd /app

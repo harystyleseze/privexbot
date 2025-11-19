@@ -7,6 +7,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
+    image: privexbot-backend-dev:latest  # Tag the image for reuse
     container_name: privexbot-backend-dev
     ports:
       - "8000:8000"
@@ -91,9 +92,7 @@ services:
 
   # Celery worker for background tasks (KB processing, embeddings, crawling)
   celery-worker:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
+    image: privexbot-backend-dev:latest  # Reuse the same image
     container_name: privexbot-celery-dev
     command: celery -A app.tasks.celery_worker worker --loglevel=info --queues=default,high_priority,low_priority --pool=solo
     volumes:
@@ -116,6 +115,8 @@ services:
       - VECLIB_MAXIMUM_THREADS=1
       - NUMEXPR_NUM_THREADS=1
     depends_on:
+      backend-dev:
+        condition: service_started  # Ensure image is built
       postgres:
         condition: service_healthy
       redis:
@@ -128,9 +129,7 @@ services:
 
   # Celery Beat for scheduled tasks (periodic re-indexing, maintenance)
   celery-beat:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
+    image: privexbot-backend-dev:latest  # Reuse the same image
     container_name: privexbot-celery-beat-dev
     command: celery -A app.tasks.celery_worker beat --loglevel=info
     volumes:
@@ -146,6 +145,8 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/1
       - CELERY_RESULT_BACKEND=redis://redis:6379/2
     depends_on:
+      backend-dev:
+        condition: service_started  # Ensure image is built
       redis:
         condition: service_healthy
     networks:
@@ -154,9 +155,7 @@ services:
 
   # Flower for Celery monitoring (Web UI at http://localhost:5555)
   flower:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
+    image: privexbot-backend-dev:latest  # Reuse the same image
     container_name: privexbot-flower-dev
     command: celery -A app.tasks.celery_worker flower --port=5555 --basic_auth=admin:admin123
     ports:
@@ -170,6 +169,8 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/1
       - CELERY_RESULT_BACKEND=redis://redis:6379/2
     depends_on:
+      backend-dev:
+        condition: service_started  # Ensure image is built
       redis:
         condition: service_healthy
     networks:
