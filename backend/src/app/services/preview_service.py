@@ -477,6 +477,7 @@ class PreviewService:
                 pages_preview.append({
                     "url": url,
                     "title": metadata.get("title", "Untitled"),
+                    "content": content,  # Store full webpage content for pages endpoints
                     "chunks": len(chunks),
                     "preview_chunks": [
                         {

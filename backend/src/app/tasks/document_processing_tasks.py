@@ -344,9 +344,9 @@ def reprocess_document_task(
                 print(f"[DEBUG] Deleting {len(old_chunk_ids)} chunks from Qdrant")
 
                 loop.run_until_complete(
-                    qdrant_service.delete_points(
-                        collection_name=f"kb_{document.kb_id}",
-                        points_filter={"document_id": str(document_id)}
+                    qdrant_service.delete_chunks(
+                        kb_id=document.kb_id,
+                        chunk_ids=old_chunk_ids
                     )
                 )
 

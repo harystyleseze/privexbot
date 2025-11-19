@@ -35,6 +35,10 @@ RUN pip install --no-cache-dir \
 RUN uv sync --system || \
     uv pip install --system -e .
 
+# Install Playwright browsers (required for web scraping)
+RUN python -m playwright install chromium
+RUN python -m playwright install-deps
+
 # Install additional dev tools
 RUN pip install --no-cache-dir \
     uvicorn[standard] \

@@ -25,6 +25,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from uuid import UUID
 from pydantic import BaseModel, Field
+from datetime import datetime
 
 from app.db.session import get_db
 from app.api.v1.dependencies import get_current_user
@@ -608,6 +609,31 @@ async def preview_draft_chunking(
                 detail=preview_data.get("message", "Preview generation failed")
             )
 
+        # Store preview data back to draft for inspection endpoints
+        # Get the current draft and manually add preview_data
+        draft = draft_service.get_draft(DraftType.KB, draft_id)
+        if draft:
+            draft["preview_data"] = {
+                "pages": preview_data.get("pages", []),
+                "generated_at": datetime.utcnow().isoformat(),
+                "config": preview_data.get("config", {}),
+                "stats": {
+                    "pages_previewed": preview_data.get("pages_previewed", 0),
+                    "total_chunks": preview_data.get("total_chunks", 0),
+                    "strategy": preview_data.get("strategy", "")
+                }
+            }
+            # Update timestamps and save directly to Redis
+            draft["updated_at"] = datetime.utcnow().isoformat()
+
+            import json
+            redis_key = f"draft:kb:{draft_id}"
+            draft_service.redis_client.setex(
+                redis_key,
+                draft_service.default_ttl,
+                json.dumps(draft)
+            )
+
         return preview_data
 
     except HTTPException:
@@ -629,13 +655,16 @@ async def get_draft_pages(
     current_user: User = Depends(get_current_user)
 ):
     """
-    List all scraped pages stored in the draft (from preview).
+    List all scraped pages stored in the draft (from preview) with FULL content.
 
-    WHY: Allow users to inspect what pages were crawled during preview
-    HOW: Retrieve pages data from draft in Redis
+    WHY: Allow users to inspect what pages were crawled during preview with complete content
+    HOW: Retrieve pages data from draft in Redis including full scraped content
 
     PHASE: 1 (Draft Mode - Redis Only)
     DURATION: <50ms
+
+    IMPORTANT: Returns FULL scraped content for each page, not truncated previews.
+    Frontend can use this content directly without additional API calls.
 
     Returns:
         {
@@ -646,8 +675,11 @@ async def get_draft_pages(
                     "index": int,
                     "url": str,
                     "title": str,
-                    "content_preview": str,
+                    "content": str,  # FULL scraped content (complete webpage)
+                    "content_preview": str,  # Optional 200-char preview
                     "word_count": int,
+                    "character_count": int,
+                    "chunks": int,
                     "scraped_at": str
                 }
             ]
@@ -681,16 +713,18 @@ async def get_draft_pages(
             "message": "No preview data found. Run preview first using POST /{draft_id}/preview"
         }
 
-    # Format pages with preview info
+    # Format pages with FULL content (not truncated preview)
     formatted_pages = []
     for idx, page_data in enumerate(pages):
+        full_content = page_data.get("content", "")
         formatted_pages.append({
             "index": idx,
             "url": page_data.get("url", ""),
             "title": page_data.get("title", ""),
-            "content_preview": page_data.get("content", "")[:200] + "..." if len(page_data.get("content", "")) > 200 else page_data.get("content", ""),
-            "word_count": len(page_data.get("content", "").split()),
-            "character_count": len(page_data.get("content", "")),
+            "content": full_content,  # FULL content, not truncated
+            "content_preview": full_content[:200] + "..." if len(full_content) > 200 else full_content,  # Optional short preview
+            "word_count": len(full_content.split()),
+            "character_count": len(full_content),
             "chunks": page_data.get("chunks", 0),
             "scraped_at": preview_data.get("generated_at", "")
         })

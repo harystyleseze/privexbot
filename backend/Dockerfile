@@ -15,19 +15,54 @@ COPY pyproject.toml uv.lock ./
 # Install dependencies using uv
 RUN uv pip install --system -r pyproject.toml
 
+# Install Playwright browsers (required for web scraping)
+RUN python -m playwright install chromium
+RUN python -m playwright install-deps
+
 # Production stage
 FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install runtime dependencies
+# Install runtime dependencies (including Playwright and crawl4ai system dependencies)
 RUN apt-get update && apt-get install -y \
+    # Core dependencies
     libpq5 \
+    curl \
+    ca-certificates \
+    # Playwright browser dependencies (complete set for chromium)
+    libglib2.0-0 \
+    libnss3 \
+    libnspr4 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libdrm2 \
+    libxkbcommon0 \
+    libatspi2.0-0 \
+    libx11-6 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxext6 \
+    libxfixes3 \
+    libxrandr2 \
+    libgbm1 \
+    libxss1 \
+    libasound2 \
+    libgtk-3-0 \
+    libgdk-pixbuf2.0-0 \
+    # Additional dependencies for crawl4ai and web scraping
+    fonts-liberation \
+    libappindicator3-1 \
+    xdg-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy installed packages from builder
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
+
+# Copy Playwright browsers from builder
+COPY --from=builder /root/.cache/ms-playwright /root/.cache/ms-playwright
 
 # Install production web server
 RUN pip install --no-cache-dir gunicorn uvicorn[standard]

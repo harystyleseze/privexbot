@@ -372,13 +372,25 @@ async def get_kb_stats(
     # TODO: Add proper workspace membership check if needed
 
     # Get document stats
-    documents = db.query(Document).filter(
+    all_documents = db.query(Document).filter(
         Document.kb_id == kb_id
     ).all()
 
+    # Get active documents (not disabled/archived) for consistency with listing endpoint
+    active_documents = db.query(Document).filter(
+        Document.kb_id == kb_id,
+        Document.is_enabled == True,
+        Document.is_archived == False
+    ).all()
+
     doc_by_status = {}
-    for doc in documents:
+    active_doc_by_status = {}
+
+    for doc in all_documents:
         doc_by_status[doc.status] = doc_by_status.get(doc.status, 0) + 1
+
+    for doc in active_documents:
+        active_doc_by_status[doc.status] = active_doc_by_status.get(doc.status, 0) + 1
 
     # Get chunk stats
     chunks = db.query(Chunk).filter(
@@ -423,12 +435,14 @@ async def get_kb_stats(
         "name": kb.name,
         "status": kb.status,
         "documents": {
-            "total": len(documents),
-            "by_status": doc_by_status
+            "total": len(all_documents),
+            "active": len(active_documents),
+            "by_status": doc_by_status,
+            "active_by_status": active_doc_by_status
         },
         "chunks": {
             "total": len(chunks),
-            "avg_per_document": len(chunks) / len(documents) if documents else 0
+            "avg_per_document": len(chunks) / len(active_documents) if active_documents else 0
         },
         "storage": {
             "total_content_size": total_content_size,
@@ -1348,12 +1362,19 @@ async def delete_kb_document(
         asyncio.set_event_loop(loop)
 
         try:
-            # Delete vectors from Qdrant
-            await qdrant_service.delete_points(
-                collection_name=f"kb_{kb_id}",
-                points_filter={"document_id": str(doc_id)}
-            )
-            qdrant_deleted = chunk_count  # Assume all chunks had vectors
+            # Get chunk IDs for this document from database
+            chunks = db.query(Chunk).filter(Chunk.document_id == doc_id).all()
+            chunk_ids = [chunk.id for chunk in chunks]
+
+            if chunk_ids:
+                # Delete vectors from Qdrant using chunk IDs
+                qdrant_deleted = await qdrant_service.delete_chunks(
+                    kb_id=kb_id,
+                    chunk_ids=chunk_ids
+                )
+            else:
+                qdrant_deleted = 0
+
             qdrant_success = True
 
         except Exception as qdrant_error:
